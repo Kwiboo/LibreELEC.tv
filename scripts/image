@@ -351,6 +351,7 @@ if [ "$1" = "release" -o "$1" = "mkimage" -o "$1" = "amlpkg" -o "$1" = "noobs" ]
       TOOLCHAIN="$TOOLCHAIN" \
       PROJECT_DIR="$PROJECT_DIR" \
       PROJECT="$PROJECT" \
+      DEVICE="$DEVICE" \
       DISTRO="$DISTRO" \
       TARGET_IMG="$TARGET_IMG" \
       IMAGE_NAME="$IMAGE_NAME" \

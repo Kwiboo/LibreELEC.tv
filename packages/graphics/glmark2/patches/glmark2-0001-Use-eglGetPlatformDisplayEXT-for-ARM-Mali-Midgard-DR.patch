@@ -1,0 +1,136 @@
+From ed468e6318a2ba27e03c83f787ec56cdabbe5adf Mon Sep 17 00:00:00 2001
+From: Myy <myy@miouyouyou.fr>
+Date: Thu, 12 Jan 2017 12:19:15 +0000
+Subject: [PATCH 1/2] Use eglGetPlatformDisplayEXT for ARM Mali Midgard DRM
+ drivers.
+
+When using ARM Mali Midgard Wayland/DRM drivers r12p0, eglGetDisplay
+does not work in DRM mode. Only eglGetPlatformDisplayEXT works.
+
+There's still some issues unresolved, though, with these drivers.
+Currently, the benchmarks only work when run like this:
+glmark2-es --visual-config alpha:0:stencil:1
+
+Also removed the code testing each possible DRM driver. Manual copy
+of @elmarco code fix.
+
+Signed-off-by: Myy <myy@miouyouyou.fr>
+---
+ src/gl-state-egl.cpp     | 28 ++++++++++++++++++++++------
+ src/gl-state-egl.h       | 11 +++++++++++
+ src/native-state-drm.cpp | 24 +++---------------------
+ 3 files changed, 36 insertions(+), 27 deletions(-)
+
+diff --git a/src/gl-state-egl.cpp b/src/gl-state-egl.cpp
+index 1d4a1e4..e80138d 100644
+--- a/src/gl-state-egl.cpp
++++ b/src/gl-state-egl.cpp
+@@ -415,7 +415,23 @@ GLStateEGL::gotValidDisplay()
+     if (egl_display_)
+         return true;
+ 
+-    egl_display_ = eglGetDisplay(native_display_);
++    Log::debug("Using eglGetPlatformDisplayEXT !\n");
++    PFNEGLGETPLATFORMDISPLAYEXTPROC get_platform_display = NULL;
++    get_platform_display =
++      reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(
++        eglGetProcAddress("eglGetPlatformDisplayEXT")
++      );
++
++    if (get_platform_display != nullptr) {
++        egl_display_ = get_platform_display(
++          GLMARK2_NATIVE_EGL_DISPLAY_ENUM, native_display_, NULL
++        );
++    }
++    
++    /* Just in case get_platform_display failed... */
++    if (!egl_display_)
++        egl_display_ = eglGetDisplay(native_display_);
++
+     if (!egl_display_) {
+         Log::error("eglGetDisplay() failed with error: 0x%x\n", eglGetError());
+         return false;
+@@ -494,11 +510,11 @@ GLStateEGL::gotValidConfig()
+         return false;
+ 
+     const EGLint config_attribs[] = {
+-        EGL_RED_SIZE, requested_visual_config_.red,
+-        EGL_GREEN_SIZE, requested_visual_config_.green,
+-        EGL_BLUE_SIZE, requested_visual_config_.blue,
+-        EGL_ALPHA_SIZE, requested_visual_config_.alpha,
+-        EGL_DEPTH_SIZE, requested_visual_config_.depth,
++        EGL_RED_SIZE,     requested_visual_config_.red,
++        EGL_GREEN_SIZE,   requested_visual_config_.green,
++        EGL_BLUE_SIZE,    requested_visual_config_.blue,
++        EGL_ALPHA_SIZE,   requested_visual_config_.alpha,
++        EGL_DEPTH_SIZE,   requested_visual_config_.depth,
+         EGL_STENCIL_SIZE, requested_visual_config_.stencil,
+ #if GLMARK2_USE_GLESv2
+         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+diff --git a/src/gl-state-egl.h b/src/gl-state-egl.h
+index 0e1f35b..0ed6674 100644
+--- a/src/gl-state-egl.h
++++ b/src/gl-state-egl.h
+@@ -24,9 +24,20 @@
+ 
+ #include <vector>
+ #include <EGL/egl.h>
++#include <EGL/eglext.h>
+ #include "gl-state.h"
+ #include "gl-visual-config.h"
+ 
++#ifdef GLMARK2_USE_X11
++#define GLMARK2_NATIVE_EGL_DISPLAY_ENUM EGL_PLATFORM_X11_KHR
++#elif  GLMARK2_USE_WAYLAND
++#define GLMARK2_NATIVE_EGL_DISPLAY_ENUM EGL_PLATFORM_WAYLAND_KHR
++#elif  GLMARK2_USE_DRM
++#define GLMARK2_NATIVE_EGL_DISPLAY_ENUM EGL_PLATFORM_GBM_KHR
++#elif  GLMARK2_USE_MIR
++#define GLMARK2_NATIVE_EGL_DISPLAY_ENUM EGL_PLATFORM_MIR_KHR
++#endif
++
+ class EglConfig
+ {
+     EGLConfig handle_;
+diff --git a/src/native-state-drm.cpp b/src/native-state-drm.cpp
+index 4df75ec..3f4bece 100644
+--- a/src/native-state-drm.cpp
++++ b/src/native-state-drm.cpp
+@@ -25,6 +25,8 @@
+ #include "native-state-drm.h"
+ #include "log.h"
+ 
++#include <fcntl.h>
++
+ /******************
+  * Public methods *
+  ******************/
+@@ -197,27 +199,7 @@ NativeStateDRM::init_gbm()
+ bool
+ NativeStateDRM::init()
+ {
+-    // TODO: Replace this with something that explicitly probes for the loaded
+-    // driver (udev?).
+-    static const char* drm_modules[] = {
+-        "i915",
+-        "nouveau",
+-        "radeon",
+-        "vmgfx",
+-        "omapdrm",
+-        "exynos"
+-    };
+-
+-    unsigned int num_modules(sizeof(drm_modules)/sizeof(drm_modules[0]));
+-    for (unsigned int m = 0; m < num_modules; m++) {
+-        fd_ = drmOpen(drm_modules[m], 0);
+-        if (fd_ < 0) {
+-            Log::debug("Failed to open DRM module '%s'\n", drm_modules[m]);
+-            continue;
+-        }
+-        Log::debug("Opened DRM module '%s'\n", drm_modules[m]);
+-        break;
+-    }
++    fd_ = open("/dev/dri/card0", O_RDWR);
+ 
+     if (fd_ < 0) {
+         Log::error("Failed to find a suitable DRM device\n");

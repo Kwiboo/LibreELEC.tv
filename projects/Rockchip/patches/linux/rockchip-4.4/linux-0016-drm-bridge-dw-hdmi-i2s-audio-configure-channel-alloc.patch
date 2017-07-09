@@ -1,0 +1,26 @@
+From 1e411e7854b1ba7ed41e10c23e4d1607589f29f7 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 17 Apr 2017 13:09:16 +0200
+Subject: [PATCH 16/26] drm/bridge/dw-hdmi-i2s-audio: configure channel
+ allocation
+
+---
+ drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c b/drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c
+index a8688cef418c..fdb6f951c836 100644
+--- a/drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c
++++ b/drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c
+@@ -187,7 +187,10 @@ static int dw_hdmi_i2s_hw_params(struct device *dev, void *data,
+ 	hdmi_write(audio, 0x00, HDMI_FC_AUDICONF1);
+ 
+ 	/* Set Channel Allocation */
+-	hdmi_write(audio, 0x00, HDMI_FC_AUDICONF2);
++	val = hparms->cea.channel_allocation;
++	if (hparms->mode == NLPCM || hparms->mode == HBR)
++		val = 0x00;
++	hdmi_write(audio, val, HDMI_FC_AUDICONF2);
+ 
+ 	/* Set LFEPBLDOWN-MIX INH and LSV */
+ 	hdmi_write(audio, 0x00, HDMI_FC_AUDICONF3);

@@ -58,6 +58,12 @@ case "$LINUX" in
     PKG_SOURCE_DIR="xbian-sources-kernel-${PKG_COMMIT}*"
     PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET imx6-status-led imx6-soc-fan irqbalanced"
     ;;
+  rockchip-4.4)
+    PKG_VERSION="3467c559"
+    PKG_URL="https://github.com/rockchip-linux/kernel/archive/$PKG_VERSION.tar.gz"
+    PKG_SOURCE_DIR="kernel-$PKG_VERSION*"
+    PKG_PATCH_DIRS="rockchip-4.4"
+    ;;
   *)
     PKG_VERSION="4.9.29"
     PKG_URL="http://www.kernel.org/pub/linux/kernel/v4.x/$PKG_NAME-$PKG_VERSION.tar.xz"

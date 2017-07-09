@@ -1,0 +1,618 @@
+From eccd8851b4367230ff0411d8a68fe00c35ef46e1 Mon Sep 17 00:00:00 2001
+From: David Wu <david.wu@rock-chips.com>
+Date: Fri, 23 Jun 2017 12:41:59 +0800
+Subject: [PATCH 1/8] FROMLIST: net: phy: Add rockchip phy driver support
+
+Support internal ephy currently.
+
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ drivers/net/phy/Kconfig    |  5 +++
+ drivers/net/phy/Makefile   |  1 +
+ drivers/net/phy/rockchip.c | 94 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 100 insertions(+)
+ create mode 100644 drivers/net/phy/rockchip.c
+
+diff --git a/drivers/net/phy/Kconfig b/drivers/net/phy/Kconfig
+index 60994a83a0d6..538f3851b273 100644
+--- a/drivers/net/phy/Kconfig
++++ b/drivers/net/phy/Kconfig
+@@ -256,6 +256,11 @@ config MDIO_BCM_IPROC
+ 	  This module provides a driver for the MDIO busses found in the
+ 	  Broadcom iProc SoC's.
+ 
++config ROCKCHIP_MAC_PHY
++	tristate "Drivers for ROCKCHIP MAC PHY"
++	---help---
++	  Currently supports the mac internal ephy.
++
+ endif # PHYLIB
+ 
+ config MICREL_KS8995MA
+diff --git a/drivers/net/phy/Makefile b/drivers/net/phy/Makefile
+index f31a4e25cf15..8a29fe3bcf8d 100644
+--- a/drivers/net/phy/Makefile
++++ b/drivers/net/phy/Makefile
+@@ -42,3 +42,4 @@ obj-$(CONFIG_MDIO_MOXART)	+= mdio-moxart.o
+ obj-$(CONFIG_MDIO_BCM_UNIMAC)	+= mdio-bcm-unimac.o
+ obj-$(CONFIG_MICROCHIP_PHY)	+= microchip.o
+ obj-$(CONFIG_MDIO_BCM_IPROC)	+= mdio-bcm-iproc.o
++obj-$(CONFIG_ROCKCHIP_MAC_PHY)	+= rockchip.o
+diff --git a/drivers/net/phy/rockchip.c b/drivers/net/phy/rockchip.c
+new file mode 100644
+index 000000000000..69e96ec5604e
+--- /dev/null
++++ b/drivers/net/phy/rockchip.c
+@@ -0,0 +1,94 @@
++/**
++ * Rockchip mac phy driver
++ *
++ * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * David Wu<david.wu@rock-chips.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ */
++
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/mii.h>
++#include <linux/ethtool.h>
++#include <linux/phy.h>
++#include <linux/netdevice.h>
++
++static int internal_config_init(struct phy_device *phydev)
++{
++	int val;
++	u32 features;
++
++	/*enable auto mdix*/
++	phy_write(phydev, 0x11, 0x0080);
++
++	features = (SUPPORTED_TP | SUPPORTED_MII
++			| SUPPORTED_AUI | SUPPORTED_FIBRE |
++			SUPPORTED_BNC);
++
++	/* Do we support autonegotiation? */
++	val = phy_read(phydev, MII_BMSR);
++	if (val < 0)
++		return val;
++
++	if (val & BMSR_ANEGCAPABLE)
++		features |= SUPPORTED_Autoneg;
++
++	if (val & BMSR_100FULL)
++		features |= SUPPORTED_100baseT_Full;
++	if (val & BMSR_100HALF)
++		features |= SUPPORTED_100baseT_Half;
++	if (val & BMSR_10FULL)
++		features |= SUPPORTED_10baseT_Full;
++	if (val & BMSR_10HALF)
++		features |= SUPPORTED_10baseT_Half;
++
++	if (val & BMSR_ESTATEN) {
++		val = phy_read(phydev, MII_ESTATUS);
++		if (val < 0)
++			return val;
++
++		if (val & ESTATUS_1000_TFULL)
++			features |= SUPPORTED_1000baseT_Full;
++		if (val & ESTATUS_1000_THALF)
++			features |= SUPPORTED_1000baseT_Half;
++	}
++
++	phydev->supported = features;
++	phydev->advertising = features;
++
++	return 0;
++}
++
++static struct phy_driver rockchip_phy_driver[] = {
++{
++	.phy_id 	= 0x1234d400,
++	.phy_id_mask	= 0xffffffff,
++	.name		= "rockchip internal ephy",
++	.features	= 0,
++	.config_init	= internal_config_init,
++	.config_aneg	= genphy_config_aneg,
++	.read_status	= genphy_read_status,
++	.suspend	= genphy_suspend,
++	.resume 	= genphy_resume,
++},
++};
++
++module_phy_driver(rockchip_phy_driver);
++
++static struct mdio_device_id __maybe_unused rockchip_phy_tbl[] = {
++	{ 0x1234d400, 0xffffffff },
++	{ }
++};
++
++MODULE_DEVICE_TABLE(mdio, rockchip_phy_tbl);
++
++MODULE_AUTHOR("David Wu<david.wu@rock-chips.com>");
++MODULE_DESCRIPTION("Rockchip mac phy driver");
++MODULE_LICENSE("GPL v2");
+
+From c80dde4931daafcd188723db342eadd46f0fe254 Mon Sep 17 00:00:00 2001
+From: David Wu <david.wu@rock-chips.com>
+Date: Fri, 23 Jun 2017 12:42:02 +0800
+Subject: [PATCH 2/8] FROMLIST: net: stmmac: dwmac-rk: Remove unwanted code for
+ rk3328_set_to_rmii()
+
+This is wrong setting for rk3328_set_to_rmii(), so remove it.
+
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+index 3080502e79de..4c10e9b4c893 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+@@ -364,9 +364,6 @@ static void rk3328_set_to_rmii(struct rk_priv_data *bsp_priv)
+ 	regmap_write(bsp_priv->grf, RK3328_GRF_MAC_CON1,
+ 		     RK3328_GMAC_PHY_INTF_SEL_RMII |
+ 		     RK3328_GMAC_RMII_MODE);
+-
+-	/* set MAC to RMII mode */
+-	regmap_write(bsp_priv->grf, RK3328_GRF_MAC_CON1, GRF_BIT(11));
+ }
+ 
+ static void rk3328_set_rgmii_speed(struct rk_priv_data *bsp_priv, int speed)
+
+From ad078d0ab8439afccda27ae3c898458fa78dd558 Mon Sep 17 00:00:00 2001
+From: David Wu <david.wu@rock-chips.com>
+Date: Fri, 23 Jun 2017 12:59:07 +0800
+Subject: [PATCH 3/8] FROMLIST: net: stmmac: dwmac-rk: Add internal phy support
+
+To make internal phy worked, need to configure the phy_clock,
+phy cru_reset and related registers.
+
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ .../devicetree/bindings/net/rockchip-dwmac.txt     |  3 +
+ drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c     | 82 ++++++++++++++++++++++
+ 2 files changed, 85 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/net/rockchip-dwmac.txt b/Documentation/devicetree/bindings/net/rockchip-dwmac.txt
+index 9affe4f20f53..e484b06b3859 100644
+--- a/Documentation/devicetree/bindings/net/rockchip-dwmac.txt
++++ b/Documentation/devicetree/bindings/net/rockchip-dwmac.txt
+@@ -18,6 +18,7 @@ Required properties:
+ 	   <&cru SCLK_MACREF_OUT> clock gate for RMII reference clock output
+ 	   <&cru ACLK_GMAC>: AXI clock gate for GMAC
+ 	   <&cru PCLK_GMAC>: APB clock gate for GMAC
++	   <&cru MAC_PHY>: clock for internal macphy
+  - clock-names: One name for each entry in the clocks property.
+  - phy-mode: See ethernet.txt file in the same directory.
+  - pinctrl-names: Names corresponding to the numbered pinctrl states.
+@@ -31,6 +32,8 @@ Required properties:
+  - assigned-clocks: main clock, should be <&cru SCLK_MAC>;
+  - assigned-clock-parents = parent of main clock.
+    can be <&ext_gmac> or <&cru SCLK_MAC_PLL>.
++ - phy-type: For internal phy, it must be "internal"; For external phy, no need
++   to configure this.
+ 
+ Optional properties:
+  - tx_delay: Delay value for TXD timing. Range value is 0~0x7F, 0x30 as default.
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+index 4c10e9b4c893..1d471f6946d8 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+@@ -41,6 +41,7 @@ struct rk_gmac_ops {
+ 	void (*set_to_rmii)(struct rk_priv_data *bsp_priv);
+ 	void (*set_rgmii_speed)(struct rk_priv_data *bsp_priv, int speed);
+ 	void (*set_rmii_speed)(struct rk_priv_data *bsp_priv, int speed);
++	void (*internal_phy_powerup)(struct rk_priv_data *bsp_priv);
+ };
+ 
+ struct rk_priv_data {
+@@ -51,6 +52,7 @@ struct rk_priv_data {
+ 
+ 	bool clk_enabled;
+ 	bool clock_input;
++	bool internal_phy;
+ 
+ 	struct clk *clk_mac;
+ 	struct clk *gmac_clkin;
+@@ -60,6 +62,9 @@ struct rk_priv_data {
+ 	struct clk *clk_mac_refout;
+ 	struct clk *aclk_mac;
+ 	struct clk *pclk_mac;
++	struct clk *clk_macphy;
++
++	struct reset_control *macphy_reset;
+ 
+ 	int tx_delay;
+ 	int rx_delay;
+@@ -749,6 +754,48 @@ static const struct rk_gmac_ops rk3399_ops = {
+ 	.set_rmii_speed = rk3399_set_rmii_speed,
+ };
+ 
++#define RK_GRF_MACPHY_CON0		0xb00
++#define RK_GRF_MACPHY_CON1		0xb04
++#define RK_GRF_MACPHY_CON2		0xb08
++#define RK_GRF_MACPHY_CON3		0xb0c
++
++#define RK_MACPHY_ENABLE		GRF_BIT(0)
++#define RK_MACPHY_DISABLE		GRF_CLR_BIT(0)
++#define RK_MACPHY_CFG_CLK_50M		GRF_BIT(14)
++#define RK_GMAC2PHY_RMII_MODE		(GRF_BIT(6) | GRF_CLR_BIT(7))
++#define RK_GRF_CON2_MACPHY_ID		HIWORD_UPDATE(0x1234, 0xffff, 0)
++#define RK_GRF_CON3_MACPHY_ID		HIWORD_UPDATE(0x35, 0x3f, 0)
++
++static void rk_gmac_internal_phy_powerup(struct rk_priv_data *priv)
++{
++	if (priv->ops->internal_phy_powerup)
++		priv->ops->internal_phy_powerup(priv);
++
++	regmap_write(priv->grf, RK_GRF_MACPHY_CON0, RK_MACPHY_CFG_CLK_50M);
++	regmap_write(priv->grf, RK_GRF_MACPHY_CON0, RK_GMAC2PHY_RMII_MODE);
++
++	regmap_write(priv->grf, RK_GRF_MACPHY_CON2, RK_GRF_CON2_MACPHY_ID);
++	regmap_write(priv->grf, RK_GRF_MACPHY_CON3, RK_GRF_CON3_MACPHY_ID);
++
++	/* disable macphy, the default value is enabled */
++	regmap_write(priv->grf, RK_GRF_MACPHY_CON0, RK_MACPHY_DISABLE);
++	if (priv->macphy_reset)
++		reset_control_assert(priv->macphy_reset);
++	usleep_range(10, 20);
++	if (priv->macphy_reset)
++		reset_control_deassert(priv->macphy_reset);
++	usleep_range(10, 20);
++	regmap_write(priv->grf, RK_GRF_MACPHY_CON0, RK_MACPHY_ENABLE);
++	msleep(30);
++}
++
++static void rk_gmac_internal_phy_powerdown(struct rk_priv_data *priv)
++{
++	regmap_write(priv->grf, RK_GRF_MACPHY_CON0, RK_MACPHY_DISABLE);
++	if (priv->macphy_reset)
++		reset_control_assert(priv->macphy_reset);
++}
++
+ static int gmac_clk_init(struct rk_priv_data *bsp_priv)
+ {
+ 	struct device *dev = &bsp_priv->pdev->dev;
+@@ -802,6 +849,14 @@ static int gmac_clk_init(struct rk_priv_data *bsp_priv)
+ 			clk_set_rate(bsp_priv->clk_mac, 50000000);
+ 	}
+ 
++	if (bsp_priv->internal_phy) {
++		bsp_priv->clk_macphy = devm_clk_get(dev, "clk_macphy");
++		if (IS_ERR(bsp_priv->clk_macphy))
++			dev_err(dev, "cannot get %s clock\n", "clk_macphy");
++		else
++			clk_set_rate(bsp_priv->clk_macphy, 50000000);
++	}
++
+ 	return 0;
+ }
+ 
+@@ -825,6 +880,9 @@ static int gmac_clk_enable(struct rk_priv_data *bsp_priv, bool enable)
+ 						bsp_priv->clk_mac_refout);
+ 			}
+ 
++			if (!IS_ERR(bsp_priv->clk_macphy))
++				clk_prepare_enable(bsp_priv->clk_macphy);
++
+ 			if (!IS_ERR(bsp_priv->aclk_mac))
+ 				clk_prepare_enable(bsp_priv->aclk_mac);
+ 
+@@ -857,6 +915,9 @@ static int gmac_clk_enable(struct rk_priv_data *bsp_priv, bool enable)
+ 						bsp_priv->clk_mac_refout);
+ 			}
+ 
++			if (!IS_ERR(bsp_priv->clk_macphy))
++				clk_disable_unprepare(bsp_priv->clk_macphy);
++
+ 			if (!IS_ERR(bsp_priv->aclk_mac))
+ 				clk_disable_unprepare(bsp_priv->aclk_mac);
+ 
+@@ -939,6 +1000,21 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
+ 			bsp_priv->clock_input = false;
+ 	}
+ 
++	ret = of_property_read_string(dev->of_node, "phy-type", &strings);
++	if (!ret && !strcmp(strings, "internal")) {
++		bsp_priv->internal_phy = true;
++		bsp_priv->macphy_reset = devm_reset_control_get(dev,
++				  "mac-phy");
++		if (IS_ERR(bsp_priv->macphy_reset)) {
++			dev_info(dev, "no macphy_reset control found\n");
++			bsp_priv->macphy_reset = NULL;
++		}
++	} else {
++		bsp_priv->internal_phy = false;
++	}
++	dev_info(dev, "internal PHY? (%s).\n",
++		 bsp_priv->internal_phy ? "yes" : "no");
++
+ 	ret = of_property_read_u32(dev->of_node, "tx_delay", &value);
+ 	if (ret) {
+ 		bsp_priv->tx_delay = 0x30;
+@@ -1014,6 +1090,9 @@ static int rk_gmac_init(struct platform_device *pdev, void *priv)
+ 	pm_runtime_enable(&pdev->dev);
+ 	pm_runtime_get_sync(&pdev->dev);
+ 
++	if (bsp_priv->internal_phy)
++		rk_gmac_internal_phy_powerup(bsp_priv);
++
+ 	return 0;
+ }
+ 
+@@ -1021,6 +1100,9 @@ static void rk_gmac_exit(struct platform_device *pdev, void *priv)
+ {
+ 	struct rk_priv_data *gmac = priv;
+ 
++	if (gmac->internal_phy)
++		rk_gmac_internal_phy_powerdown(gmac);
++
+ 	pm_runtime_put_sync(&pdev->dev);
+ 	pm_runtime_disable(&pdev->dev);
+ 
+
+From f0c6aa22f3444b90aaf010791db3988264e24e8c Mon Sep 17 00:00:00 2001
+From: David Wu <david.wu@rock-chips.com>
+Date: Fri, 23 Jun 2017 13:01:01 +0800
+Subject: [PATCH 4/8] FROMLIST: net: stmmac: dwmac-rk: Add internal phy support
+ for rk3328
+
+There are two mac controllers in the rk3328, the one connects
+to external phy, and the other one connects to internal phy.
+Like the mac of external phy, the internal phy's mac also needs to
+configure the related mac registers at GRF.
+
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c | 26 +++++++++++++++++++++++---
+ 1 file changed, 23 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+index 1d471f6946d8..50d9cb0e7588 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+@@ -310,6 +310,8 @@ static const struct rk_gmac_ops rk3288_ops = {
+ 
+ #define RK3328_GRF_MAC_CON0	0x0900
+ #define RK3328_GRF_MAC_CON1	0x0904
++#define RK3328_GRF_MAC_CON2	0x0908
++#define RK3328_GRF_MACPHY_CON1	0xb04
+ 
+ /* RK3328_GRF_MAC_CON0 */
+ #define RK3328_GMAC_CLK_RX_DL_CFG(val)	HIWORD_UPDATE(val, 0x7F, 7)
+@@ -336,6 +338,9 @@ static const struct rk_gmac_ops rk3288_ops = {
+ #define RK3328_GMAC_RXCLK_DLY_ENABLE	GRF_BIT(1)
+ #define RK3328_GMAC_RXCLK_DLY_DISABLE	GRF_CLR_BIT(0)
+ 
++/* RK3328_GRF_MACPHY_CON1 */
++#define RK3328_MACPHY_RMII_MODE		GRF_BIT(9)
++
+ static void rk3328_set_to_rgmii(struct rk_priv_data *bsp_priv,
+ 				int tx_delay, int rx_delay)
+ {
+@@ -360,13 +365,17 @@ static void rk3328_set_to_rgmii(struct rk_priv_data *bsp_priv,
+ static void rk3328_set_to_rmii(struct rk_priv_data *bsp_priv)
+ {
+ 	struct device *dev = &bsp_priv->pdev->dev;
++	unsigned int reg;
+ 
+ 	if (IS_ERR(bsp_priv->grf)) {
+ 		dev_err(dev, "Missing rockchip,grf property\n");
+ 		return;
+ 	}
+ 
+-	regmap_write(bsp_priv->grf, RK3328_GRF_MAC_CON1,
++	reg = bsp_priv->internal_phy ? RK3328_GRF_MAC_CON2 :
++		  RK3328_GRF_MAC_CON1;
++
++	regmap_write(bsp_priv->grf, reg,
+ 		     RK3328_GMAC_PHY_INTF_SEL_RMII |
+ 		     RK3328_GMAC_RMII_MODE);
+ }
+@@ -396,29 +405,40 @@ static void rk3328_set_rgmii_speed(struct rk_priv_data *bsp_priv, int speed)
+ static void rk3328_set_rmii_speed(struct rk_priv_data *bsp_priv, int speed)
+ {
+ 	struct device *dev = &bsp_priv->pdev->dev;
++	unsigned int reg;
+ 
+ 	if (IS_ERR(bsp_priv->grf)) {
+ 		dev_err(dev, "Missing rockchip,grf property\n");
+ 		return;
+ 	}
+ 
++	reg = bsp_priv->internal_phy ? RK3328_GRF_MAC_CON2 :
++		  RK3328_GRF_MAC_CON1;
++
+ 	if (speed == 10)
+-		regmap_write(bsp_priv->grf, RK3328_GRF_MAC_CON1,
++		regmap_write(bsp_priv->grf, reg,
+ 			     RK3328_GMAC_RMII_CLK_2_5M |
+ 			     RK3328_GMAC_SPEED_10M);
+ 	else if (speed == 100)
+-		regmap_write(bsp_priv->grf, RK3328_GRF_MAC_CON1,
++		regmap_write(bsp_priv->grf, reg,
+ 			     RK3328_GMAC_RMII_CLK_25M |
+ 			     RK3328_GMAC_SPEED_100M);
+ 	else
+ 		dev_err(dev, "unknown speed value for RMII! speed=%d", speed);
+ }
+ 
++static void rk3328_internal_phy_powerup(struct rk_priv_data *priv)
++{
++	regmap_write(priv->grf, RK3328_GRF_MACPHY_CON1,
++		     RK3328_MACPHY_RMII_MODE);
++}
++
+ static const struct rk_gmac_ops rk3328_ops = {
+ 	.set_to_rgmii = rk3328_set_to_rgmii,
+ 	.set_to_rmii = rk3328_set_to_rmii,
+ 	.set_rgmii_speed = rk3328_set_rgmii_speed,
+ 	.set_rmii_speed = rk3328_set_rmii_speed,
++	.internal_phy_powerup =  rk3328_internal_phy_powerup,
+ };
+ 
+ #define RK3366_GRF_SOC_CON6	0x0418
+
+From b20a957e04aacc9b4e0fd742d095c9f1e3900fb5 Mon Sep 17 00:00:00 2001
+From: David Wu <david.wu@rock-chips.com>
+Date: Fri, 23 Jun 2017 13:03:38 +0800
+Subject: [PATCH 5/8] FROMLIST: ARM64: dts: rockchip: Add gmac2phy node support
+ for rk3328
+
+The gmac2phy controller of rk3328 is connected to internal phy
+directly inside, add the node for the internal phy support.
+
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3328.dtsi | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328.dtsi b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+index d60ecd3801d2..b63a7789403e 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+@@ -64,6 +64,8 @@
+ 		i2c1 = &i2c1;
+ 		i2c2 = &i2c2;
+ 		i2c3 = &i2c3;
++		ethernet0 = &gmac2io;
++		ethernet1 = &gmac2phy;
+ 	};
+ 
+ 	cpus {
+@@ -1066,6 +1068,29 @@
+ 		status = "disabled";
+ 	};
+ 
++	gmac2phy: eth@ff550000 {
++		compatible = "rockchip,rk3328-gmac";
++		reg = <0x0 0xff550000 0x0 0x10000>;
++		rockchip,grf = <&grf>;
++		interrupts = <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "macirq";
++		clocks = <&cru SCLK_MAC2PHY_SRC>, <&cru SCLK_MAC2PHY_RXTX>,
++			 <&cru SCLK_MAC2PHY_RXTX>, <&cru SCLK_MAC2PHY_REF>,
++			 <&cru ACLK_MAC2PHY>, <&cru PCLK_MAC2PHY>,
++			 <&cru SCLK_MAC2PHY_OUT>;
++		clock-names = "stmmaceth", "mac_clk_rx",
++			      "mac_clk_tx", "clk_mac_ref",
++			      "aclk_mac", "pclk_mac",
++			      "clk_macphy";
++		resets = <&cru SRST_GMAC2PHY_A>, <&cru SRST_MACPHY>;
++		reset-names = "stmmaceth", "mac-phy";
++		phy-mode = "rmii";
++		phy-type = "internal";
++		pinctrl-names = "default";
++		pinctrl-0 = <&fephyled_rxm1 &fephyled_linkm1>;
++		status = "disabled";
++	};
++
+ 	usb20_otg: usb@ff580000 {
+ 		compatible = "rockchip,rk3328-usb", "rockchip,rk3066-usb",
+ 			     "snps,dwc2";
+
+From 9daa96e155a5447651e572503d5c9798499e1fc7 Mon Sep 17 00:00:00 2001
+From: David Wu <david.wu@rock-chips.com>
+Date: Fri, 23 Jun 2017 13:04:09 +0800
+Subject: [PATCH 6/8] FROMLIST: ARM64: dts: rockchip: Enable gmac2phy for
+ rk3328-evb
+
+Let's enable the gmac2phy, make the gmac2phy work on
+the rk3328-evb board.
+
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3328-evb.dts | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-evb.dts b/arch/arm64/boot/dts/rockchip/rk3328-evb.dts
+index 134ce7e83dd0..bf71fd1664d5 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-evb.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-evb.dts
+@@ -195,6 +195,16 @@
+ 	status = "disabled";
+ };
+ 
++&gmac2phy {
++	phy-supply = <&vcc_phy>;
++	clock_in_out = "output";
++	assigned-clocks = <&cru SCLK_MAC2PHY_SRC>;
++	assigned-clock-rate = <50000000>;
++	assigned-clocks = <&cru SCLK_MAC2PHY>;
++	assigned-clock-parents = <&cru SCLK_MAC2PHY_SRC>;
++	status = "okay";
++};
++
+ &gpu {
+ 	status = "okay";
+ 	mali-supply = <&vdd_logic>;
+
+From f48c0fc510e538cbbe049a59391c7f73f76eb03b Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 10 Jul 2017 22:16:24 +0200
+Subject: [PATCH 7/8] ARM64: dts: rockchip: Enable gmac2phy for rk3328-box
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-box.dts | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-box.dts b/arch/arm64/boot/dts/rockchip/rk3328-box.dts
+index 9e695b564b93..ba0aa866d417 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-box.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-box.dts
+@@ -183,6 +183,16 @@
+ 	status = "disabled";
+ };
+ 
++&gmac2phy {
++	phy-supply = <&vcc_phy>;
++	clock_in_out = "output";
++	assigned-clocks = <&cru SCLK_MAC2PHY_SRC>;
++	assigned-clock-rate = <50000000>;
++	assigned-clocks = <&cru SCLK_MAC2PHY>;
++	assigned-clock-parents = <&cru SCLK_MAC2PHY_SRC>;
++	status = "okay";
++};
++
+ &gpu {
+ 	status = "okay";
+ 	mali-supply = <&vdd_logic>;
+
+From d8fa4b37f030aacdda47c6967c6bc37f1082e936 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 10 Jul 2017 22:16:41 +0200
+Subject: [PATCH 8/8] ARM64: dts: rockchip: Enable gmac2phy for rk3328-rock64
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index c62db85e799d..36a72340b15a 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -195,6 +195,16 @@
+ 	status = "okay";
+ };
+ 
++&gmac2phy {
++	phy-supply = <&vcc_phy>;
++	clock_in_out = "output";
++	assigned-clocks = <&cru SCLK_MAC2PHY_SRC>;
++	assigned-clock-rate = <50000000>;
++	assigned-clocks = <&cru SCLK_MAC2PHY>;
++	assigned-clock-parents = <&cru SCLK_MAC2PHY_SRC>;
++	status = "okay";
++};
++
+ &gpu {
+ 	status = "okay";
+ 	mali-supply = <&vdd_logic>;

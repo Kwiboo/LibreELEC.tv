@@ -1,0 +1,37 @@
+From 6729ad51fe0b4010e9b37b23e9e6b336b2c0a56b Mon Sep 17 00:00:00 2001
+From: LongChair <LongChair@hotmail.com>
+Date: Sun, 26 Mar 2017 15:30:16 +0200
+Subject: [PATCH 10/26] drm/rockchip: make video overlay bottom layer
+
+---
+ drivers/gpu/drm/rockchip/rockchip_vop_reg.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
+index d07fca15d194..e5e7cbdee6b6 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
++++ b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
+@@ -242,9 +242,9 @@ static const struct vop_ctrl rk3288_ctrl_data = {
+  */
+ static const struct vop_win_data rk3288_vop_win_data[] = {
+ 	{ .base = 0x00, .phy = &rk3288_win01_data,
+-	  .type = DRM_PLANE_TYPE_PRIMARY },
+-	{ .base = 0x40, .phy = &rk3288_win01_data,
+ 	  .type = DRM_PLANE_TYPE_OVERLAY },
++	{ .base = 0x40, .phy = &rk3288_win01_data,
++	  .type = DRM_PLANE_TYPE_PRIMARY },
+ 	{ .base = 0x00, .phy = &rk3288_win23_data,
+ 	  .type = DRM_PLANE_TYPE_OVERLAY,
+ 	  .area = rk3288_area_data,
+@@ -626,9 +626,9 @@ static const struct vop_intr rk3328_vop_intr = {
+ 
+ static const struct vop_win_data rk3328_vop_win_data[] = {
+ 	{ .base = 0xd0, .phy = &rk3288_win01_data,
+-	  .type = DRM_PLANE_TYPE_PRIMARY },
+-	{ .base = 0x1d0, .phy = &rk3288_win01_data,
+ 	  .type = DRM_PLANE_TYPE_OVERLAY },
++	{ .base = 0x1d0, .phy = &rk3288_win01_data,
++	  .type = DRM_PLANE_TYPE_PRIMARY },
+ 	{ .base = 0x2d0, .phy = &rk3288_win01_data,
+ 	  .type = DRM_PLANE_TYPE_CURSOR },
+ };

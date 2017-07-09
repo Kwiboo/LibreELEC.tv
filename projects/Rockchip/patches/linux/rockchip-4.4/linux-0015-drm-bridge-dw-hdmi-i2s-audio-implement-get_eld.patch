@@ -1,0 +1,68 @@
+From f2f2f044ee6dfeba84c9aed44788783e5bdf3306 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 2 Apr 2017 11:33:39 +0200
+Subject: [PATCH 15/26] drm/bridge/dw-hdmi-i2s-audio: implement get_eld
+
+---
+ drivers/gpu/drm/bridge/dw-hdmi-audio.h     |  1 +
+ drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c | 12 ++++++++++++
+ drivers/gpu/drm/bridge/dw-hdmi.c           |  1 +
+ 3 files changed, 14 insertions(+)
+
+diff --git a/drivers/gpu/drm/bridge/dw-hdmi-audio.h b/drivers/gpu/drm/bridge/dw-hdmi-audio.h
+index d3194b4e186b..6d1fcb17a2e2 100644
+--- a/drivers/gpu/drm/bridge/dw-hdmi-audio.h
++++ b/drivers/gpu/drm/bridge/dw-hdmi-audio.h
+@@ -14,6 +14,7 @@ struct dw_hdmi_audio_data {
+ struct dw_hdmi_i2s_audio_data {
+ 	struct dw_hdmi *hdmi;
+ 	struct platform_device *pdev;
++	u8 *eld;
+ 
+ 	void (*write)(struct dw_hdmi *hdmi, u8 val, int offset);
+ 	u8 (*read)(struct dw_hdmi *hdmi, int offset);
+diff --git a/drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c b/drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c
+index f1f62d8c1d16..a8688cef418c 100644
+--- a/drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c
++++ b/drivers/gpu/drm/bridge/dw-hdmi-i2s-audio.c
+@@ -11,6 +11,8 @@
+ 
+ #include <sound/hdmi-codec.h>
+ 
++#include <drm/drm_crtc.h> /* This is only to get MAX_ELD_BYTES */
++
+ #include "dw-hdmi.h"
+ #include "dw-hdmi-audio.h"
+ 
+@@ -210,9 +212,19 @@ static void dw_hdmi_i2s_audio_shutdown(struct device *dev, void *data)
+ 	hdmi_write(audio, HDMI_AUD_CONF0_SW_RESET, HDMI_AUD_CONF0);
+ }
+ 
++static int dw_hdmi_i2s_get_eld(struct device *dev, void *data, u8 *buf, size_t len)
++{
++	struct dw_hdmi_i2s_audio_data *audio = data;
++
++	memcpy(buf, audio->eld, min(len, (size_t)MAX_ELD_BYTES));
++
++	return 0;
++}
++
+ static struct hdmi_codec_ops dw_hdmi_i2s_ops = {
+ 	.hw_params	= dw_hdmi_i2s_hw_params,
+ 	.audio_shutdown	= dw_hdmi_i2s_audio_shutdown,
++	.get_eld	= dw_hdmi_i2s_get_eld,
+ };
+ 
+ static int snd_dw_hdmi_probe(struct platform_device *pdev)
+diff --git a/drivers/gpu/drm/bridge/dw-hdmi.c b/drivers/gpu/drm/bridge/dw-hdmi.c
+index 731460097b86..7bce56d7aac7 100644
+--- a/drivers/gpu/drm/bridge/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/dw-hdmi.c
+@@ -3015,6 +3015,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
+ 		audio.write	= hdmi_writeb;
+ 		audio.read	= hdmi_readb;
+ 		audio.mod	= hdmi_modb;
++		audio.eld	= hdmi->connector.eld;
+ 
+ 		pdevinfo.name = "dw-hdmi-i2s-audio";
+ 		pdevinfo.data = &audio;

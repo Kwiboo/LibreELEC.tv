@@ -39,7 +39,7 @@
     LINUX="${LINUX:-rockchip-4.4}"
 
   # Fix linux rockchip-4.4 compile
-    if [ "$1" = "linux" -a "$LINUX" = "rockchip-4.4" ]; then
+    if [ "$1" = "linux" ] && [ "$LINUX" = "rockchip-4.4" -o "$LINUX" = "rockchip-4.4-vanilla" ]; then
       export KCFLAGS="-Wno-misleading-indentation -Wno-tautological-compare -Wno-unused-function"
     fi
 

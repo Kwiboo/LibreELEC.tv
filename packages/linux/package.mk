@@ -80,6 +80,16 @@ esac
 PKG_IS_ADDON="no"
 PKG_AUTORECONF="no"
 
+if [ "$TARGET_ARCH" = "arm" ]; then
+  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET gcc-linaro-arm-eabi:host"
+  export PATH=$TOOLCHAIN/lib/gcc-linaro-arm-eabi/bin/:$PATH
+  TARGET_PREFIX=arm-eabi-
+elif [ "$TARGET_ARCH" = "aarch64" ]; then
+  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET gcc-linaro-aarch64-elf:host"
+  export PATH=$TOOLCHAIN/lib/gcc-linaro-aarch64-elf/bin/:$PATH
+  TARGET_PREFIX=aarch64-elf-
+fi
+
 PKG_MAKE_OPTS_HOST="ARCH=$TARGET_KERNEL_ARCH headers_check"
 
 if [ "$TARGET_ARCH" = "x86_64" ]; then

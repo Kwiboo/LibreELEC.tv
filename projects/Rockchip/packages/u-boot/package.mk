@@ -31,9 +31,19 @@ PKG_LONGDESC="Das U-Boot is a cross-platform bootloader for embedded systems, us
 PKG_IS_ADDON="no"
 PKG_AUTORECONF="no"
 
+if [ "$TARGET_ARCH" = "arm" ]; then
+  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET gcc-linaro-arm-eabi:host"
+  export PATH=$TOOLCHAIN/lib/gcc-linaro-arm-eabi/bin/:$PATH
+  TARGET_PREFIX=arm-eabi-
+elif [ "$TARGET_ARCH" = "aarch64" ]; then
+  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET gcc-linaro-aarch64-elf:host"
+  export PATH=$TOOLCHAIN/lib/gcc-linaro-aarch64-elf/bin/:$PATH
+  TARGET_PREFIX=aarch64-elf-
+fi
+
 if [ "$UBOOT_SOC" = "rk3328" ]; then
-  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET rkbin"
-  PKG_NEED_UNPACK="$(get_pkg_directory rkbin)"
+  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET rkbin arm-trusted-firmware"
+  PKG_NEED_UNPACK="$(get_pkg_directory rkbin) $(get_pkg_directory arm-trusted-firmware)"
 fi
 
 pre_configure_target() {
@@ -84,7 +94,7 @@ MINOR=2
 SEC=0
 [BL31_OPTION]
 SEC=1
-PATH=$(get_build_dir rkbin)/rk33/rk3328_bl31_v1.34.bin
+PATH=$(get_build_dir arm-trusted-firmware)/build/rk3328/debug/bl31/bl31.elf
 ADDR=0x10000
 [BL32_OPTION]
 SEC=0

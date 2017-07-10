@@ -153,7 +153,11 @@ echo "$GREETING1" >> $INSTALL/etc/issue
 echo "$GREETING2" >> $INSTALL/etc/issue
 echo "$GREETING3" >> $INSTALL/etc/issue
 echo "$GREETING4" >> $INSTALL/etc/issue
-echo "$DISTRONAME ($LIBREELEC_BUILD): $LIBREELEC_VERSION ($PROJECT $TARGET_ARCH)" >> $INSTALL/etc/issue
+if [ -z "$DEVICE" ]; then
+  echo "$DISTRONAME ($LIBREELEC_BUILD): $LIBREELEC_VERSION ($PROJECT $TARGET_ARCH)" >> $INSTALL/etc/issue
+else
+  echo "$DISTRONAME ($LIBREELEC_BUILD): $LIBREELEC_VERSION ($DEVICE $TARGET_ARCH)" >> $INSTALL/etc/issue
+fi
 
 ln -sf /etc/issue $INSTALL/etc/motd
 

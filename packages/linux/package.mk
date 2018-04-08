@@ -175,6 +175,7 @@ pre_make_target() {
 }
 
 make_target() {
+  export HOST_EXTRACFLAGS="-I$TOOLCHAIN/include -L$TOOLCHAIN/lib"
   LDFLAGS="" make modules
   LDFLAGS="" make INSTALL_MOD_PATH=$INSTALL/$(get_kernel_overlay_dir) DEPMOD="$TOOLCHAIN/bin/depmod" modules_install
   rm -f $INSTALL/$(get_kernel_overlay_dir)/lib/modules/*/build

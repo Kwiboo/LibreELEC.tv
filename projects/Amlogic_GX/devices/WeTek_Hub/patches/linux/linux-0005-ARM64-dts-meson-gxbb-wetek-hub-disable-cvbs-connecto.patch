@@ -1,0 +1,35 @@
+From c1866240a42bb84f491723a7076ec733499f0d6f Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 2 Apr 2018 10:49:34 +0200
+Subject: [PATCH 5/9] ARM64: dts: meson-gxbb-wetek-hub: disable cvbs connector
+
+---
+ arch/arm64/boot/dts/amlogic/meson-gxbb-wetek-hub.dts | 4 ++++
+ arch/arm64/boot/dts/amlogic/meson-gxbb-wetek.dtsi    | 2 +-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek-hub.dts b/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek-hub.dts
+index 0852da3557ad..13fba2bc387a 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek-hub.dts
++++ b/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek-hub.dts
+@@ -49,3 +49,7 @@
+ 	compatible = "wetek,hub", "amlogic,meson-gxbb";
+ 	model = "WeTek Hub";
+ };
++
++&cvbs_connector {
++	status = "disabled";
++};
+diff --git a/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek.dtsi b/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek.dtsi
+index 70325b273bd2..36d3cd022d9b 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek.dtsi
++++ b/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek.dtsi
+@@ -85,7 +85,7 @@
+ 		clock-names = "ext_clock";
+ 	};
+ 
+-	cvbs-connector {
++	cvbs_connector: cvbs-connector {
+ 		compatible = "composite-video-connector";
+ 
+ 		port {

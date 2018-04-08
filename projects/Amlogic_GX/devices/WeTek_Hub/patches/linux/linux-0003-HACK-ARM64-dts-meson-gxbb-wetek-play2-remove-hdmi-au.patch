@@ -1,0 +1,65 @@
+From c082bfb89c77905641fcaf3098f2bd0a99bfdeb5 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 2 Apr 2018 10:37:53 +0200
+Subject: [PATCH 3/9] HACK: ARM64: dts: meson-gxbb-wetek-play2: remove hdmi
+ audio nodes
+
+---
+ .../dts/amlogic/meson-gxbb-wetek-play2.dts    | 37 -------------------
+ 1 file changed, 37 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek-play2.dts b/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek-play2.dts
+index 58a0f5159d7f..f7144fd5e03f 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek-play2.dts
++++ b/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek-play2.dts
+@@ -106,31 +106,6 @@
+ 			};
+ 		};
+ 	};
+-
+-	sound {
+-		compatible = "simple-audio-card";
+-		simple-audio-card,name = "meson-gx-preview";
+-		status = "okay";
+-
+-		simple-audio-card,dai-link@0 {
+-			/* HDMI Output */
+-			format = "i2s";
+-			mclk-fs = <256>;
+-			bitclock-master =  <&i2s_dai>;
+-			frame-master = <&i2s_dai>;
+-			plat {
+-				sound-dai = <&aiu_i2s_dma>;
+-			};
+-
+-			cpu {
+-				sound-dai = <&i2s_dai>;
+-			};
+-
+-			codec {
+-				sound-dai = <&hdmi_tx>;
+-			};
+-		};
+-	};
+ };
+ 
+ &cec_AO {
+@@ -140,18 +115,6 @@
+ 	hdmi-phandle = <&hdmi_tx>;
+ };
+ 
+-&audio {
+-	status = "okay";
+-};
+-
+-&aiu_i2s_dma {
+-	status = "okay";
+-};
+-
+-&i2s_dai {
+-	status = "okay";
+-};
+-
+ &cvbs_vdac_port {
+ 	cvbs_vdac_out: endpoint {
+ 		remote-endpoint = <&cvbs_connector_in>;

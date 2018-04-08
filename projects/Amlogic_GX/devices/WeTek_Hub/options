@@ -1,0 +1,22 @@
+  # u-boot version to use (default)
+    UBOOT_VERSION="vendor"
+
+  # Additional kernel make parameters (for example to specify the u-boot loadaddress)
+    KERNEL_MAKE_EXTRACMD="amlogic/meson-gxbb-wetek-hub.dtb"
+
+  # Build Android kernel image using mkbootimg
+    BUILD_ANDROID_BOOTIMG="yes"
+
+  # Additional options to be passed to Android mkbootimg
+    ANDROID_BOOTIMG_OPTIONS="--base 0x0 --kernel_offset 0x1080000"
+
+  # kernel image name
+    KERNEL_NAME="kernel.img"
+
+  # build and install driver addons (yes / no)
+    DRIVER_ADDONS_SUPPORT="no"
+
+  # additional packages to install:
+  # Space separated list is supported,
+  # e.g. ADDITIONAL_PACKAGES="PACKAGE1 PACKAGE2"
+    ADDITIONAL_PACKAGES="u-boot-tools-aml dtc"

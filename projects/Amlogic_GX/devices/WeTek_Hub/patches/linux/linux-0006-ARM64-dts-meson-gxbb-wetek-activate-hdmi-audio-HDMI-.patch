@@ -1,0 +1,64 @@
+From ba68d44f0ac1db5c7c090ac6a5aff879179a0d54 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 2 Apr 2018 10:50:21 +0200
+Subject: [PATCH 6/9] ARM64: dts: meson-gxbb-wetek: activate hdmi audio HDMI
+ enabled boards
+
+---
+ .../boot/dts/amlogic/meson-gxbb-wetek.dtsi    | 36 +++++++++++++++++++
+ 1 file changed, 36 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek.dtsi b/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek.dtsi
+index 36d3cd022d9b..9bbb70db816b 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek.dtsi
++++ b/arch/arm64/boot/dts/amlogic/meson-gxbb-wetek.dtsi
+@@ -105,6 +105,30 @@
+ 			};
+ 		};
+ 	};
++
++	sound {
++		compatible = "simple-audio-card";
++		simple-audio-card,name = "HDMI";
++
++		simple-audio-card,dai-link@0 {
++			/* HDMI Output */
++			format = "i2s";
++			mclk-fs = <128>;
++			bitclock-master =  <&i2s_dai>;
++			frame-master = <&i2s_dai>;
++			plat {
++				sound-dai = <&aiu_i2s_dma>;
++			};
++
++			cpu {
++				sound-dai = <&i2s_dai>;
++			};
++
++			codec {
++				sound-dai = <&hdmi_tx>;
++			};
++		};
++	};
+ };
+ 
+ &cec_AO {
+@@ -114,6 +138,18 @@
+ 	hdmi-phandle = <&hdmi_tx>;
+ };
+ 
++&audio {
++	status = "okay";
++};
++
++&aiu_i2s_dma {
++	status = "okay";
++};
++
++&i2s_dai {
++	status = "okay";
++};
++
+ &cvbs_vdac_port {
+ 	cvbs_vdac_out: endpoint {
+ 		remote-endpoint = <&cvbs_connector_in>;

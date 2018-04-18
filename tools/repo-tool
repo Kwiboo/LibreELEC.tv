@@ -62,37 +62,17 @@ update_addons_xml() {
     cd $localdir
 
     md5sum addons.xml > addons.xml.md5
+    gzip -9 -c addons.xml > addons.xml.gz
+    md5sum addons.xml.gz > addons.xml.gz.md5
     cd $pwd
   done
   rm -rf .addons
 }
 
 touch_addons_xml() {
-  for PROJECT in $(ls -1 projects); do
-    if [ -d "projects/$PROJECT/devices" ]; then
-      for DEVICE in $(ls -1 projects/$PROJECT/devices); do
-        for archfile in projects/$PROJECT/devices/$DEVICE/linux/linux.*.conf; do
-          ARCH=`echo $archfile | sed -n '$s/\.conf//;$s/.*\.//p'`
-          if [ ! -d target/addons/$ADDON_VERSION/$DEVICE/$ARCH ]; then
-            break
-          fi
-          if [ ! -f target/addons/$ADDON_VERSION/$DEVICE/$ARCH/addons.xml ]; then
-            touch target/addons/$ADDON_VERSION/$DEVICE/$ARCH/addons.xml
-          fi
-        done
-      done
-    else
-      for archfile in projects/$PROJECT/linux/linux.*.conf; do
-        ARCH=`echo $archfile | sed -n '$s/\.conf//;$s/.*\.//p'`
-        if [ ! -d target/addons/$ADDON_VERSION/$PROJECT/$ARCH ]; then
-          break
-        fi
-        if [ ! -f target/addons/$ADDON_VERSION/$PROJECT/$ARCH/addons.xml ]; then
-          touch target/addons/$ADDON_VERSION/$PROJECT/$ARCH/addons.xml
-        fi
-      done
-    fi
-  done
+  if [ -d target/addons/$ADDON_VERSION/${DEVICE:-$PROJECT}/$ARCH ]; then
+    touch target/addons/$ADDON_VERSION/${DEVICE:-$PROJECT}/$ARCH/addons.xml
+  fi
 }
 
 upload() {
@@ -109,33 +89,19 @@ upload() {
 }
 
 build() {
-  [ -n "$3" ] && DEVICE="$3" || DEVICE=""
-
-  for PROJECT in $2; do
-    if [ -n "$DEVICE" ]; then
-      for archfile in projects/$PROJECT/devices/$DEVICE/linux/linux.*.conf; do
-        ARCH=`echo $archfile | sed -n '$s/\.conf//;$s/.*\.//p'`
-      done
-    else
-      for archfile in projects/$PROJECT/linux/linux.*.conf; do
-        ARCH=`echo $archfile | sed -n '$s/\.conf//;$s/.*\.//p'`
-      done
+  for package in $(find $1 -iname package.mk | sort) ; do
+    (
+    . $package
+    if [ "$PKG_IS_ADDON" = "yes" ] ; then
+      ADDON=$PKG_NAME
+      PROJECT=$PROJECT DEVICE=$DEVICE ARCH=$ARCH ./scripts/create_addon $ADDON
     fi
-
-    for package in $(find $1 -iname package.mk) ; do
-      (
-      . $package
-      if [ "$PKG_IS_ADDON" = "yes" ] ; then
-        ADDON=$PKG_NAME
-        PROJECT=$PROJECT DEVICE=$DEVICE ARCH=$ARCH ./scripts/create_addon $ADDON
-      fi
-      )
-    done
+    )
   done
 }
 
 update_revision() {
-  for package in $(find $1 -iname package.mk) ; do
+  for package in $(find $1 -iname package.mk | sort) ; do
     [[ "$2" == "Y" && $package =~ .*/game.libretro.* ]] && continue
     (
     . $package
@@ -147,7 +113,7 @@ update_revision() {
 }
 
 update_repo_version() {
-  for package in $(find packages/addons -iname package.mk) ; do
+  for package in $(find packages/addons -iname package.mk | sort) ; do
     (
     . $package
     if [ "$PKG_IS_ADDON" = "yes" ] ; then
@@ -161,11 +127,11 @@ update_repo_version() {
 }
 
 usage() {
-  echo "  usage: $0 -u                                                  to upload"
-  echo "         $0 -b   binary|retroplayer|official|all [project-name] to build [for a single project]"
-  echo "         $0 -ru  binary|retroplayer|official|all                to update PKG_REV"
-  echo "         $0 -rv                                                 to update PKG_ADDON_REPOVERSION"
-  echo "         $0 -xml                                                to update the addons.xml"
+  echo "  usage: $0 -u                                     to upload"
+  echo "         $0 -b   binary|retroplayer|official|all   to build"
+  echo "         $0 -ru  binary|retroplayer|official|all   to update PKG_REV"
+  echo "         $0 -rv                                    to update PKG_ADDON_REPOVERSION"
+  echo "         $0 -xml                                   to update the addons.xml"
 }
 
 if [ "$1" = "-b" -o "$1" = "-ru" ]; then
@@ -192,26 +158,19 @@ if [ "$1" = "-b" -o "$1" = "-ru" ]; then
       repo="packages/addons packages/mediacenter/kodi-binary-addons"
       ;;
     *)
-      usage
-      exit 0
+      if [ -d "packages/addons/$2" ]; then
+        repo="packages/addons/$2"
+      else
+        usage
+        exit 0
+      fi
       ;;
   esac
-
-  if [ "$1" = "-b" ]; then
-    [ -n "$3" ] && project="$3" || project="$(ls -1 projects)"
-    if [ "$3" == "RPi" ]; then
-      project="RPi"
-      device="RPi"
-    elif [ "$3" == "RPi2" ]; then
-      project="RPi"
-      device="RPi2"
-    fi
-  fi
 fi
 
 case $1 in
   -b)
-    build "$repo" "$project" "$device"
+    build "$repo"
     ;;
   -u)
     upload

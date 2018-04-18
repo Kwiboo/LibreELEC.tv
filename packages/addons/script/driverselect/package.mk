@@ -45,6 +45,6 @@ make_target() {
 }
 
 makeinstall_target() {
-  mkdir -p $INSTALL/usr/share/kodi/addons/${PKG_SECTION}.${PKG_NAME}
-  cp -rP $PKG_BUILD/addon/* $INSTALL/usr/share/kodi/addons/${PKG_SECTION}.${PKG_NAME}
+  mkdir -p $INSTALL/usr/share/$MEDIACENTER/addons/${PKG_SECTION}.${PKG_NAME}
+  cp -rP $PKG_BUILD/addon/* $INSTALL/usr/share/$MEDIACENTER/addons/${PKG_SECTION}.${PKG_NAME}
 }

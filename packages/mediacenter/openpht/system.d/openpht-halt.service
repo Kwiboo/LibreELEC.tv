@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenPHT halt script
+After=openpht.service
+Before=systemd-halt.service
+DefaultDependencies=no
+ConditionPathExists=/storage/.config/shutdown.sh
+
+[Service]
+Type=oneshot
+Environment=HOME=/storage
+ExecStart=-/bin/sh -c ". /etc/profile; exec /bin/sh /storage/.config/shutdown.sh halt"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=halt.target

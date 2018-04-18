@@ -27,7 +27,7 @@ PKG_SECTION="virtual"
 PKG_SHORTDESC="Mediacenter: Metapackage"
 PKG_LONGDESC="Mediacenter: Metapackage"
 
-if [ "$MEDIACENTER" = "kodi" ]; then
+if [ "$MEDIACENTER" = "kodi" -o "$MEDIACENTER" = "openpht" ]; then
   PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET $MEDIACENTER-theme-$SKIN_DEFAULT"
 
   for i in $SKINS; do
@@ -39,7 +39,7 @@ if [ "$MEDIACENTER" = "kodi" ]; then
                                           simplejson \
                                           pycryptodome"
 # other packages
-  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET LibreELEC-settings \
+  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET $DISTRO-settings \
                                           xmlstarlet"
 
   if [ "$JOYSTICK_SUPPORT" = "yes" ]; then

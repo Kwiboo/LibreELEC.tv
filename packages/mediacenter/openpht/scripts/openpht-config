@@ -1,0 +1,56 @@
+#!/bin/sh
+################################################################################
+#      This file is part of OpenELEC - http://www.openelec.tv
+#      Copyright (C) 2009-2014 Stephan Raue (stephan@openelec.tv)
+#
+#  OpenELEC is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  OpenELEC is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with OpenELEC.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
+
+KODI_ROOT=$HOME/.kodi
+
+BOOT_STATE="$(cat $HOME/.config/boot.status 2>/dev/null)"
+
+# hack: make addon-bins executable
+# done in openpht on addon install. but just in case..
+chmod +x $KODI_ROOT/addons/*/bin/* 2>/dev/null
+
+# setup OpenPHT sources
+if [ ! -f $KODI_ROOT/userdata/sources.xml ]; then
+  if [ -f /usr/share/openpht/config/sources.xml ]; then
+    cp /usr/share/openpht/config/sources.xml $KODI_ROOT/userdata
+  fi
+fi
+
+# common setup guisettings
+if [ ! -f $KODI_ROOT/userdata/guisettings.xml ] ; then
+  if [ -f /usr/share/openpht/config/guisettings.xml ]; then
+    cp /usr/share/openpht/config/guisettings.xml $KODI_ROOT/userdata
+  fi
+  if [ "$BOOT_STATE" = "SAFE" ]; then
+    [ ! -f $KODI_ROOT/userdata/guisettings.xml ] && echo '<settings version="2"></settings>' > $KODI_ROOT/userdata/guisettings.xml
+    xmlstarlet ed --omit-decl --inplace -s settings -t elem -n setting -v "maroon" -i settings/setting -t attr -n id -v lookandfeel.skincolors $KODI_ROOT/userdata/guisettings.xml
+  fi
+fi
+
+OPENPHT_ARGS=""
+
+echo "OPENPHT_ARGS=\"$OPENPHT_ARGS\"" > /run/libreelec/openpht.conf
+
+if [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" ]; then
+  echo "MALLOC_MMAP_THRESHOLD_=524288" >> /run/libreelec/openpht.conf
+  echo "MALLOC_TRIM_THRESHOLD_=1048576" >> /run/libreelec/openpht.conf
+  echo "MALLOC_ARENA_TEST=2" >> /run/libreelec/openpht.conf
+else #arm
+  echo "MALLOC_MMAP_THRESHOLD_=8192" >> /run/libreelec/openpht.conf
+fi

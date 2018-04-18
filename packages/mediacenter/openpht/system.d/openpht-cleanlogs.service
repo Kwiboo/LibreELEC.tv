@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenPHT clean debug logs
+ConditionKernelCommandLine=!debugging
+ConditionPathExists=!/storage/.cache/debug.libreelec
+Before=openpht.service
+
+[Service]
+Type=oneshot
+ExecStart=-/bin/sh -c 'rm -rf /storage/.openpht/userdata/addon_data/*/*.log /storage/.openpht/userdata/addon_data/*/log/*'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=openpht.service

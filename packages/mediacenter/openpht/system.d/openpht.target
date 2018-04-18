@@ -1,0 +1,12 @@
+[Unit]
+Description=OpenPHT Mediacenter Interface
+Requires=multi-user.target graphical.target network-online.target
+After=network-online.target graphical.target
+Wants=network-online.target
+Conflicts=rescue.target
+AllowIsolate=yes
+
+[Install]
+Alias=default.target
+Alias=kodi.target
+Alias=plexht.target

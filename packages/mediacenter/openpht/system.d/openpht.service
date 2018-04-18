@@ -1,0 +1,31 @@
+[Unit]
+Description=OpenPHT
+After=network-online.target graphical.target
+Requires=graphical.target
+Wants=network-online.target
+
+[Service]
+Environment=__GL_YIELD=USLEEP
+Environment=DISPLAY=:0.0
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=SDL_MOUSE_RELATIVE=0
+Environment=HOME=/storage
+Environment=XBMC_USER_HOME=/storage/.openpht
+Environment=KODI_TEMP=/storage/.openpht/temp
+Environment=KODI_HOME=/usr/share/openpht/
+EnvironmentFile=-/run/libreelec/openpht.conf
+EnvironmentFile=-/run/libreelec/debug/openpht.conf
+ExecStartPre=-/usr/lib/openpht/openpht-config
+ExecStart=/usr/lib/openpht/openpht.sh --standalone -fs $OPENPHT_ARGS $OPENPHT_DEBUG
+ExecStop=/bin/kill -TERM $MAINPID
+ExecStopPost=-/usr/lib/openpht/openpht-safe-mode
+TimeoutStopSec=5
+Restart=always
+RestartSec=2
+StartLimitInterval=0
+LimitNOFILE=16384
+
+[Install]
+Alias=kodi.service
+Alias=plexht.service
+WantedBy=openpht.target

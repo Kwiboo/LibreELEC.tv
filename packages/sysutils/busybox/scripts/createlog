@@ -74,23 +74,23 @@ rm -rf $BASEDIR/$LOGDIR
 mkdir -p $BASEDIR/$LOGDIR
 
 # kodi.log
-  KODI_LOG_DIR=/storage/.kodi/temp
+  KODI_LOG_DIR=/storage/.openpht/temp
 
-  LOGFILE="01_KODI.log"
-  for i in kodi.log kodi.old.log; do
+  LOGFILE="01_OPENPHT.log"
+  for i in openpht.log openpht.old.log; do
     [ -f ${KODI_LOG_DIR}/${i} ] && getlog_cmd cat ${KODI_LOG_DIR}/$i
   done
 
-  LOGFILE="01_KODI_CRASH.log"
-  for i in `find ${KODI_LOG_DIR} -type f -name "kodi_crashlog_*.log" | sort -r`; do
+  LOGFILE="01_OPENPHT_CRASH.log"
+  for i in `find ${KODI_LOG_DIR} -type f -name "openpht_crashlog_*.log" | sort -r`; do
     getlog_cmd cat $i
   done
 
-  LOGFILE="01_KODI_OTHER.log"
+  LOGFILE="01_OPENPHT_OTHER.log"
   for i in `find ${KODI_LOG_DIR} -type f -name "*.log" | sort`; do
     iname="${i#${KODI_LOG_DIR}/}"
-    [ ${iname} == kodi.log ] && continue
-    [ ${iname} == kodi.old.log ] && continue
+    [ ${iname} == openpht.log ] && continue
+    [ ${iname} == openpht.old.log ] && continue
     [ "${iname#kodi_crashlog_}" != "${iname}" ] && continue
     getlog_cmd cat $i
   done
@@ -179,8 +179,8 @@ mkdir -p $BASEDIR/$LOGDIR
 
 # addons
   LOGFILE="11_Addons.log"
-  for i in /storage/.kodi/userdata/addon_data/*/*.log \
-      /storage/.kodi/userdata/addon_data/*/log/* \
+  for i in /storage/.openpht/userdata/addon_data/*/*.log \
+      /storage/.openpht/userdata/addon_data/*/log/* \
   ; do
     if [ -f "$i" ] ; then
       getlog_cmd cat $i

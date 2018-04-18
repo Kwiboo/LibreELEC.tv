@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenPHT reboot script
+After=openpht.service
+Before=systemd-reboot.service
+DefaultDependencies=no
+ConditionPathExists=/storage/.config/shutdown.sh
+
+[Service]
+Type=oneshot
+Environment=HOME=/storage
+ExecStart=-/bin/sh -c ". /etc/profile; exec /bin/sh /storage/.config/shutdown.sh reboot"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=reboot.target

@@ -1,0 +1,14 @@
+[Unit]
+DefaultDependencies=no
+Conflicts=umount.target
+After=systemd-tmpfiles-setup.service
+Before=sysinit.target umount.target
+
+[Mount]
+What=/storage/.openpht
+Where=/storage/.kodi
+Type=none
+Options=bind
+
+[Install]
+WantedBy=sysinit.target

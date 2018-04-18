@@ -103,8 +103,8 @@ post_patch() {
     sed -i -e '/^CONFIG_INITRAMFS_SOURCE=*./ a CONFIG_INITRAMFS_ROOT_UID=0\nCONFIG_INITRAMFS_ROOT_GID=0' $PKG_BUILD/.config
   fi
 
-  # set default hostname based on $DISTRONAME
-    sed -i -e "s|@DISTRONAME@|$DISTRONAME|g" $PKG_BUILD/.config
+  # set default hostname based on $DISTRO
+    sed -i -e "s|@DISTRONAME@|$DISTRO|g" $PKG_BUILD/.config
 
   # disable swap support if not enabled
   if [ ! "$SWAP_SUPPORT" = yes ]; then

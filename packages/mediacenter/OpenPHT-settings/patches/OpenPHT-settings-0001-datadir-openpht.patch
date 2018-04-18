@@ -1,0 +1,12 @@
+diff -Naur a/Makefile b/Makefile
+--- a/Makefile	2016-12-21 15:26:38.000000000 +0100
++++ b/Makefile	2016-12-27 15:51:14.001148737 +0100
+@@ -29,7 +29,7 @@
+ DISTRONAME:=LibreELEC
+ 
+ BUILDDIR=build
+-DATADIR=/usr/share/kodi
++DATADIR=/usr/share/openpht
+ ADDONDIR=$(DATADIR)/addons
+ 
+ ################################################################################

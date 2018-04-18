@@ -1,14 +1,26 @@
+# OpenPHT-Embedded
+
+OpenPHT-Embedded is a 'Just enough OS' Linux distribution for running [OpenPHT](https://github.com/RasPlex/OpenPHT) on popular mediacentre hardware.
+
+**Notes**
+
+* SSH login details are user: "root" password: "openpht" or "rasplex" depending on distribution.
+
+**Build**
+
+* `DISTRO=OpenPHT PROJECT=Generic ARCH=x86_64 make image`
+* `DISTRO=RasPlex PROJECT=RPi DEVICE=RPi2 ARCH=arm make image`
+* `DISTRO=OpenPHT PROJECT=Amlogic DEVICE=Odroid_C2 ARCH=arm make image`
+* `DISTRO=OpenPHT PROJECT=Amlogic DEVICE=WeTek_Hub ARCH=arm make image`
+* `DISTRO=OpenPHT PROJECT=Rockchip DEVICE=RK3328 ARCH=arm UBOOT_SYSTEM=rock64 make image`
+* `DISTRO=OpenPHT PROJECT=Rockchip DEVICE=TinkerBoard ARCH=arm make image`
+* Use `OPENPHT_REPO` and `OPENPHT_BRANCH` to change what repository and branch of OpenPHT to build
+
 # LibreELEC
 
-LibreELEC is a 'Just enough OS' Linux distribution for running the award-winning [Kodi](https://kodi.tv) software on popular mediacentre hardware. LibreELEC is a conservative fork of the popular [OpenELEC](http://openelec.tv) project with a stronger focus on pre-release testing and post-release change management. Further information on the project can be found on the [LibreELEC website](https://libreelec.tv).
+**Source code**
 
-**Issues & Support**
-
-Please report issues via the [LibreELEC forum: Bug Reports](https://forum.libreelec.tv/forum-35.html). Please ask support questions in the [LibreELEC forum: Help & Support](https://forum.libreelec.tv/forum-3.html) or ask a member of project staff in the #libreelec IRC channel on Freenode.
-
-**Donations**
-
-Contributions towards current project funding goals can be sent via PayPal to donations@libreelec.tv
+* https://github.com/LibreELEC/LibreELEC.tv
 
 **License**
 

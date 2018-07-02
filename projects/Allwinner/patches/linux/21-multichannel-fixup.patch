@@ -1,0 +1,165 @@
+diff --git a/sound/soc/sunxi/sun4i-i2s.c b/sound/soc/sunxi/sun4i-i2s.c
+index 4b18637e2f51..150068ad75a9 100644
+--- a/sound/soc/sunxi/sun4i-i2s.c
++++ b/sound/soc/sunxi/sun4i-i2s.c
+@@ -201,6 +201,7 @@ struct sun4i_i2s {
+ 	bool loopback;
+ 
+ 	unsigned int	slot_width;
++	unsigned int	offset;
+ };
+ 
+ struct sun4i_i2s_clk_div {
+@@ -416,56 +417,72 @@ static int sun4i_i2s_hw_params(struct snd_pcm_substream *substream,
+ 	int lines;
+ 
+ 	channels = params_channels(params);
+-	if ((channels > dai->driver->playback.channels_max) ||
+-		(channels < dai->driver->playback.channels_min)) {
+-		dev_err(dai->dev, "Unsupported number of channels: %d\n",
+-			channels);
+-		return -EINVAL;
+-	}
++	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
++		if ((channels > dai->driver->playback.channels_max) ||
++			(channels < dai->driver->playback.channels_min)) {
++			dev_err(dai->dev, "Unsupported number of channels: %d\n",
++				channels);
++			return -EINVAL;
++		}
+ 
+-	lines = (channels + 1) / 2;
++		lines = (channels + 1) / 2;
+ 
+-	/* Enable the required output lines */
+-	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
+-			   SUN4I_I2S_CTRL_SDO_EN_MASK,
+-			   SUN4I_I2S_CTRL_SDO_EN(lines));
+-
+-	if (i2s->variant->has_chcfg) {
+-		regmap_update_bits(i2s->regmap, SUN8I_I2S_CHAN_CFG_REG,
+-				   SUN8I_I2S_CHAN_CFG_TX_SLOT_NUM_MASK,
+-				   SUN8I_I2S_CHAN_CFG_TX_SLOT_NUM(channels));
+-		regmap_update_bits(i2s->regmap, SUN8I_I2S_CHAN_CFG_REG,
+-				   SUN8I_I2S_CHAN_CFG_RX_SLOT_NUM_MASK,
+-				   SUN8I_I2S_CHAN_CFG_RX_SLOT_NUM(channels));
+-	}
++		/* Enable the required output lines */
++		regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
++				   SUN4I_I2S_CTRL_SDO_EN_MASK,
++				   SUN4I_I2S_CTRL_SDO_EN(lines));
+ 
+-	/* Map the channels for playback and capture */
+-	regmap_field_write(i2s->field_rxchanmap, 0x00003210);
+-	regmap_field_write(i2s->field_txchanmap, 0x10);
+-	if (i2s->variant->has_chsel_tx_chen) {
+-		if (channels > 2)
+-			regmap_write(i2s->regmap,
+-				     SUN8I_I2S_TX_CHAN_MAP_REG+4, 0x32);
+-		if (channels > 4)
+-			regmap_write(i2s->regmap,
+-				     SUN8I_I2S_TX_CHAN_MAP_REG+8, 0x54);
+-		if (channels > 6)
+-			regmap_write(i2s->regmap,
+-				     SUN8I_I2S_TX_CHAN_MAP_REG+12, 0x76);
++		if (i2s->variant->has_chcfg)
++			regmap_update_bits(i2s->regmap, SUN8I_I2S_CHAN_CFG_REG,
++					   SUN8I_I2S_CHAN_CFG_TX_SLOT_NUM_MASK,
++					   SUN8I_I2S_CHAN_CFG_TX_SLOT_NUM(channels));
++		else
++			/* Configure the channels */
++			regmap_field_write(i2s->field_txchansel, SUN4I_I2S_CHAN_SEL(channels));
++
++		regmap_field_write(i2s->field_txchanmap, 0x10);
++
++		if (i2s->variant->has_chsel_tx_chen) {
++			u32 chan_sel = SUN8I_I2S_TX_CHAN_OFFSET(i2s->offset) | 0x1;
++			regmap_write(i2s->regmap, SUN8I_I2S_TX_CHAN_SEL_REG,
++				     chan_sel | 0x30);
++
++			if (channels > 2) {
++				regmap_write(i2s->regmap,
++					     SUN8I_I2S_TX_CHAN_MAP_REG+4, 0x32);
++				regmap_write(i2s->regmap, SUN8I_I2S_TX_CHAN_SEL_REG+4,
++					     chan_sel | 0xC0);
++			}
++			if (channels > 4) {
++				regmap_write(i2s->regmap,
++					     SUN8I_I2S_TX_CHAN_MAP_REG+8, 0x54);
++				regmap_write(i2s->regmap, SUN8I_I2S_TX_CHAN_SEL_REG+8,
++					     chan_sel | 0x300);
++			}
++			if (channels > 6) {
++				regmap_write(i2s->regmap,
++					     SUN8I_I2S_TX_CHAN_MAP_REG+12, 0x76);
++				regmap_write(i2s->regmap, SUN8I_I2S_TX_CHAN_SEL_REG+12,
++					     chan_sel | 0xC00);
++			}
++		}
++	} else {
++		/* Map the channels for capture */
++		regmap_field_write(i2s->field_rxchanmap, 0x00003210);
++		regmap_field_write(i2s->field_rxchansel,
++				   SUN4I_I2S_CHAN_SEL(params_channels(params)));
++
++		if (i2s->variant->has_chcfg)
++			regmap_update_bits(i2s->regmap, SUN8I_I2S_CHAN_CFG_REG,
++					   SUN8I_I2S_CHAN_CFG_RX_SLOT_NUM_MASK,
++					   SUN8I_I2S_CHAN_CFG_RX_SLOT_NUM(channels));
++
++		if (i2s->variant->has_chsel_tx_chen)
++			regmap_update_bits(i2s->regmap, SUN8I_I2S_RX_CHAN_SEL_REG,
++					   SUN8I_I2S_TX_CHAN_OFFSET_MASK,
++					   SUN8I_I2S_TX_CHAN_OFFSET(i2s->offset));
+ 	}
+ 
+-	/* Configure the channels */
+-	regmap_field_write(i2s->field_txchansel,
+-			   SUN4I_I2S_CHAN_SEL(params_channels(params)));
+-
+-	regmap_field_write(i2s->field_rxchansel,
+-			   SUN4I_I2S_CHAN_SEL(params_channels(params)));
+-
+-	if (i2s->variant->has_chsel_tx_chen)
+-		regmap_update_bits(i2s->regmap, SUN8I_I2S_TX_CHAN_SEL_REG,
+-				   SUN8I_I2S_TX_CHAN_EN_MASK,
+-				   SUN8I_I2S_TX_CHAN_EN(channels));
+-
+ 	switch (params_physical_width(params)) {
+ 	case 16:
+ 		width = DMA_SLAVE_BUSWIDTH_2_BYTES;
+@@ -519,7 +536,6 @@ static int sun4i_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ {
+ 	struct sun4i_i2s *i2s = snd_soc_dai_get_drvdata(dai);
+ 	u32 val;
+-	u32 offset = 0;
+ 	u32 bclk_polarity = SUN4I_I2S_FMT0_POLARITY_NORMAL;
+ 	u32 lrclk_polarity = SUN4I_I2S_FMT0_POLARITY_NORMAL;
+ 
+@@ -527,7 +543,7 @@ static int sun4i_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
+ 	case SND_SOC_DAIFMT_I2S:
+ 		val = SUN4I_I2S_FMT0_FMT_I2S;
+-		offset = 1;
++		i2s->offset = 1;
+ 		break;
+ 	case SND_SOC_DAIFMT_LEFT_J:
+ 		val = SUN4I_I2S_FMT0_FMT_LEFT_J;
+@@ -548,16 +564,8 @@ static int sun4i_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ 		 * i2s shares the same setting with the LJ format. Increment
+ 		 * val so that the bit to value to write is correct.
+ 		 */
+-		if (offset > 0)
++		if (i2s->offset > 0)
+ 			val++;
+-		/* blck offset determines whether i2s or LJ */
+-		regmap_update_bits(i2s->regmap, SUN8I_I2S_TX_CHAN_SEL_REG,
+-				   SUN8I_I2S_TX_CHAN_OFFSET_MASK,
+-				   SUN8I_I2S_TX_CHAN_OFFSET(offset));
+-
+-		regmap_update_bits(i2s->regmap, SUN8I_I2S_RX_CHAN_SEL_REG,
+-				   SUN8I_I2S_TX_CHAN_OFFSET_MASK,
+-				   SUN8I_I2S_TX_CHAN_OFFSET(offset));
+ 	}
+ 
+ 	regmap_field_write(i2s->field_fmt_mode, val);

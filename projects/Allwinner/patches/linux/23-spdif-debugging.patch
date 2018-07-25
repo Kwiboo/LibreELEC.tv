@@ -1,0 +1,231 @@
+diff --git a/sound/soc/sunxi/sun4i-spdif.c b/sound/soc/sunxi/sun4i-spdif.c
+index b4af4aabead1..2d9c5246e156 100644
+--- a/sound/soc/sunxi/sun4i-spdif.c
++++ b/sound/soc/sunxi/sun4i-spdif.c
+@@ -128,6 +128,7 @@
+ 	#define SUN4I_SPDIF_TXCHSTA1_ORISAMFREQ(v)	((v) << 4)
+ 	#define SUN4I_SPDIF_TXCHSTA1_ORISAMFREQ_MASK	GENMASK(7, 4)
+ 	#define SUN4I_SPDIF_TXCHSTA1_SAMWORDLEN(v)	((v) << 1)
++	#define SUN4I_SPDIF_TXCHSTA1_SAMWORDLEN_MASK	GENMASK(3, 1)
+ 	#define SUN4I_SPDIF_TXCHSTA1_MAXWORDLEN		BIT(0)
+ 
+ #define SUN4I_SPDIF_RXCHSTA0	(0x34)
+@@ -161,6 +162,12 @@
+ #define SUN4I_SPDIF_SAMFREQ_176_4KHZ		0xc
+ #define SUN4I_SPDIF_SAMFREQ_192KHZ		0xe
+ 
++/*
++ * Original sampling frequency can be represented by inverting the value of the
++ * sampling frequency.
++ */
++#define ORIGINAL(v) ((~v) & 0xf)
++
+ struct sun4i_spdif_dev {
+ 	struct platform_device *pdev;
+ 	struct clk *spdif_clk;
+@@ -200,6 +207,10 @@ static void sun4i_snd_txctrl_on(struct snd_pcm_substream *substream,
+ 	regmap_update_bits(host->regmap, SUN4I_SPDIF_INT,
+ 			   SUN4I_SPDIF_INT_TXDRQEN, SUN4I_SPDIF_INT_TXDRQEN);
+ 
++	/* MCLK enable */
++	regmap_update_bits(host->regmap, SUN4I_SPDIF_CTL,
++			   SUN4I_SPDIF_CTL_MCLKOUTEN, SUN4I_SPDIF_CTL_MCLKOUTEN);
++
+ 	/* Global enable */
+ 	regmap_update_bits(host->regmap, SUN4I_SPDIF_CTL,
+ 			   SUN4I_SPDIF_CTL_GEN, SUN4I_SPDIF_CTL_GEN);
+@@ -216,6 +227,10 @@ static void sun4i_snd_txctrl_off(struct snd_pcm_substream *substream,
+ 	regmap_update_bits(host->regmap, SUN4I_SPDIF_INT,
+ 			   SUN4I_SPDIF_INT_TXDRQEN, 0);
+ 
++	/* MCLK disable */
++	regmap_update_bits(host->regmap, SUN4I_SPDIF_CTL,
++			   SUN4I_SPDIF_CTL_MCLKOUTEN, 0);
++
+ 	/* Global disable */
+ 	regmap_update_bits(host->regmap, SUN4I_SPDIF_CTL,
+ 			   SUN4I_SPDIF_CTL_GEN, 0);
+@@ -247,6 +262,7 @@ static int sun4i_spdif_hw_params(struct snd_pcm_substream *substream,
+ 	u32 reg_val;
+ 	struct sun4i_spdif_dev *host = snd_soc_dai_get_drvdata(cpu_dai);
+ 	struct platform_device *pdev = host->pdev;
++	int sample_freq, original_sample_freq;
+ 
+ 	/* Add the PCM and raw data select interface */
+ 	switch (params_channels(params)) {
+@@ -261,14 +277,15 @@ static int sun4i_spdif_hw_params(struct snd_pcm_substream *substream,
+ 		return -EINVAL;
+ 	}
+ 
+-	switch (params_format(params)) {
+-	case SNDRV_PCM_FORMAT_S16_LE:
++	switch (params_width(params)) {
++//	switch (params_format(params)) {
++	case 16://SNDRV_PCM_FORMAT_S16_LE:
+ 		fmt |= SUN4I_SPDIF_TXCFG_FMT16BIT;
+ 		break;
+-	case SNDRV_PCM_FORMAT_S20_3LE:
++	case 20://SNDRV_PCM_FORMAT_S20_3LE:
+ 		fmt |= SUN4I_SPDIF_TXCFG_FMT20BIT;
+ 		break;
+-	case SNDRV_PCM_FORMAT_S24_LE:
++	case 24://SNDRV_PCM_FORMAT_S24_LE:
+ 		fmt |= SUN4I_SPDIF_TXCFG_FMT24BIT;
+ 		break;
+ 	default:
+@@ -330,10 +347,106 @@ static int sun4i_spdif_hw_params(struct snd_pcm_substream *substream,
+ 	reg_val = 0;
+ 	reg_val |= SUN4I_SPDIF_TXCFG_ASS;
+ 	reg_val |= fmt; /* set non audio and bit depth */
+-	reg_val |= SUN4I_SPDIF_TXCFG_CHSTMODE;
++//	reg_val |= SUN4I_SPDIF_TXCFG_CHSTMODE;
+ 	reg_val |= SUN4I_SPDIF_TXCFG_TXRATIO(mclk_div - 1);
+ 	regmap_write(host->regmap, SUN4I_SPDIF_TXCFG, reg_val);
+ 
++	/* Test to see if this fixes playback issue */
++	if (mclk == 24576000) {
++		switch (mclk_div) {
++		/* 24KHZ */
++		case 8:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_24KHZ;
++			original_sample_freq
++				= ORIGINAL(SUN4I_SPDIF_SAMFREQ_24KHZ);
++			break;
++
++		/* 32KHZ */
++		case 6:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_32KHZ;
++			original_sample_freq
++				= ORIGINAL(SUN4I_SPDIF_SAMFREQ_32KHZ);
++			break;
++
++		/* 48KHZ */
++		case 4:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_48KHZ;
++			original_sample_freq
++				= ORIGINAL(SUN4I_SPDIF_SAMFREQ_48KHZ);
++			break;
++
++		/* 96KHZ */
++		case 2:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_96KHZ;
++			original_sample_freq
++				= ORIGINAL(SUN4I_SPDIF_SAMFREQ_96KHZ);
++			break;
++
++		/* 192KHZ */
++		case 1:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_192KHZ;
++			original_sample_freq
++				= ORIGINAL(SUN4I_SPDIF_SAMFREQ_192KHZ);
++			break;
++
++		default:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_NOT_INDICATED;
++			original_sample_freq = 0;
++			break;
++		}
++	} else {
++		/* 22.5792MHz */
++		switch (mclk_div) {
++		/* 22.05KHZ */
++		case 8:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_22_05KHZ;
++			original_sample_freq
++				= ORIGINAL(SUN4I_SPDIF_SAMFREQ_22_05KHZ);
++			break;
++
++		/* 44.1KHZ */
++		case 4:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_44_1KHZ;
++			original_sample_freq
++				= ORIGINAL(SUN4I_SPDIF_SAMFREQ_44_1KHZ);
++			break;
++
++		/* 88.2KHZ */
++		case 2:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_88_2KHZ;
++			original_sample_freq
++				= ORIGINAL(SUN4I_SPDIF_SAMFREQ_88_2KHZ);
++			break;
++
++		/* 176.4KHZ */
++		case 1:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_176_4KHZ;
++			original_sample_freq
++				= ORIGINAL(SUN4I_SPDIF_SAMFREQ_176_4KHZ);
++			break;
++
++		default:
++			sample_freq = SUN4I_SPDIF_SAMFREQ_NOT_INDICATED;
++			original_sample_freq = 0;
++			break;
++		}
++	}
++
++	regmap_update_bits(host->regmap, SUN4I_SPDIF_TXCHSTA0,
++			SUN4I_SPDIF_TXCHSTA0_SAMFREQ_MASK,
++			SUN4I_SPDIF_TXCHSTA0_SAMFREQ(sample_freq));
++
++	regmap_update_bits(host->regmap, SUN4I_SPDIF_TXCHSTA1,
++			SUN4I_SPDIF_TXCHSTA1_ORISAMFREQ_MASK,
++			SUN4I_SPDIF_TXCHSTA1_ORISAMFREQ(original_sample_freq));
++
++	/* Set the channel number in status INVESTIGATION */
++	regmap_update_bits(host->regmap, SUN4I_SPDIF_TXCHSTA0,
++			   SUN4I_SPDIF_TXCHSTA0_CHNUM_MASK,
++			   SUN4I_SPDIF_TXCHSTA0_CHNUM(params_channels(params)));
++	regmap_update_bits(host->regmap, SUN4I_SPDIF_TXCHSTA1,
++			   SUN4I_SPDIF_TXCHSTA1_SAMWORDLEN_MASK,
++			   SUN4I_SPDIF_TXCHSTA1_SAMWORDLEN(1));
+ 	return 0;
+ }
+ 
+@@ -363,6 +476,34 @@ static int sun4i_spdif_trigger(struct snd_pcm_substream *substream, int cmd,
+ 		ret = -EINVAL;
+ 		break;
+ 	}
++	{
++	/* COOPS DEBUGGING FOR NOW */
++	struct platform_device *pdev = host->pdev;
++	u32 reg_val = 0;
++
++	dev_err(&pdev->dev,
++			"Command State %d Audio Clock is %lu\n", cmd, clk_get_rate(host->spdif_clk));
++
++	regmap_read(host->regmap, SUN4I_SPDIF_CTL, &reg_val);
++	dev_err(&pdev->dev,
++			"OWA_GEN_CTL 0x%x\n", reg_val);
++	regmap_read(host->regmap, SUN4I_SPDIF_TXCFG, &reg_val);
++	dev_err(&pdev->dev,
++			"OWA_TX_CFIG 0x%x\n", reg_val);
++	regmap_read(host->regmap, SUN4I_SPDIF_FCTL, &reg_val);
++	dev_err(&pdev->dev,
++			"OWA_FCTL 0x%x\n", reg_val);
++	regmap_read(host->regmap, SUN4I_SPDIF_FSTA, &reg_val);
++	dev_err(&pdev->dev,
++			"OWA_FSTA 0x%x\n", reg_val);
++	regmap_read(host->regmap, SUN4I_SPDIF_TXCHSTA0, &reg_val);
++	dev_err(&pdev->dev,
++			"OWA_TX_CHSTA0 0x%x\n", reg_val);
++	regmap_read(host->regmap, SUN4I_SPDIF_TXCHSTA1, &reg_val);
++	dev_err(&pdev->dev,
++			"OWA_TX_CHSTA1 0x%x\n", reg_val);
++	}
++
+ 	return ret;
+ }
+ 
+@@ -389,9 +530,9 @@ static const struct regmap_config sun4i_spdif_regmap_config = {
+ 
+ #define SUN4I_RATES	SNDRV_PCM_RATE_8000_192000
+ 
+-#define SUN4I_FORMATS	(SNDRV_PCM_FORMAT_S16_LE | \
+-				SNDRV_PCM_FORMAT_S20_3LE | \
+-				SNDRV_PCM_FORMAT_S24_LE)
++#define SUN4I_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | \
++			SNDRV_PCM_FMTBIT_S20_3LE | \
++			SNDRV_PCM_FMTBIT_S24_LE)
+ 
+ static struct snd_soc_dai_driver sun4i_spdif_dai = {
+ 	.playback = {

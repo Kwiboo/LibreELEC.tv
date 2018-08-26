@@ -40,7 +40,7 @@ make_target() {
     [ "${BUILD_WITH_DEBUG}" = "yes" ] && PKG_DEBUG=1 || PKG_DEBUG=0
     DEBUG=${PKG_DEBUG} CROSS_COMPILE="$TARGET_KERNEL_PREFIX" LDFLAGS="" ARCH=arm make mrproper
     DEBUG=${PKG_DEBUG} CROSS_COMPILE="$TARGET_KERNEL_PREFIX" LDFLAGS="" ARCH=arm make $($ROOT/$SCRIPTS/uboot_helper $PROJECT $DEVICE $UBOOT_SYSTEM config)
-    DEBUG=${PKG_DEBUG} CROSS_COMPILE="$TARGET_KERNEL_PREFIX" LDFLAGS="" ARCH=arm make HOSTCC="$HOST_CC" HOSTSTRIP="true"
+    DEBUG=${PKG_DEBUG} CROSS_COMPILE="$TARGET_KERNEL_PREFIX" LDFLAGS="" ARCH=arm make HOSTCC="$HOST_CC" HOSTSTRIP="true" all envtools
   fi
 }
 
@@ -74,5 +74,14 @@ makeinstall_target() {
       cp -av ${FOUND_PATH} $INSTALL/usr/share/bootloader
       sed -e "s/@PROJECT@/${DEVICE:-$PROJECT}/g" \
           -i $INSTALL/usr/share/bootloader/canupdate.sh
+    fi
+
+    # Install envtools
+    if find_file_path bootloader/fw_env.config; then
+      mkdir -p $INSTALL/etc
+        cp -av ${FOUND_PATH} $INSTALL/etc
+      mkdir -p $INSTALL/usr/sbin
+        cp -av tools/env/fw_printenv $INSTALL/usr/sbin
+        ln -sf fw_printenv $INSTALL/usr/sbin/fw_setenv
     fi
 }

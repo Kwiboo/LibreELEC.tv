@@ -1,0 +1,36 @@
+diff --git a/scripts/Makefile.spl b/scripts/Makefile.spl
+index 252f13826d..38e175e8c3 100644
+--- a/scripts/Makefile.spl
++++ b/scripts/Makefile.spl
+@@ -248,7 +248,7 @@ $(obj)/$(SPL_BIN)-pad.bin: $(obj)/$(SPL_BIN)
+ $(obj)/$(SPL_BIN).dtb: dts/dt-spl.dtb FORCE
+ 	$(call if_changed,copy)
+ 
+-pythonpath = PYTHONPATH=scripts/dtc/pylibfdt
++pythonpath = python
+ 
+ quiet_cmd_dtocc = DTOC C  $@
+ cmd_dtocc = $(pythonpath) $(srctree)/tools/dtoc/dtoc -d $(obj)/$(SPL_BIN).dtb -o $@ platdata
+diff --git a/scripts/dtc/Makefile b/scripts/dtc/Makefile
+index e999be9398..d275b9965c 100644
+--- a/scripts/dtc/Makefile
++++ b/scripts/dtc/Makefile
+@@ -29,4 +29,4 @@ HOSTCFLAGS_dtc-parser.tab.o := $(HOSTCFLAGS_DTC)
+ $(obj)/dtc-lexer.lex.o: $(obj)/dtc-parser.tab.h
+ 
+ # Added for U-Boot
+-subdir-$(CONFIG_PYLIBFDT) += pylibfdt
++#subdir-$(CONFIG_PYLIBFDT) += pylibfdt
+diff --git a/tools/dtoc/fdt.py b/tools/dtoc/fdt.py
+index 7fab0cd8e9..a9b79b01b0 100644
+--- a/tools/dtoc/fdt.py
++++ b/tools/dtoc/fdt.py
+@@ -9,7 +9,7 @@ import struct
+ import sys
+ 
+ import fdt_util
+-import libfdt
++from pylibfdt import libfdt
+ 
+ # This deals with a device tree, presenting it as an assortment of Node and
+ # Prop objects, representing nodes and properties, respectively. This file

@@ -29,3 +29,6 @@
 
   # kernel serial console
     EXTRA_CMDLINE="console=uart8250,mmio32,0xff690000 console=tty0"
+
+  # build with installer (yes / no)
+    INSTALLER_SUPPORT="yes"

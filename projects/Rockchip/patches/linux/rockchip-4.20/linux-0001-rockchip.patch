@@ -1,0 +1,3297 @@
+From 6d6a3239b4eda8b94505c58c6b82e91d27b37ce9 Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko@sntech.de>
+Date: Wed, 12 Sep 2018 14:47:35 +0200
+Subject: [PATCH] drm/bridge: dw-hdmi: allow forcing vendor phy-type
+
+In some IP implementations the reading of the phy-type may be broken.
+One example are the Rockchip rk3228 and rk3328 socs that use a separate
+vendor-type phy from Innosilicon but still report the HDMI20_TX type.
+
+So allow the glue driver to force the vendor-phy for these cases.
+In the future it may be necessary to allow forcing other types, but
+for now we'll keep it simply to the case actually seen in the wild.
+
+changes in v3:
+- only allow forcing vendor type, as suggested by Laurent
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Robin Murphy <robin.murphy@arm.com>
+Reviewed-by: Andrzej Hajda <a.hajda@samsung.com>
+Reviewed-by: Zheng Yang <zhengyang@rock-chips.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20180912124740.20343-2-heiko@sntech.de
+Link: https://patchwork.freedesktop.org/patch/msgid/20180912124740.20343-3-heiko@sntech.de
+(cherry picked from commit 8faff37409fb47d86c839bb2da9f2cff371a3ef1)
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c | 4 +++-
+ include/drm/bridge/dw_hdmi.h              | 1 +
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 5971976284bf..ac37c50d6c4b 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -2205,7 +2205,9 @@ static int dw_hdmi_detect_phy(struct dw_hdmi *hdmi)
+ 	unsigned int i;
+ 	u8 phy_type;
+ 
+-	phy_type = hdmi_readb(hdmi, HDMI_CONFIG2_ID);
++	phy_type = hdmi->plat_data->phy_force_vendor ?
++				DW_HDMI_PHY_VENDOR_PHY :
++				hdmi_readb(hdmi, HDMI_CONFIG2_ID);
+ 
+ 	if (phy_type == DW_HDMI_PHY_VENDOR_PHY) {
+ 		/* Vendor PHYs require support from the glue layer. */
+diff --git a/include/drm/bridge/dw_hdmi.h b/include/drm/bridge/dw_hdmi.h
+index ccb5aa8468e0..9c56412bb2cf 100644
+--- a/include/drm/bridge/dw_hdmi.h
++++ b/include/drm/bridge/dw_hdmi.h
+@@ -133,6 +133,7 @@ struct dw_hdmi_plat_data {
+ 	const struct dw_hdmi_phy_ops *phy_ops;
+ 	const char *phy_name;
+ 	void *phy_data;
++	unsigned int phy_force_vendor;
+ 
+ 	/* Synopsys PHY support */
+ 	const struct dw_hdmi_mpll_config *mpll_cfg;
+
+From fe84926a1c846e2f66b6b035076b3f9a48abc9c7 Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko@sntech.de>
+Date: Wed, 12 Sep 2018 14:47:36 +0200
+Subject: [PATCH] drm/rockchip: dw_hdmi: Allow outputs that don't need output
+ switching
+
+So far we always encountered socs with 2 output crtcs needing the driver
+to tell the hdmi block which output to connect to. But there also exist
+socs with only one crtc like the rk3228, rk3328 and rk3368.
+
+So adapt the register field to simply carry a negative value to signal
+that no output-switching is necessary.
+
+changes in v3:
+- fixed wording issue found by Robin Murphy
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Robin Murphy <robin.murphy@arm.com>
+Reviewed-by: Zheng Yang <zhengyang@rock-chips.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20180912124740.20343-3-heiko@sntech.de
+(cherry picked from commit 96c4704fec95db487432a72cbe244c1db2e090bc)
+---
+ drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+index 11309a2a4e43..b09c3531305b 100644
+--- a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+@@ -36,7 +36,7 @@
+  * @lcdsel_lit: reg value of selecting vop little for HDMI
+  */
+ struct rockchip_hdmi_chip_data {
+-	u32	lcdsel_grf_reg;
++	int	lcdsel_grf_reg;
+ 	u32	lcdsel_big;
+ 	u32	lcdsel_lit;
+ };
+@@ -245,6 +245,9 @@ static void dw_hdmi_rockchip_encoder_enable(struct drm_encoder *encoder)
+ 	u32 val;
+ 	int ret;
+ 
++	if (hdmi->chip_data->lcdsel_grf_reg < 0)
++		return;
++
+ 	ret = drm_of_encoder_active_endpoint_id(hdmi->dev->of_node, encoder);
+ 	if (ret)
+ 		val = hdmi->chip_data->lcdsel_lit;
+
+From b2ed92f0e6d8b5e139cd5fdb1f2dad9a41b5f17a Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko@sntech.de>
+Date: Wed, 12 Sep 2018 14:47:37 +0200
+Subject: [PATCH] dt-bindings: allow optional phys in Rockchip dw_hdmi binding
+
+Some newer Rockchip SoCs use an Innosilicon hdmiphy accessed via general
+mmio, so allow these to be referenced via the regular phy interfaces
+and therefore add optional phy-related properties to the binding.
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Reviewed-by: Rob Herring <robh@kernel.org>
+Link: https://patchwork.freedesktop.org/patch/msgid/20180912124740.20343-4-heiko@sntech.de
+(cherry picked from commit 9f891dbe391054ec3fe0e5d14f995addd80f7900)
+---
+ .../devicetree/bindings/display/rockchip/dw_hdmi-rockchip.txt   | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/display/rockchip/dw_hdmi-rockchip.txt b/Documentation/devicetree/bindings/display/rockchip/dw_hdmi-rockchip.txt
+index adc94fc3c9f8..937bfb472e1d 100644
+--- a/Documentation/devicetree/bindings/display/rockchip/dw_hdmi-rockchip.txt
++++ b/Documentation/devicetree/bindings/display/rockchip/dw_hdmi-rockchip.txt
+@@ -34,6 +34,8 @@ Optional properties
+ - clock-names: May contain "cec" as defined in dw_hdmi.txt.
+ - clock-names: May contain "grf", power for grf io.
+ - clock-names: May contain "vpll", external clock for some hdmi phy.
++- phys: from general PHY binding: the phandle for the PHY device.
++- phy-names: Should be "hdmi" if phys references an external phy.
+ 
+ Example:
+ 
+
+From 3a8aa87fe8c406a4f381da605bd8d96d774b2347 Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko@sntech.de>
+Date: Wed, 12 Sep 2018 14:47:38 +0200
+Subject: [PATCH] drm/rockchip: dw_hdmi: allow including external phys
+
+Some variants of the dw-hdmi on Rockchip socs use a separate phy block
+accessed via the generic phy framework, so allow them to be included
+if such a phy reference is found.
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Robin Murphy <robin.murphy@arm.com>
+Reviewed-by: Zheng Yang <zhengyang@rock-chips.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20180912124740.20343-5-heiko@sntech.de
+(cherry picked from commit bd1302305ae654318b674eb6fd66346ee043ed72)
+---
+ drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+index b09c3531305b..57e76dfd5f6d 100644
+--- a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+@@ -11,6 +11,7 @@
+ #include <linux/mfd/syscon.h>
+ #include <linux/module.h>
+ #include <linux/platform_device.h>
++#include <linux/phy/phy.h>
+ #include <linux/regmap.h>
+ 
+ #include <drm/drm_of.h>
+@@ -49,6 +50,7 @@ struct rockchip_hdmi {
+ 	struct clk *vpll_clk;
+ 	struct clk *grf_clk;
+ 	struct dw_hdmi *hdmi;
++	struct phy *phy;
+ };
+ 
+ #define to_rockchip_hdmi(x)	container_of(x, struct rockchip_hdmi, x)
+@@ -376,6 +378,14 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
+ 		return ret;
+ 	}
+ 
++	hdmi->phy = devm_phy_optional_get(dev, "hdmi");
++	if (IS_ERR(hdmi->phy)) {
++		ret = PTR_ERR(hdmi->phy);
++		if (ret != -EPROBE_DEFER)
++			DRM_DEV_ERROR(hdmi->dev, "failed to get phy\n");
++		return ret;
++	}
++
+ 	drm_encoder_helper_add(encoder, &dw_hdmi_rockchip_encoder_helper_funcs);
+ 	drm_encoder_init(drm, encoder, &dw_hdmi_rockchip_encoder_funcs,
+ 			 DRM_MODE_ENCODER_TMDS, NULL);
+
+From 7910cc0ad7bdc71585d1c6e0ad227df8e567824d Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko@sntech.de>
+Date: Wed, 12 Sep 2018 14:47:39 +0200
+Subject: [PATCH] drm/rockchip: dw_hdmi: store rockchip_hdmi reference in
+ phy_data object
+
+When using special phy handling operations we'll often need access to
+the rockchip_hdmi struct.
+
+As the chip-data that occupies the phy_data pointer initially gets
+assigned to the rockchip_hdmi struct, we can now re-use this phy_data
+pointer to hold the reference to the rockchip_hdmi struct and use this
+reference later on.
+
+Inspiration for this comes from meson and sunxi dw-hdmi, which are using
+the same method.
+
+changes in v3:
+- reword commit message
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Robin Murphy <robin.murphy@arm.com>
+Reviewed-by: Zheng Yang <zhengyang@rock-chips.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20180912124740.20343-6-heiko@sntech.de
+(cherry picked from commit 5c3f3d22393c56f3d233587c599e66a74f031639)
+---
+ drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+index 57e76dfd5f6d..19f002fa0a09 100644
+--- a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+@@ -335,7 +335,7 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
+ 				 void *data)
+ {
+ 	struct platform_device *pdev = to_platform_device(dev);
+-	const struct dw_hdmi_plat_data *plat_data;
++	struct dw_hdmi_plat_data *plat_data;
+ 	const struct of_device_id *match;
+ 	struct drm_device *drm = data;
+ 	struct drm_encoder *encoder;
+@@ -350,9 +350,14 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
+ 		return -ENOMEM;
+ 
+ 	match = of_match_node(dw_hdmi_rockchip_dt_ids, pdev->dev.of_node);
+-	plat_data = match->data;
++	plat_data = devm_kmemdup(&pdev->dev, match->data,
++					     sizeof(*plat_data), GFP_KERNEL);
++	if (!plat_data)
++		return -ENOMEM;
++
+ 	hdmi->dev = &pdev->dev;
+ 	hdmi->chip_data = plat_data->phy_data;
++	plat_data->phy_data = hdmi;
+ 	encoder = &hdmi->encoder;
+ 
+ 	encoder->possible_crtcs = drm_of_find_possible_crtcs(drm, dev->of_node);
+
+From 41b9ec544ce7eb973031b5e1a944a183e33d16ee Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko@sntech.de>
+Date: Wed, 12 Sep 2018 14:47:40 +0200
+Subject: [PATCH] drm/rockchip: dw_hdmi: add dw-hdmi support for the rk3328
+
+The rk3328 uses a dw-hdmi controller with an external hdmi phy from
+Innosilicon which uses the generic phy framework for access.
+Add the necessary data and the compatible for the rk3328 to the
+rockchip dw-hdmi driver.
+
+changes in v5:
+- disable CEC_5V option to make CEC actually work (Jonas)
+changes in v3:
+- reword as suggested by Rob to show that it's a dw-hdmi + Inno phy
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Robin Murphy <robin.murphy@arm.com>
+Acked-by: Rob Herring <robh@kernel.org>
+Reviewed-by: Zheng Yang <zhengyang@rock-chips.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20180912124740.20343-7-heiko@sntech.de
+(cherry picked from commit 1c53ba8f22a125b770691030b279300ea982d3b1)
+---
+ .../display/rockchip/dw_hdmi-rockchip.txt     |   1 +
+ drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c   | 104 ++++++++++++++++++
+ 2 files changed, 105 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/display/rockchip/dw_hdmi-rockchip.txt b/Documentation/devicetree/bindings/display/rockchip/dw_hdmi-rockchip.txt
+index 937bfb472e1d..39143424a474 100644
+--- a/Documentation/devicetree/bindings/display/rockchip/dw_hdmi-rockchip.txt
++++ b/Documentation/devicetree/bindings/display/rockchip/dw_hdmi-rockchip.txt
+@@ -13,6 +13,7 @@ Required properties:
+ 
+ - compatible: should be one of the following:
+ 		"rockchip,rk3288-dw-hdmi"
++		"rockchip,rk3328-dw-hdmi"
+ 		"rockchip,rk3399-dw-hdmi"
+ - reg: See dw_hdmi.txt.
+ - reg-io-width: See dw_hdmi.txt. Shall be 4.
+diff --git a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+index 19f002fa0a09..89c63cfde5c8 100644
+--- a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+@@ -25,6 +25,24 @@
+ 
+ #define RK3288_GRF_SOC_CON6		0x025C
+ #define RK3288_HDMI_LCDC_SEL		BIT(4)
++#define RK3328_GRF_SOC_CON2		0x0408
++
++#define RK3328_HDMI_SDAIN_MSK		BIT(11)
++#define RK3328_HDMI_SCLIN_MSK		BIT(10)
++#define RK3328_HDMI_HPD_IOE		BIT(2)
++#define RK3328_GRF_SOC_CON3		0x040c
++/* need to be unset if hdmi or i2c should control voltage */
++#define RK3328_HDMI_SDA5V_GRF		BIT(15)
++#define RK3328_HDMI_SCL5V_GRF		BIT(14)
++#define RK3328_HDMI_HPD5V_GRF		BIT(13)
++#define RK3328_HDMI_CEC5V_GRF		BIT(12)
++#define RK3328_GRF_SOC_CON4		0x0410
++#define RK3328_HDMI_HPD_SARADC		BIT(13)
++#define RK3328_HDMI_CEC_5V		BIT(11)
++#define RK3328_HDMI_SDA_5V		BIT(10)
++#define RK3328_HDMI_SCL_5V		BIT(9)
++#define RK3328_HDMI_HPD_5V		BIT(8)
++
+ #define RK3399_GRF_SOC_CON20		0x6250
+ #define RK3399_HDMI_LCDC_SEL		BIT(6)
+ 
+@@ -292,6 +310,66 @@ static const struct drm_encoder_helper_funcs dw_hdmi_rockchip_encoder_helper_fun
+ 	.atomic_check = dw_hdmi_rockchip_encoder_atomic_check,
+ };
+ 
++static int dw_hdmi_rockchip_genphy_init(struct dw_hdmi *dw_hdmi, void *data,
++			     struct drm_display_mode *mode)
++{
++	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
++
++	return phy_power_on(hdmi->phy);
++}
++
++static void dw_hdmi_rockchip_genphy_disable(struct dw_hdmi *dw_hdmi, void *data)
++{
++	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
++
++	phy_power_off(hdmi->phy);
++}
++
++static enum drm_connector_status
++dw_hdmi_rk3328_read_hpd(struct dw_hdmi *dw_hdmi, void *data)
++{
++	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
++	enum drm_connector_status status;
++
++	status = dw_hdmi_phy_read_hpd(dw_hdmi, data);
++
++	if (status == connector_status_connected)
++		regmap_write(hdmi->regmap,
++			RK3328_GRF_SOC_CON4,
++			HIWORD_UPDATE(RK3328_HDMI_SDA_5V | RK3328_HDMI_SCL_5V,
++				      RK3328_HDMI_SDA_5V | RK3328_HDMI_SCL_5V));
++	else
++		regmap_write(hdmi->regmap,
++			RK3328_GRF_SOC_CON4,
++			HIWORD_UPDATE(0, RK3328_HDMI_SDA_5V |
++					 RK3328_HDMI_SCL_5V));
++	return status;
++}
++
++static void dw_hdmi_rk3328_setup_hpd(struct dw_hdmi *dw_hdmi, void *data)
++{
++	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
++
++	dw_hdmi_phy_setup_hpd(dw_hdmi, data);
++
++	/* Enable and map pins to 3V grf-controlled io-voltage */
++	regmap_write(hdmi->regmap,
++		RK3328_GRF_SOC_CON4,
++		HIWORD_UPDATE(0, RK3328_HDMI_HPD_SARADC | RK3328_HDMI_CEC_5V |
++				 RK3328_HDMI_SDA_5V | RK3328_HDMI_SCL_5V |
++				 RK3328_HDMI_HPD_5V));
++	regmap_write(hdmi->regmap,
++		RK3328_GRF_SOC_CON3,
++		HIWORD_UPDATE(0, RK3328_HDMI_SDA5V_GRF | RK3328_HDMI_SCL5V_GRF |
++				 RK3328_HDMI_HPD5V_GRF |
++				 RK3328_HDMI_CEC5V_GRF));
++	regmap_write(hdmi->regmap,
++		RK3328_GRF_SOC_CON2,
++		HIWORD_UPDATE(RK3328_HDMI_SDAIN_MSK | RK3328_HDMI_SCLIN_MSK,
++			      RK3328_HDMI_SDAIN_MSK | RK3328_HDMI_SCLIN_MSK |
++			      RK3328_HDMI_HPD_IOE));
++}
++
+ static struct rockchip_hdmi_chip_data rk3288_chip_data = {
+ 	.lcdsel_grf_reg = RK3288_GRF_SOC_CON6,
+ 	.lcdsel_big = HIWORD_UPDATE(0, RK3288_HDMI_LCDC_SEL),
+@@ -306,6 +384,29 @@ static const struct dw_hdmi_plat_data rk3288_hdmi_drv_data = {
+ 	.phy_data = &rk3288_chip_data,
+ };
+ 
++static const struct dw_hdmi_phy_ops rk3328_hdmi_phy_ops = {
++	.init		= dw_hdmi_rockchip_genphy_init,
++	.disable	= dw_hdmi_rockchip_genphy_disable,
++	.read_hpd	= dw_hdmi_rk3328_read_hpd,
++	.update_hpd	= dw_hdmi_phy_update_hpd,
++	.setup_hpd	= dw_hdmi_rk3328_setup_hpd,
++};
++
++static struct rockchip_hdmi_chip_data rk3328_chip_data = {
++	.lcdsel_grf_reg = -1,
++};
++
++static const struct dw_hdmi_plat_data rk3328_hdmi_drv_data = {
++	.mode_valid = dw_hdmi_rockchip_mode_valid,
++	.mpll_cfg = rockchip_mpll_cfg,
++	.cur_ctr = rockchip_cur_ctr,
++	.phy_config = rockchip_phy_config,
++	.phy_data = &rk3328_chip_data,
++	.phy_ops = &rk3328_hdmi_phy_ops,
++	.phy_name = "inno_dw_hdmi_phy2",
++	.phy_force_vendor = true,
++};
++
+ static struct rockchip_hdmi_chip_data rk3399_chip_data = {
+ 	.lcdsel_grf_reg = RK3399_GRF_SOC_CON20,
+ 	.lcdsel_big = HIWORD_UPDATE(0, RK3399_HDMI_LCDC_SEL),
+@@ -324,6 +425,9 @@ static const struct of_device_id dw_hdmi_rockchip_dt_ids[] = {
+ 	{ .compatible = "rockchip,rk3288-dw-hdmi",
+ 	  .data = &rk3288_hdmi_drv_data
+ 	},
++	{ .compatible = "rockchip,rk3328-dw-hdmi",
++	  .data = &rk3328_hdmi_drv_data
++	},
+ 	{ .compatible = "rockchip,rk3399-dw-hdmi",
+ 	  .data = &rk3399_hdmi_drv_data
+ 	},
+
+From d29cf1ca557955319c5c40aa54d4a3bd8f3219a2 Mon Sep 17 00:00:00 2001
+From: Randy Li <ayaka@soulik.info>
+Date: Fri, 22 Jun 2018 00:47:36 +0800
+Subject: [PATCH] [v3,1/2] drm/fourcc: add a 10bits fully packed variant of
+ NV12
+
+This pixel format is a fully packed and 10bits variant of NV12.
+A luma pixel would take 10bits in memory, without any
+filled bits between pixels in a stride.
+
+Signed-off-by: Randy Li <ayaka@soulik.info>
+---
+ drivers/gpu/drm/drm_fourcc.c  | 1 +
+ include/uapi/drm/drm_fourcc.h | 8 ++++++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/drivers/gpu/drm/drm_fourcc.c b/drivers/gpu/drm/drm_fourcc.c
+index 90a1c846fc25..b6fddc07da81 100644
+--- a/drivers/gpu/drm/drm_fourcc.c
++++ b/drivers/gpu/drm/drm_fourcc.c
+@@ -225,6 +225,7 @@ const struct drm_format_info *__drm_format_info(u32 format)
+ 		{ .format = DRM_FORMAT_UYVY,		.depth = 0,  .num_planes = 1, .cpp = { 2, 0, 0 }, .hsub = 2, .vsub = 1, .is_yuv = true },
+ 		{ .format = DRM_FORMAT_VYUY,		.depth = 0,  .num_planes = 1, .cpp = { 2, 0, 0 }, .hsub = 2, .vsub = 1, .is_yuv = true },
+ 		{ .format = DRM_FORMAT_AYUV,		.depth = 0,  .num_planes = 1, .cpp = { 4, 0, 0 }, .hsub = 1, .vsub = 1, .has_alpha = true, .is_yuv = true },
++		{ .format = DRM_FORMAT_NV12_10LE40,	.depth = 0,  .num_planes = 2, .cpp = { 1, 2, 0 }, .hsub = 2, .vsub = 2, .is_yuv = true },
+ 	};
+ 
+ 	unsigned int i;
+diff --git a/include/uapi/drm/drm_fourcc.h b/include/uapi/drm/drm_fourcc.h
+index 0cd40ebfa1b1..ff0c7f2225d9 100644
+--- a/include/uapi/drm/drm_fourcc.h
++++ b/include/uapi/drm/drm_fourcc.h
+@@ -180,6 +180,14 @@ extern "C" {
+ #define DRM_FORMAT_NV24		fourcc_code('N', 'V', '2', '4') /* non-subsampled Cr:Cb plane */
+ #define DRM_FORMAT_NV42		fourcc_code('N', 'V', '4', '2') /* non-subsampled Cb:Cr plane */
+ 
++/*
++ * A fully packed  2 plane YCbCr
++ * Y1 0-9, Y2 10-19, Y3 20-29, Y4 20-39
++ * ....
++ * U1V1: 0-19, U2V2: 20-39
++ */
++#define DRM_FORMAT_NV12_10LE40	fourcc_code('R', 'K', '2', '0') /* 2x2 subsampled Cr:Cb plane */
++
+ /*
+  * 3 plane YCbCr
+  * index 0: Y plane, [7:0] Y
+
+From 8f46d857443dc22634066f561ea9a779b9cf160e Mon Sep 17 00:00:00 2001
+From: Randy Li <ayaka@soulik.info>
+Date: Fri, 22 Jun 2018 00:47:37 +0800
+Subject: [PATCH] [v3,2/2] drm/rockchip: Support 10 bits yuv format in vop
+
+The rockchip use fully packed pixel format variants
+for YUV 10bits.
+
+This patch only make the VOP accept this pixel format,
+but it doesn't add the converting data path for
+the color gamuts that the target display are supported.
+
+Signed-off-by: Randy Li <ayaka@soulik.info>
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.c | 25 +++++++++++++++++++--
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.h |  1 +
+ drivers/gpu/drm/rockchip/rockchip_vop_reg.c |  2 ++
+ 3 files changed, 26 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+index 0c35a88e33dd..e0570d05fa19 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+@@ -238,6 +238,7 @@ static enum vop_data_format vop_convert_format(uint32_t format)
+ 	case DRM_FORMAT_BGR565:
+ 		return VOP_FMT_RGB565;
+ 	case DRM_FORMAT_NV12:
++	case DRM_FORMAT_NV12_10LE40:
+ 		return VOP_FMT_YUV420SP;
+ 	case DRM_FORMAT_NV16:
+ 		return VOP_FMT_YUV422SP;
+@@ -249,6 +250,16 @@ static enum vop_data_format vop_convert_format(uint32_t format)
+ 	}
+ }
+ 
++static bool is_yuv_10bit(uint32_t format)
++{
++	switch (format) {
++	case DRM_FORMAT_NV12_10LE40:
++		return true;
++	default:
++		return false;
++	}
++}
++
+ static uint16_t scl_vop_cal_scale(enum scale_mode mode, uint32_t src,
+ 				  uint32_t dst, bool is_horizontal,
+ 				  int vsu_mode, int *vskiplines)
+@@ -725,6 +736,7 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
+ 	dma_addr_t dma_addr;
+ 	uint32_t val;
+ 	bool rb_swap;
++	bool is_10_bits;
+ 	int win_index = VOP_WIN_TO_INDEX(vop_win);
+ 	int format;
+ 
+@@ -756,7 +768,12 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
+ 	dsp_sty = dest->y1 + crtc->mode.vtotal - crtc->mode.vsync_start;
+ 	dsp_st = dsp_sty << 16 | (dsp_stx & 0xffff);
+ 
+-	offset = (src->x1 >> 16) * fb->format->cpp[0];
++	is_10_bits = is_yuv_10bit(fb->format->format);
++	if (is_10_bits)
++		offset = (src->x1 >> 16) * (fb->format->cpp[0] * 5 / 4);
++	else
++		offset = (src->x1 >> 16) * fb->format->cpp[0];
++
+ 	offset += (src->y1 >> 16) * fb->pitches[0];
+ 	dma_addr = rk_obj->dma_addr + offset + fb->offsets[0];
+ 
+@@ -767,6 +784,7 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
+ 	VOP_WIN_SET(vop, win, format, format);
+ 	VOP_WIN_SET(vop, win, yrgb_vir, DIV_ROUND_UP(fb->pitches[0], 4));
+ 	VOP_WIN_SET(vop, win, yrgb_mst, dma_addr);
++	VOP_WIN_SET(vop, win, fmt_10, is_10_bits);
+ 	if (fb->format->is_yuv) {
+ 		int hsub = drm_format_horz_chroma_subsampling(fb->format->format);
+ 		int vsub = drm_format_vert_chroma_subsampling(fb->format->format);
+@@ -775,7 +793,10 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
+ 		uv_obj = fb->obj[1];
+ 		rk_uv_obj = to_rockchip_obj(uv_obj);
+ 
+-		offset = (src->x1 >> 16) * bpp / hsub;
++		if (is_10_bits)
++			offset = (src->x1 >> 16) * (bpp * 5 / 4) / hsub;
++		else
++			offset = (src->x1 >> 16) * bpp / hsub;
+ 		offset += (src->y1 >> 16) * fb->pitches[1] / vsub;
+ 
+ 		dma_addr = rk_uv_obj->dma_addr + offset + fb->offsets[1];
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.h b/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
+index fd5765dfd637..86347374196f 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
+@@ -131,6 +131,7 @@ struct vop_win_phy {
+ 	struct vop_reg enable;
+ 	struct vop_reg gate;
+ 	struct vop_reg format;
++	struct vop_reg fmt_10;
+ 	struct vop_reg rb_swap;
+ 	struct vop_reg act_info;
+ 	struct vop_reg dsp_info;
+diff --git a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
+index a6db3cd5544b..5a4c4cfa1d9f 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
++++ b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
+@@ -50,6 +50,7 @@ static const uint32_t formats_win_full[] = {
+ 	DRM_FORMAT_NV12,
+ 	DRM_FORMAT_NV16,
+ 	DRM_FORMAT_NV24,
++	DRM_FORMAT_NV12_10LE40,
+ };
+ 
+ static const uint32_t formats_win_lite[] = {
+@@ -424,6 +425,7 @@ static const struct vop_win_phy rk3288_win01_data = {
+ 	.nformats = ARRAY_SIZE(formats_win_full),
+ 	.enable = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 0),
+ 	.format = VOP_REG(RK3288_WIN0_CTRL0, 0x7, 1),
++	.fmt_10 = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 4),
+ 	.rb_swap = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 12),
+ 	.act_info = VOP_REG(RK3288_WIN0_ACT_INFO, 0x1fff1fff, 0),
+ 	.dsp_info = VOP_REG(RK3288_WIN0_DSP_INFO, 0x0fff0fff, 0),
+
+From cde10342dcacb14f070b39ec48af329a2534bb57 Mon Sep 17 00:00:00 2001
+From: William Wu <william.wu@rock-chips.com>
+Date: Mon, 4 Dec 2017 10:40:38 +0100
+Subject: [PATCH] dt-bindings: usb: add DT binding for RK3328 dwc3 controller
+
+Adds the device tree bindings description for RK3328 and
+compatible USB DWC3 controller.
+
+Signed-off-by: William Wu <william.wu@rock-chips.com>
+Acked-by: Rob Herring <robh@kernel.org>
+Acked-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+---
+ Documentation/devicetree/bindings/usb/rockchip,dwc3.txt | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/usb/rockchip,dwc3.txt b/Documentation/devicetree/bindings/usb/rockchip,dwc3.txt
+index c8c4b00ecb94..4ca357835a48 100644
+--- a/Documentation/devicetree/bindings/usb/rockchip,dwc3.txt
++++ b/Documentation/devicetree/bindings/usb/rockchip,dwc3.txt
+@@ -1,7 +1,9 @@
+ Rockchip SuperSpeed DWC3 USB SoC controller
+ 
+ Required properties:
+-- compatible:	should contain "rockchip,rk3399-dwc3" for rk3399 SoC
++- compatible:	should be one of the following:
++  - "rockchip,rk3399-dwc3": for rk3399 SoC
++  - "rockchip,rk3328-dwc3", "rockchip,rk3399-dwc3": for rk3328 SoC
+ - clocks:	A list of phandle + clock-specifier pairs for the
+ 		clocks listed in clock-names
+ - clock-names:	Should contain the following:
+
+From 3a450690ee04c148024b43bbbbfcd21e2fb9fb21 Mon Sep 17 00:00:00 2001
+From: William Wu <william.wu@rock-chips.com>
+Date: Mon, 4 Dec 2017 10:40:39 +0100
+Subject: [PATCH] arm64: dts: rockchip: add usb3 controller node for RK3328
+ SoCs
+
+RK3328 has one USB 3.0 OTG controller which uses DWC_USB3
+core's general architecture. It can act as static xHCI host
+controller, static device controller, USB 3.0/2.0 OTG basing
+on ID of USB3.0 PHY.
+
+Signed-off-by: William Wu <william.wu@rock-chips.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+---
+ arch/arm64/boot/dts/rockchip/rk3328.dtsi | 27 ++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328.dtsi b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+index e1a33dd981e0..6b480d723fca 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+@@ -900,6 +900,33 @@
+ 		status = "disabled";
+ 	};
+ 
++	usbdrd3: usb@ff600000 {
++		compatible = "rockchip,rk3328-dwc3", "rockchip,rk3399-dwc3";
++		clocks = <&cru SCLK_USB3OTG_REF>, <&cru SCLK_USB3OTG_SUSPEND>,
++			 <&cru ACLK_USB3OTG>;
++		clock-names = "ref_clk", "suspend_clk",
++			      "bus_clk";
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++		status = "disabled";
++
++		usbdrd_dwc3: dwc3@ff600000 {
++			compatible = "snps,dwc3";
++			reg = <0x0 0xff600000 0x0 0x100000>;
++			interrupts = <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
++			dr_mode = "otg";
++			phy_type = "utmi_wide";
++			snps,dis_enblslpm_quirk;
++			snps,dis-u2-freeclk-exists-quirk;
++			snps,dis_u2_susphy_quirk;
++			snps,dis_u3_susphy_quirk;
++			snps,dis-del-phy-power-chg-quirk;
++			snps,dis-tx-ipgap-linecheck-quirk;
++			status = "disabled";
++		};
++	};
++
+ 	gic: interrupt-controller@ff811000 {
+ 		compatible = "arm,gic-400";
+ 		#interrupt-cells = <3>;
+
+From a6e2d928580694996b871b801d1cc517be2552d8 Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko@sntech.de>
+Date: Mon, 4 Dec 2017 10:40:41 +0100
+Subject: [PATCH] arm64: dts: rockchip: enable usb3 nodes on rk3328-rock64
+
+Enable the nodes to make the usb3 port usable on that board.
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index dc20145dd393..6330ca9abbc0 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -345,6 +345,15 @@
+ 	status = "okay";
+ };
+ 
++&usbdrd3 {
++	status = "okay";
++};
++
++&usbdrd_dwc3 {
++	dr_mode = "host";
++	status = "okay";
++};
++
+ &vop {
+ 	status = "okay";
+ };
+
+From 01968e45b9de509f0ac37f2271b391e818f26dbd Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 11 Mar 2018 11:21:11 +0100
+Subject: [PATCH] nvmem: rockchip-efuse: register platform driver on
+ subsys_initcall
+
+Prevents inno hdmi phy driver probe deferral
+---
+ drivers/nvmem/rockchip-efuse.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/nvmem/rockchip-efuse.c b/drivers/nvmem/rockchip-efuse.c
+index 146de9489339..0687ba8d9971 100644
+--- a/drivers/nvmem/rockchip-efuse.c
++++ b/drivers/nvmem/rockchip-efuse.c
+@@ -304,6 +304,18 @@ static struct platform_driver rockchip_efuse_driver = {
+ 	},
+ };
+ 
+-module_platform_driver(rockchip_efuse_driver);
++static int __init rockchip_efuse_init(void)
++{
++	return platform_driver_register(&rockchip_efuse_driver);
++}
++
++static void __exit rockchip_efuse_exit(void)
++{
++	return platform_driver_unregister(&rockchip_efuse_driver);
++}
++
++subsys_initcall(rockchip_efuse_init);
++module_exit(rockchip_efuse_exit);
++
+ MODULE_DESCRIPTION("rockchip_efuse driver");
+ MODULE_LICENSE("GPL v2");
+
+From f0669c647547009a35e65c5e13ad844e467f1080 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 26 Feb 2018 21:01:33 +0100
+Subject: [PATCH] clk: rockchip: fixes from BSP kernel
+
+---
+ drivers/clk/rockchip/clk-rk3328.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/clk/rockchip/clk-rk3328.c b/drivers/clk/rockchip/clk-rk3328.c
+index 2c5426607790..9bf6d51488f1 100644
+--- a/drivers/clk/rockchip/clk-rk3328.c
++++ b/drivers/clk/rockchip/clk-rk3328.c
+@@ -392,7 +392,7 @@ static struct rockchip_clk_branch rk3328_clk_branches[] __initdata = {
+ 			RK3328_CLKGATE_CON(1), 5, GFLAGS,
+ 			&rk3328_i2s1_fracmux),
+ 	GATE(SCLK_I2S1, "clk_i2s1", "i2s1_pre", CLK_SET_RATE_PARENT,
+-			RK3328_CLKGATE_CON(0), 6, GFLAGS),
++			RK3328_CLKGATE_CON(1), 6, GFLAGS),
+ 	COMPOSITE_NODIV(SCLK_I2S1_OUT, "i2s1_out", mux_i2s1out_p, 0,
+ 			RK3328_CLKSEL_CON(8), 12, 1, MFLAGS,
+ 			RK3328_CLKGATE_CON(1), 7, GFLAGS),
+@@ -458,7 +458,7 @@ static struct rockchip_clk_branch rk3328_clk_branches[] __initdata = {
+ 			RK3328_CLKSEL_CON(35), 15, 1, MFLAGS, 8, 7, DFLAGS,
+ 			RK3328_CLKGATE_CON(2), 12, GFLAGS),
+ 	COMPOSITE(SCLK_CRYPTO, "clk_crypto", mux_2plls_p, 0,
+-			RK3328_CLKSEL_CON(20), 7, 1, MFLAGS, 0, 7, DFLAGS,
++			RK3328_CLKSEL_CON(20), 7, 1, MFLAGS, 0, 5, DFLAGS,
+ 			RK3328_CLKGATE_CON(2), 4, GFLAGS),
+ 	COMPOSITE_NOMUX(SCLK_TSADC, "clk_tsadc", "clk_24m", 0,
+ 			RK3328_CLKSEL_CON(22), 0, 10, DFLAGS,
+@@ -550,15 +550,15 @@ static struct rockchip_clk_branch rk3328_clk_branches[] __initdata = {
+ 	GATE(0, "hclk_rkvenc_niu", "hclk_rkvenc", 0,
+ 			RK3328_CLKGATE_CON(25), 1, GFLAGS),
+ 	GATE(ACLK_H265, "aclk_h265", "aclk_rkvenc", 0,
+-			RK3328_CLKGATE_CON(25), 0, GFLAGS),
++			RK3328_CLKGATE_CON(25), 2, GFLAGS),
+ 	GATE(PCLK_H265, "pclk_h265", "hclk_rkvenc", 0,
+-			RK3328_CLKGATE_CON(25), 1, GFLAGS),
++			RK3328_CLKGATE_CON(25), 3, GFLAGS),
+ 	GATE(ACLK_H264, "aclk_h264", "aclk_rkvenc", 0,
+-			RK3328_CLKGATE_CON(25), 0, GFLAGS),
++			RK3328_CLKGATE_CON(25), 4, GFLAGS),
+ 	GATE(HCLK_H264, "hclk_h264", "hclk_rkvenc", 0,
+-			RK3328_CLKGATE_CON(25), 1, GFLAGS),
++			RK3328_CLKGATE_CON(25), 5, GFLAGS),
+ 	GATE(ACLK_AXISRAM, "aclk_axisram", "aclk_rkvenc", CLK_IGNORE_UNUSED,
+-			RK3328_CLKGATE_CON(25), 0, GFLAGS),
++			RK3328_CLKGATE_CON(25), 6, GFLAGS),
+ 
+ 	COMPOSITE(SCLK_VENC_CORE, "sclk_venc_core", mux_4plls_p, 0,
+ 			RK3328_CLKSEL_CON(51), 14, 2, MFLAGS, 8, 5, DFLAGS,
+@@ -663,7 +663,7 @@ static struct rockchip_clk_branch rk3328_clk_branches[] __initdata = {
+ 
+ 	/* PD_GMAC */
+ 	COMPOSITE(ACLK_GMAC, "aclk_gmac", mux_2plls_hdmiphy_p, 0,
+-			RK3328_CLKSEL_CON(35), 6, 2, MFLAGS, 0, 5, DFLAGS,
++			RK3328_CLKSEL_CON(25), 6, 2, MFLAGS, 0, 5, DFLAGS,
+ 			RK3328_CLKGATE_CON(3), 2, GFLAGS),
+ 	COMPOSITE_NOMUX(PCLK_GMAC, "pclk_gmac", "aclk_gmac", 0,
+ 			RK3328_CLKSEL_CON(25), 8, 3, DFLAGS,
+@@ -733,7 +733,7 @@ static struct rockchip_clk_branch rk3328_clk_branches[] __initdata = {
+ 
+ 	/* PD_PERI */
+ 	GATE(0, "aclk_peri_noc", "aclk_peri", CLK_IGNORE_UNUSED, RK3328_CLKGATE_CON(19), 11, GFLAGS),
+-	GATE(ACLK_USB3OTG, "aclk_usb3otg", "aclk_peri", 0, RK3328_CLKGATE_CON(19), 4, GFLAGS),
++	GATE(ACLK_USB3OTG, "aclk_usb3otg", "aclk_peri", 0, RK3328_CLKGATE_CON(19), 14, GFLAGS),
+ 
+ 	GATE(HCLK_SDMMC, "hclk_sdmmc", "hclk_peri", 0, RK3328_CLKGATE_CON(19), 0, GFLAGS),
+ 	GATE(HCLK_SDIO, "hclk_sdio", "hclk_peri", 0, RK3328_CLKGATE_CON(19), 1, GFLAGS),
+@@ -913,7 +913,7 @@ static void __init rk3328_clk_init(struct device_node *np)
+ 				     &rk3328_cpuclk_data, rk3328_cpuclk_rates,
+ 				     ARRAY_SIZE(rk3328_cpuclk_rates));
+ 
+-	rockchip_register_softrst(np, 11, reg_base + RK3328_SOFTRST_CON(0),
++	rockchip_register_softrst(np, 12, reg_base + RK3328_SOFTRST_CON(0),
+ 				  ROCKCHIP_SOFTRST_HIWORD_MASK);
+ 
+ 	rockchip_register_restart_notifier(ctx, RK3328_GLB_SRST_FST, NULL);
+
+From f8f5cb6278d07d8ff16b7e93909f28090a303fd6 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 11 Mar 2018 11:21:12 +0100
+Subject: [PATCH] drm/rockchip: gem: use DMA32 mapping
+
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_gem.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_gem.c b/drivers/gpu/drm/rockchip/rockchip_drm_gem.c
+index a8db758d523e..edd28d45fcc6 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_gem.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_gem.c
+@@ -19,6 +19,7 @@
+ 
+ #include <linux/dma-buf.h>
+ #include <linux/iommu.h>
++#include <linux/pagemap.h>
+ 
+ #include "rockchip_drm_drv.h"
+ #include "rockchip_drm_gem.h"
+@@ -318,6 +319,7 @@ static void rockchip_gem_release_object(struct rockchip_gem_object *rk_obj)
+ struct rockchip_gem_object *
+ 	rockchip_gem_alloc_object(struct drm_device *drm, unsigned int size)
+ {
++	struct address_space *mapping;
+ 	struct rockchip_gem_object *rk_obj;
+ 	struct drm_gem_object *obj;
+ 
+@@ -331,6 +333,10 @@ struct rockchip_gem_object *
+ 
+ 	drm_gem_object_init(drm, obj, size);
+ 
++	mapping = file_inode(obj->filp)->i_mapping;
++	mapping_set_gfp_mask(mapping, GFP_HIGHUSER | __GFP_RECLAIMABLE
++						   | __GFP_DMA32);
++
+ 	return rk_obj;
+ }
+ 
+
+From ec03feb93b86aa8b464ddccee43437a711d98a12 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 09:05:16 +0200
+Subject: [PATCH] drm: bridge: dw-hdmi: Fix overflow workaround for Rockchip
+ SoCs
+
+The Rockchip RK3288 SoC (v2.00a) and RK3328/RK3399 SoCs (v2.11a) have
+also been identified as needing this workaround with a single iteration.
+
+Fixes: be41fc55f1aa ("drm: bridge: dw-hdmi: Handle overflow workaround based on device version")
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index ac37c50d6c4b..be5c7b7135c9 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -1655,6 +1655,8 @@ static void dw_hdmi_clear_overflow(struct dw_hdmi *hdmi)
+ 	 * iteration for others.
+ 	 * The Amlogic Meson GX SoCs (v2.01a) have been identified as needing
+ 	 * the workaround with a single iteration.
++	 * The Rockchip RK3288 SoC (v2.00a) and RK3328/RK3399 SoCs (v2.11a) have
++	 * been identified as needing the workaround with a single iteration.
+ 	 */
+ 
+ 	switch (hdmi->version) {
+@@ -1663,7 +1665,9 @@ static void dw_hdmi_clear_overflow(struct dw_hdmi *hdmi)
+ 		break;
+ 	case 0x131a:
+ 	case 0x132a:
++	case 0x200a:
+ 	case 0x201a:
++	case 0x211a:
+ 		count = 1;
+ 		break;
+ 	default:
+
+From f2938ad615975f6861de4cd655dc9ac9b280f654 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:25 +0200
+Subject: [PATCH] arm64: dts: rockchip: fix usb regulator on rk3328-rock64
+
+---
+ .../arm64/boot/dts/rockchip/rk3328-rock64.dts | 44 ++++++-------------
+ 1 file changed, 14 insertions(+), 30 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index 6330ca9abbc0..24ffaab40028 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -32,25 +32,14 @@
+ 		vin-supply = <&vcc_io>;
+ 	};
+ 
+-	vcc_host_5v: vcc-host-5v-regulator {
++	vcc_host_5v: vcc_host1_5v: vcc_otg_5v: vcc-host-5v-regulator {
+ 		compatible = "regulator-fixed";
+-		enable-active-high;
+-		gpio = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
++		gpio = <&gpio0 RK_PA2 GPIO_ACTIVE_LOW>;
+ 		pinctrl-names = "default";
+-		pinctrl-0 = <&usb30_host_drv>;
++		pinctrl-0 = <&usb_host_drv>;
+ 		regulator-name = "vcc_host_5v";
+-		regulator-always-on;
+-		vin-supply = <&vcc_sys>;
+-	};
+-
+-	vcc_host1_5v: vcc_otg_5v: vcc-host1-5v-regulator {
+-		compatible = "regulator-fixed";
+-		enable-active-high;
+-		gpio = <&gpio0 RK_PA2 GPIO_ACTIVE_HIGH>;
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&usb20_host_drv>;
+-		regulator-name = "vcc_host1_5v";
+-		regulator-always-on;
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
+ 		vin-supply = <&vcc_sys>;
+ 	};
+ 
+@@ -261,17 +250,11 @@
+ 		};
+ 	};
+ 
+-	usb2 {
+-		usb20_host_drv: usb20-host-drv {
++	usb {
++		usb_host_drv: usb-host-drv {
+ 			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
+ 		};
+ 	};
+-
+-	usb3 {
+-		usb30_host_drv: usb30-host-drv {
+-			rockchip,pins = <0 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
+-		};
+-	};
+ };
+ 
+ &sdmmc {
+@@ -322,18 +305,19 @@
+ 
+ &u2phy {
+ 	status = "okay";
++};
+ 
+-	u2phy_host: host-port {
+-		status = "okay";
+-	};
++&u2phy_host {
++	status = "okay";
++};
+ 
+-	u2phy_otg: otg-port {
+-		status = "okay";
+-	};
++&u2phy_otg {
++	status = "okay";
+ };
+ 
+ &usb20_otg {
+ 	dr_mode = "host";
++	vbus-supply = <&vcc_otg_5v>;
+ 	status = "okay";
+ };
+ 
+
+From e2790f30116c99ab059d1545947d7e4258a9b5a1 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:25 +0200
+Subject: [PATCH] arm64: dts: rockchip: fix regulator name on rk3328-rock64
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index 24ffaab40028..59581e9ea1ed 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -193,7 +193,7 @@
+ 			};
+ 
+ 			vcc_18: LDO_REG1 {
+-				regulator-name = "vdd_18";
++				regulator-name = "vcc_18";
+ 				regulator-min-microvolt = <1800000>;
+ 				regulator-max-microvolt = <1800000>;
+ 				regulator-always-on;
+@@ -205,7 +205,7 @@
+ 			};
+ 
+ 			vcc18_emmc: LDO_REG2 {
+-				regulator-name = "vcc_18emmc";
++				regulator-name = "vcc18_emmc";
+ 				regulator-min-microvolt = <1800000>;
+ 				regulator-max-microvolt = <1800000>;
+ 				regulator-always-on;
+
+From 18356172da2a1652804709a40b6f8f89ffefb5ec Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:25 +0200
+Subject: [PATCH] arm64: dts: rockchip: fix emmc node on rk3328-rock64
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index 59581e9ea1ed..edc9babbe8d1 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -89,6 +89,7 @@
+ &emmc {
+ 	bus-width = <8>;
+ 	cap-mmc-highspeed;
++	mmc-hs200-1_8v;
+ 	non-removable;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&emmc_clk &emmc_cmd &emmc_bus8>;
+
+From 95ee02acd3d12b9a9a7e4754df1b985041400911 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:25 +0200
+Subject: [PATCH] arm64: dts: rockchip: add leds node on rk3328-rock64
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index edc9babbe8d1..c58ed376aad2 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -52,6 +52,20 @@
+ 		regulator-max-microvolt = <5000000>;
+ 	};
+ 
++	leds {
++		compatible = "gpio-leds";
++
++		standby {
++			gpios = <&rk805 0 GPIO_ACTIVE_LOW>;
++			linux,default-trigger = "heartbeat";
++		};
++
++		power {
++			gpios = <&rk805 1 GPIO_ACTIVE_LOW>;
++			linux,default-trigger = "mmc0";
++		};
++	};
++
+ 	sound {
+ 		compatible = "audio-graph-card";
+ 		label = "rockchip,rk3328";
+@@ -133,6 +147,8 @@
+ 		interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
+ 		#clock-cells = <1>;
+ 		clock-output-names = "xin32k", "rk805-clkout2";
++		gpio-controller;
++		#gpio-cells = <2>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&pmic_int_l>;
+ 		rockchip,system-power-controller;
+
+From 943c293dca907aa721700a8af2a011300e6d61a5 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:25 +0200
+Subject: [PATCH] arm64: dts: rockchip: add ir-receiver node on rk3328-rock64
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index c58ed376aad2..209005b121fd 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -66,6 +66,13 @@
+ 		};
+ 	};
+ 
++	ir-receiver {
++		compatible = "gpio-ir-receiver";
++		gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_LOW>;
++		pinctrl-0 = <&ir_int>;
++		pinctrl-names = "default";
++	};
++
+ 	sound {
+ 		compatible = "audio-graph-card";
+ 		label = "rockchip,rk3328";
+@@ -261,6 +268,12 @@
+ };
+ 
+ &pinctrl {
++	ir {
++		ir_int: ir-int {
++			rockchip,pins = <2 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
+ 	pmic {
+ 		pmic_int_l: pmic-int-l {
+ 			rockchip,pins = <2 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;
+
+From 6ba42e1925df585975f5b62d8df8e3d4e71dd581 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: add hdmi-sound node on rk3328-rock64
+
+---
+ .../arm64/boot/dts/rockchip/rk3328-rock64.dts | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index 209005b121fd..9b73f0e905e9 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -73,6 +73,19 @@
+ 		pinctrl-names = "default";
+ 	};
+ 
++	hdmi-sound {
++		compatible = "simple-audio-card";
++		simple-audio-card,format = "i2s";
++		simple-audio-card,mclk-fs = <128>;
++		simple-audio-card,name = "HDMI";
++		simple-audio-card,cpu {
++			sound-dai = <&i2s0>;
++		};
++		simple-audio-card,codec {
++			sound-dai = <&hdmi>;
++		};
++	};
++
+ 	sound {
+ 		compatible = "audio-graph-card";
+ 		label = "rockchip,rk3328";
+@@ -137,6 +150,7 @@
+ };
+ 
+ &hdmi {
++	#sound-dai-cells = <0>;
+ 	status = "okay";
+ };
+ 
+@@ -255,6 +269,11 @@
+ 	};
+ };
+ 
++&i2s0 {
++	#sound-dai-cells = <0>;
++	status = "okay";
++};
++
+ &io_domains {
+ 	status = "okay";
+ 
+
+From 7962eecd931865aa15f9369db393becd51818041 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Wed, 31 Oct 2018 19:54:43 +0100
+Subject: [PATCH] arm64: dts: rockchip: update spdif-sound node on
+ rk3328-rock64
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index 9b73f0e905e9..90e22d047ddf 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -86,9 +86,9 @@
+ 		};
+ 	};
+ 
+-	sound {
++	spdif-sound {
+ 		compatible = "audio-graph-card";
+-		label = "rockchip,rk3328";
++		label = "SPDIF";
+ 		dais = <&spdif_p0>;
+ 	};
+ 
+
+From 028b94d9f6214b5afadd489dfaf835d17c217450 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: enable display nodes on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index 99d0d9912950..ade64d70c6e4 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -112,6 +112,14 @@
+ 	status = "okay";
+ };
+ 
++&hdmi {
++	status = "okay";
++};
++
++&hdmiphy {
++	status = "okay";
++};
++
+ &i2c1 {
+ 	status = "okay";
+ 
+@@ -295,3 +303,11 @@
+ &usb_host0_ohci {
+ 	status = "okay";
+ };
++
++&vop {
++	status = "okay";
++};
++
++&vop_mmu {
++	status = "okay";
++};
+
+From 38ed46b0880cdd4f19ceabbcc0df4c3fbe78ff75 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: fix usb regulator on rk3328-roc-cc
+
+---
+ .../arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index ade64d70c6e4..99ed7f8c0470 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -54,14 +54,15 @@
+ 		vin-supply = <&vcc_sys>;
+ 	};
+ 
+-	vcc_host1_5v: vcc_otg_5v: vcc-host1-5v-regulator {
++	vcc_host_5v: vcc_host1_5v: vcc_otg_5v: vcc-host-5v-regulator {
+ 		compatible = "regulator-fixed";
+ 		enable-active-high;
+ 		gpio = <&gpio1 RK_PD2 GPIO_ACTIVE_HIGH>;
+ 		pinctrl-names = "default";
+-		pinctrl-0 = <&usb20_host_drv>;
+-		regulator-name = "vcc_host1_5v";
+-		regulator-always-on;
++		pinctrl-0 = <&usb_host_drv>;
++		regulator-name = "vcc_host_5v";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
+ 		vin-supply = <&vcc_sys>;
+ 	};
+ 
+@@ -248,8 +249,8 @@
+ 		};
+ 	};
+ 
+-	usb2 {
+-		usb20_host_drv: usb20-host-drv {
++	usb {
++		usb_host_drv: usb-host-drv {
+ 			rockchip,pins = <1 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
+ 		};
+ 	};
+@@ -288,11 +289,9 @@
+ 	status = "okay";
+ };
+ 
+-&uart2 {
+-	status = "okay";
+-};
+-
+ &usb20_otg {
++	dr_mode = "host";
++	vbus-supply = <&vcc_otg_5v>;
+ 	status = "okay";
+ };
+ 
+
+From 46b789db83e6f268870c99f1c5962e0af90fd8ce Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: fix sys regulator on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index 99ed7f8c0470..381b1e0a6a85 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -21,15 +21,6 @@
+ 		#clock-cells = <0>;
+ 	};
+ 
+-	dc_12v: dc-12v {
+-		compatible = "regulator-fixed";
+-		regulator-name = "dc_12v";
+-		regulator-always-on;
+-		regulator-boot-on;
+-		regulator-min-microvolt = <12000000>;
+-		regulator-max-microvolt = <12000000>;
+-	};
+-
+ 	vcc_sd: sdmmc-regulator {
+ 		compatible = "regulator-fixed";
+ 		gpio = <&gpio0 RK_PD6 GPIO_ACTIVE_LOW>;
+@@ -73,7 +64,6 @@
+ 		regulator-boot-on;
+ 		regulator-min-microvolt = <5000000>;
+ 		regulator-max-microvolt = <5000000>;
+-		vin-supply = <&dc_12v>;
+ 	};
+ 
+ 	vcc_phy: vcc-phy-regulator {
+
+From ad3b4bc675acbf1289b2003705b43266a7965384 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: fix gmac regulator on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index 381b1e0a6a85..737dc92ef23f 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -65,13 +65,6 @@
+ 		regulator-min-microvolt = <5000000>;
+ 		regulator-max-microvolt = <5000000>;
+ 	};
+-
+-	vcc_phy: vcc-phy-regulator {
+-		compatible = "regulator-fixed";
+-		regulator-name = "vcc_phy";
+-		regulator-always-on;
+-		regulator-boot-on;
+-	};
+ };
+ 
+ &cpu0 {
+@@ -91,7 +84,7 @@
+ 	assigned-clocks = <&cru SCLK_MAC2IO>, <&cru SCLK_MAC2IO_EXT>;
+ 	assigned-clock-parents = <&gmac_clkin>, <&gmac_clkin>;
+ 	clock_in_out = "input";
+-	phy-supply = <&vcc_phy>;
++	phy-supply = <&vcc_io>;
+ 	phy-mode = "rgmii";
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&rgmiim1_pins>;
+
+From aad7cc7e325ef81344026e497c1c58f3a5e23324 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: fix cpu regulator on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index 737dc92ef23f..cf76a4bbbb2d 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -71,6 +71,18 @@
+ 	cpu-supply = <&vdd_arm>;
+ };
+ 
++&cpu1 {
++	cpu-supply = <&vdd_arm>;
++};
++
++&cpu2 {
++	cpu-supply = <&vdd_arm>;
++};
++
++&cpu3 {
++	cpu-supply = <&vdd_arm>;
++};
++
+ &emmc {
+ 	bus-width = <8>;
+ 	cap-mmc-highspeed;
+@@ -133,6 +145,7 @@
+ 				regulator-name = "vdd_logic";
+ 				regulator-min-microvolt = <712500>;
+ 				regulator-max-microvolt = <1450000>;
++				regulator-ramp-delay = <12500>;
+ 				regulator-always-on;
+ 				regulator-boot-on;
+ 				regulator-state-mem {
+@@ -145,6 +158,7 @@
+ 				regulator-name = "vdd_arm";
+ 				regulator-min-microvolt = <712500>;
+ 				regulator-max-microvolt = <1450000>;
++				regulator-ramp-delay = <12500>;
+ 				regulator-always-on;
+ 				regulator-boot-on;
+ 				regulator-state-mem {
+
+From ff8659f35011a120ae960b8cad25b86254c15bf0 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: fix emmc node on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index cf76a4bbbb2d..edbb3b985c51 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -86,9 +86,12 @@
+ &emmc {
+ 	bus-width = <8>;
+ 	cap-mmc-highspeed;
++	mmc-hs200-1_8v;
+ 	non-removable;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&emmc_clk &emmc_cmd &emmc_bus8>;
++	vmmc-supply = <&vcc_io>;
++	vqmmc-supply = <&vcc18_emmc>;
+ 	status = "okay";
+ };
+ 
+
+From c0aa8bb017d1bfff003a7e0cfb243ca15fd4befd Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: enable uart2 node on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index edbb3b985c51..d11275e44ba7 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -277,6 +277,10 @@
+ 	status = "okay";
+ };
+ 
++&uart2 {
++	status = "okay";
++};
++
+ &u2phy {
+ 	status = "okay";
+ };
+
+From b41463d49b9a5a011939f59ab189fe1e534fdc29 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: add leds node on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index d11275e44ba7..5af011ef3cf1 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -65,6 +65,20 @@
+ 		regulator-min-microvolt = <5000000>;
+ 		regulator-max-microvolt = <5000000>;
+ 	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		power {
++			gpios = <&rk805 1 GPIO_ACTIVE_LOW>;
++			linux,default-trigger = "heartbeat";
++		};
++
++		user {
++			gpios = <&rk805 0 GPIO_ACTIVE_LOW>;
++			linux,default-trigger = "mmc0";
++		};
++	};
+ };
+ 
+ &cpu0 {
+
+From c0352d6458b740da02c411b1886f36180556e096 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: add ir-receiver node on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index 5af011ef3cf1..8318b4be42e7 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -79,6 +79,13 @@
+ 			linux,default-trigger = "mmc0";
+ 		};
+ 	};
++
++	ir-receiver {
++		compatible = "gpio-ir-receiver";
++		gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_LOW>;
++		pinctrl-0 = <&ir_int>;
++		pinctrl-names = "default";
++	};
+ };
+ 
+ &cpu0 {
+@@ -257,6 +264,12 @@
+ };
+ 
+ &pinctrl {
++	ir {
++		ir_int: ir-int {
++			rockchip,pins = <2 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
+ 	pmic {
+ 		pmic_int_l: pmic-int-l {
+ 			rockchip,pins = <1 RK_PD0 RK_FUNC_GPIO &pcfg_pull_up>;
+
+From cba0050be7b9ee406ae9b7a39fb4916cdd718571 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] arm64: dts: rockchip: add hdmi-sound node on rk3328-roc-cc
+
+---
+ .../arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index 8318b4be42e7..b4690d9926c1 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -86,6 +86,19 @@
+ 		pinctrl-0 = <&ir_int>;
+ 		pinctrl-names = "default";
+ 	};
++
++	hdmi-sound {
++		compatible = "simple-audio-card";
++		simple-audio-card,format = "i2s";
++		simple-audio-card,mclk-fs = <128>;
++		simple-audio-card,name = "HDMI";
++		simple-audio-card,cpu {
++			sound-dai = <&i2s0>;
++		};
++		simple-audio-card,codec {
++			sound-dai = <&hdmi>;
++		};
++	};
+ };
+ 
+ &cpu0 {
+@@ -133,6 +146,7 @@
+ };
+ 
+ &hdmi {
++	#sound-dai-cells = <0>;
+ 	status = "okay";
+ };
+ 
+@@ -251,6 +265,11 @@
+ 	};
+ };
+ 
++&i2s0 {
++	#sound-dai-cells = <0>;
++	status = "okay";
++};
++
+ &io_domains {
+ 	status = "okay";
+ 
+
+From 4497c7fefb5fa2a3292b4c23afb54f85f0c9387f Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] WIP: arm64: configs: add rockchip defconfig
+
+---
+ arch/arm64/configs/rockchip_defconfig | 484 ++++++++++++++++++++++++++
+ 1 file changed, 484 insertions(+)
+ create mode 100644 arch/arm64/configs/rockchip_defconfig
+
+diff --git a/arch/arm64/configs/rockchip_defconfig b/arch/arm64/configs/rockchip_defconfig
+new file mode 100644
+index 000000000000..454b61d4cc95
+--- /dev/null
++++ b/arch/arm64/configs/rockchip_defconfig
+@@ -0,0 +1,484 @@
++CONFIG_SYSVIPC=y
++CONFIG_POSIX_MQUEUE=y
++CONFIG_NO_HZ=y
++CONFIG_HIGH_RES_TIMERS=y
++CONFIG_IRQ_TIME_ACCOUNTING=y
++CONFIG_BSD_PROCESS_ACCT=y
++CONFIG_BSD_PROCESS_ACCT_V3=y
++CONFIG_TASKSTATS=y
++CONFIG_TASK_DELAY_ACCT=y
++CONFIG_TASK_XACCT=y
++CONFIG_TASK_IO_ACCOUNTING=y
++CONFIG_IKCONFIG=y
++CONFIG_IKCONFIG_PROC=y
++CONFIG_NUMA_BALANCING=y
++CONFIG_MEMCG=y
++CONFIG_MEMCG_SWAP=y
++CONFIG_BLK_CGROUP=y
++CONFIG_CGROUP_PIDS=y
++CONFIG_CGROUP_HUGETLB=y
++CONFIG_CPUSETS=y
++CONFIG_CGROUP_DEVICE=y
++CONFIG_CGROUP_CPUACCT=y
++CONFIG_CGROUP_PERF=y
++CONFIG_CGROUP_BPF=y
++CONFIG_USER_NS=y
++CONFIG_SCHED_AUTOGROUP=y
++CONFIG_BLK_DEV_INITRD=y
++CONFIG_KALLSYMS_ALL=y
++CONFIG_BPF_SYSCALL=y
++# CONFIG_COMPAT_BRK is not set
++CONFIG_PROFILING=y
++CONFIG_JUMP_LABEL=y
++CONFIG_MODULES=y
++CONFIG_MODULE_UNLOAD=y
++# CONFIG_IOSCHED_DEADLINE is not set
++CONFIG_ARCH_ROCKCHIP=y
++CONFIG_PCI=y
++CONFIG_PCI_IOV=y
++CONFIG_HOTPLUG_PCI=y
++CONFIG_HOTPLUG_PCI_ACPI=y
++CONFIG_PCI_HOST_GENERIC=y
++CONFIG_PCIE_ROCKCHIP=m
++CONFIG_ARM64_VA_BITS_48=y
++CONFIG_SCHED_MC=y
++CONFIG_NR_CPUS=4
++CONFIG_NUMA=y
++CONFIG_PREEMPT_VOLUNTARY=y
++CONFIG_HZ_300=y
++CONFIG_KSM=y
++CONFIG_MEMORY_FAILURE=y
++CONFIG_TRANSPARENT_HUGEPAGE=y
++CONFIG_CMA=y
++CONFIG_SECCOMP=y
++# CONFIG_EFI is not set
++# CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS is not set
++CONFIG_COMPAT=y
++CONFIG_HIBERNATION=y
++CONFIG_WQ_POWER_EFFICIENT_DEFAULT=y
++CONFIG_ARM_CPUIDLE=y
++CONFIG_CPU_FREQ=y
++CONFIG_CPU_FREQ_GOV_POWERSAVE=y
++CONFIG_CPU_FREQ_GOV_USERSPACE=y
++CONFIG_CPU_FREQ_GOV_ONDEMAND=y
++CONFIG_CPU_FREQ_GOV_CONSERVATIVE=y
++CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y
++CONFIG_CPUFREQ_DT=y
++CONFIG_ACPI_CPPC_CPUFREQ=m
++CONFIG_ARM_BIG_LITTLE_CPUFREQ=y
++CONFIG_ARM_SCPI_CPUFREQ=y
++CONFIG_NET=y
++CONFIG_PACKET=y
++CONFIG_UNIX=y
++CONFIG_INET=y
++CONFIG_IP_MULTICAST=y
++CONFIG_IP_PNP=y
++CONFIG_IP_PNP_DHCP=y
++CONFIG_IP_PNP_BOOTP=y
++CONFIG_IPV6=m
++CONFIG_NETFILTER=y
++CONFIG_NF_CONNTRACK=m
++CONFIG_NF_CONNTRACK_EVENTS=y
++CONFIG_NETFILTER_XT_TARGET_CHECKSUM=m
++CONFIG_NETFILTER_XT_TARGET_LOG=m
++CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=m
++CONFIG_NETFILTER_XT_MATCH_CONNTRACK=m
++CONFIG_NF_CONNTRACK_IPV4=m
++CONFIG_IP_NF_IPTABLES=m
++CONFIG_IP_NF_FILTER=m
++CONFIG_IP_NF_TARGET_REJECT=m
++CONFIG_IP_NF_NAT=m
++CONFIG_IP_NF_TARGET_MASQUERADE=m
++CONFIG_IP_NF_MANGLE=m
++CONFIG_NF_CONNTRACK_IPV6=m
++CONFIG_IP6_NF_IPTABLES=m
++CONFIG_IP6_NF_FILTER=m
++CONFIG_IP6_NF_TARGET_REJECT=m
++CONFIG_IP6_NF_MANGLE=m
++CONFIG_IP6_NF_NAT=m
++CONFIG_IP6_NF_TARGET_MASQUERADE=m
++CONFIG_BRIDGE=m
++CONFIG_BPF_JIT=y
++CONFIG_BT=m
++CONFIG_BT_HIDP=m
++# CONFIG_BT_HS is not set
++# CONFIG_BT_LE is not set
++CONFIG_BT_LEDS=y
++# CONFIG_BT_DEBUGFS is not set
++CONFIG_BT_HCIUART=m
++CONFIG_BT_HCIUART_LL=y
++CONFIG_CFG80211=m
++CONFIG_MAC80211=m
++CONFIG_MAC80211_LEDS=y
++CONFIG_RFKILL=m
++CONFIG_NET_9P=y
++CONFIG_NET_9P_VIRTIO=y
++CONFIG_DEVTMPFS=y
++CONFIG_DEVTMPFS_MOUNT=y
++CONFIG_DMA_CMA=y
++CONFIG_MTD=y
++CONFIG_MTD_BLOCK=y
++CONFIG_MTD_M25P80=y
++CONFIG_MTD_SPI_NOR=y
++CONFIG_BLK_DEV_LOOP=y
++CONFIG_BLK_DEV_NBD=m
++CONFIG_VIRTIO_BLK=y
++CONFIG_BLK_DEV_NVME=m
++CONFIG_SRAM=y
++CONFIG_EEPROM_AT25=m
++# CONFIG_SCSI_PROC_FS is not set
++CONFIG_BLK_DEV_SD=y
++CONFIG_ATA=y
++CONFIG_SATA_AHCI=y
++CONFIG_SATA_AHCI_PLATFORM=y
++CONFIG_AHCI_CEVA=y
++CONFIG_AHCI_QORIQ=y
++CONFIG_SATA_SIL24=y
++CONFIG_PATA_PLATFORM=y
++CONFIG_PATA_OF_PLATFORM=y
++CONFIG_NETDEVICES=y
++CONFIG_DUMMY=m
++CONFIG_MACVLAN=m
++CONFIG_MACVTAP=m
++CONFIG_VXLAN=m
++CONFIG_TUN=m
++CONFIG_VETH=m
++CONFIG_VIRTIO_NET=y
++# CONFIG_NET_VENDOR_3COM is not set
++# CONFIG_NET_VENDOR_ADAPTEC is not set
++# CONFIG_NET_VENDOR_AGERE is not set
++# CONFIG_NET_VENDOR_ALACRITECH is not set
++# CONFIG_NET_VENDOR_ALTEON is not set
++# CONFIG_NET_VENDOR_AMAZON is not set
++# CONFIG_NET_VENDOR_AMD is not set
++# CONFIG_NET_VENDOR_AQUANTIA is not set
++# CONFIG_NET_VENDOR_ARC is not set
++# CONFIG_NET_VENDOR_ATHEROS is not set
++# CONFIG_NET_CADENCE is not set
++# CONFIG_NET_VENDOR_BROADCOM is not set
++# CONFIG_NET_VENDOR_BROCADE is not set
++# CONFIG_NET_VENDOR_CAVIUM is not set
++# CONFIG_NET_VENDOR_CHELSIO is not set
++# CONFIG_NET_VENDOR_CISCO is not set
++# CONFIG_NET_VENDOR_CORTINA is not set
++# CONFIG_NET_VENDOR_DEC is not set
++# CONFIG_NET_VENDOR_DLINK is not set
++# CONFIG_NET_VENDOR_EMULEX is not set
++# CONFIG_NET_VENDOR_EZCHIP is not set
++# CONFIG_NET_VENDOR_EXAR is not set
++# CONFIG_NET_VENDOR_HISILICON is not set
++# CONFIG_NET_VENDOR_HP is not set
++# CONFIG_NET_VENDOR_HUAWEI is not set
++# CONFIG_NET_VENDOR_INTEL is not set
++# CONFIG_NET_VENDOR_MARVELL is not set
++# CONFIG_NET_VENDOR_MELLANOX is not set
++# CONFIG_NET_VENDOR_MICREL is not set
++# CONFIG_NET_VENDOR_MICROCHIP is not set
++# CONFIG_NET_VENDOR_MYRI is not set
++# CONFIG_NET_VENDOR_NATSEMI is not set
++# CONFIG_NET_VENDOR_NETRONOME is not set
++# CONFIG_NET_VENDOR_NVIDIA is not set
++# CONFIG_NET_VENDOR_OKI is not set
++# CONFIG_NET_PACKET_ENGINE is not set
++# CONFIG_NET_VENDOR_QLOGIC is not set
++# CONFIG_NET_VENDOR_QUALCOMM is not set
++# CONFIG_NET_VENDOR_REALTEK is not set
++# CONFIG_NET_VENDOR_RENESAS is not set
++# CONFIG_NET_VENDOR_RDC is not set
++# CONFIG_NET_VENDOR_ROCKER is not set
++# CONFIG_NET_VENDOR_SAMSUNG is not set
++# CONFIG_NET_VENDOR_SEEQ is not set
++# CONFIG_NET_VENDOR_SILAN is not set
++# CONFIG_NET_VENDOR_SIS is not set
++# CONFIG_NET_VENDOR_SOLARFLARE is not set
++# CONFIG_NET_VENDOR_SMSC is not set
++# CONFIG_NET_VENDOR_SOCIONEXT is not set
++CONFIG_STMMAC_ETH=y
++# CONFIG_NET_VENDOR_SUN is not set
++# CONFIG_NET_VENDOR_TEHUTI is not set
++# CONFIG_NET_VENDOR_TI is not set
++# CONFIG_NET_VENDOR_VIA is not set
++# CONFIG_NET_VENDOR_WIZNET is not set
++# CONFIG_NET_VENDOR_SYNOPSYS is not set
++CONFIG_MDIO_BUS_MUX_MMIOREG=y
++CONFIG_REALTEK_PHY=y
++CONFIG_ROCKCHIP_PHY=y
++CONFIG_USB_PEGASUS=m
++CONFIG_USB_RTL8150=m
++CONFIG_USB_RTL8152=m
++CONFIG_USB_USBNET=m
++CONFIG_USB_NET_DM9601=m
++CONFIG_USB_NET_SR9800=m
++CONFIG_USB_NET_SMSC75XX=m
++CONFIG_USB_NET_SMSC95XX=m
++CONFIG_USB_NET_PLUSB=m
++CONFIG_USB_NET_MCS7830=m
++CONFIG_BRCMFMAC=m
++CONFIG_WL18XX=m
++CONFIG_WLCORE_SDIO=m
++CONFIG_INPUT_EVDEV=y
++CONFIG_KEYBOARD_ADC=m
++CONFIG_KEYBOARD_GPIO=y
++CONFIG_KEYBOARD_CROS_EC=y
++CONFIG_INPUT_MISC=y
++CONFIG_INPUT_UINPUT=m
++CONFIG_INPUT_RK805_PWRKEY=y
++CONFIG_SERIO_SERPORT=m
++CONFIG_SERIO_AMBAKMI=y
++# CONFIG_LEGACY_PTYS is not set
++CONFIG_SERIAL_8250=y
++CONFIG_SERIAL_8250_CONSOLE=y
++CONFIG_SERIAL_8250_NR_UARTS=5
++CONFIG_SERIAL_8250_RUNTIME_UARTS=5
++CONFIG_SERIAL_8250_EXTENDED=y
++CONFIG_SERIAL_8250_MANY_PORTS=y
++CONFIG_SERIAL_8250_SHARE_IRQ=y
++CONFIG_SERIAL_8250_DW=y
++CONFIG_SERIAL_OF_PLATFORM=y
++CONFIG_SERIAL_XILINX_PS_UART=y
++CONFIG_SERIAL_XILINX_PS_UART_CONSOLE=y
++CONFIG_SERIAL_DEV_BUS=y
++CONFIG_VIRTIO_CONSOLE=y
++CONFIG_I2C_CHARDEV=y
++CONFIG_I2C_MUX=y
++CONFIG_I2C_MUX_PCA954x=y
++CONFIG_I2C_DESIGNWARE_PLATFORM=y
++CONFIG_I2C_RK3X=y
++CONFIG_I2C_CROS_EC_TUNNEL=y
++CONFIG_SPI=y
++CONFIG_SPI_PL022=y
++CONFIG_SPI_ROCKCHIP=y
++CONFIG_SPI_SPIDEV=m
++CONFIG_SPMI=y
++CONFIG_PINCTRL_MAX77620=y
++CONFIG_PINCTRL_RK805=y
++CONFIG_GPIO_DWAPB=y
++CONFIG_GPIO_PL061=y
++CONFIG_GPIO_PCA953X=y
++CONFIG_GPIO_PCA953X_IRQ=y
++CONFIG_GPIO_MAX77620=y
++CONFIG_POWER_RESET_SYSCON=y
++CONFIG_SYSCON_REBOOT_MODE=y
++CONFIG_BATTERY_BQ27XXX=y
++CONFIG_SENSORS_ARM_SCPI=y
++CONFIG_SENSORS_LM90=m
++CONFIG_SENSORS_INA2XX=m
++CONFIG_THERMAL_GOV_POWER_ALLOCATOR=y
++CONFIG_CPU_THERMAL=y
++CONFIG_DEVFREQ_THERMAL=y
++CONFIG_THERMAL_EMULATION=y
++CONFIG_ROCKCHIP_THERMAL=y
++CONFIG_WATCHDOG=y
++CONFIG_DW_WATCHDOG=y
++CONFIG_MFD_CROS_EC=y
++CONFIG_MFD_CROS_EC_I2C=y
++CONFIG_MFD_CROS_EC_SPI=y
++CONFIG_MFD_HI6421_PMIC=y
++CONFIG_MFD_MAX77620=y
++CONFIG_MFD_RK808=y
++CONFIG_MFD_SEC_CORE=y
++CONFIG_REGULATOR=y
++CONFIG_REGULATOR_FIXED_VOLTAGE=y
++CONFIG_REGULATOR_GPIO=y
++CONFIG_REGULATOR_PWM=y
++CONFIG_REGULATOR_RK808=y
++CONFIG_RC_CORE=y
++CONFIG_LIRC=y
++CONFIG_RC_DEVICES=y
++CONFIG_IR_GPIO_CIR=y
++CONFIG_MEDIA_SUPPORT=m
++CONFIG_MEDIA_CAMERA_SUPPORT=y
++CONFIG_MEDIA_ANALOG_TV_SUPPORT=y
++CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
++CONFIG_MEDIA_CEC_SUPPORT=y
++CONFIG_MEDIA_CEC_RC=y
++CONFIG_MEDIA_CONTROLLER=y
++CONFIG_VIDEO_V4L2_SUBDEV_API=y
++# CONFIG_DVB_NET is not set
++CONFIG_MEDIA_USB_SUPPORT=y
++# CONFIG_USB_GSPCA is not set
++CONFIG_USB_PULSE8_CEC=m
++CONFIG_USB_RAINSHADOW_CEC=m
++CONFIG_V4L_MEM2MEM_DRIVERS=y
++CONFIG_VIDEO_MEM2MEM_DEINTERLACE=m
++CONFIG_VIDEO_ROCKCHIP_RGA=m
++CONFIG_CEC_PLATFORM_DRIVERS=y
++CONFIG_DRM=y
++CONFIG_DRM_ROCKCHIP=y
++CONFIG_ROCKCHIP_DW_HDMI=y
++CONFIG_DRM_DW_HDMI_I2S_AUDIO=y
++CONFIG_DRM_DW_HDMI_CEC=y
++CONFIG_FB_ARMCLCD=y
++CONFIG_BACKLIGHT_GENERIC=m
++CONFIG_BACKLIGHT_PWM=m
++CONFIG_BACKLIGHT_LP855X=m
++CONFIG_SOUND=y
++CONFIG_SND=y
++# CONFIG_SND_PCI is not set
++CONFIG_SND_SOC=y
++CONFIG_SND_SOC_ROCKCHIP=m
++CONFIG_SND_SOC_ROCKCHIP_PDM=m
++CONFIG_SND_SOC_ROCKCHIP_SPDIF=m
++CONFIG_SND_SOC_ROCKCHIP_MAX98090=m
++CONFIG_SND_SOC_ROCKCHIP_RT5645=m
++CONFIG_SND_SOC_RK3288_HDMI_ANALOG=m
++CONFIG_SND_SOC_RK3399_GRU_SOUND=m
++CONFIG_SND_SOC_AK4613=m
++CONFIG_SND_SIMPLE_CARD=y
++CONFIG_USB=y
++CONFIG_USB_ANNOUNCE_NEW_DEVICES=y
++CONFIG_USB_OTG=y
++CONFIG_USB_XHCI_HCD=y
++CONFIG_USB_EHCI_HCD=y
++CONFIG_USB_EHCI_HCD_PLATFORM=y
++CONFIG_USB_OHCI_HCD=y
++CONFIG_USB_OHCI_HCD_PLATFORM=y
++CONFIG_USB_ACM=y
++CONFIG_USB_STORAGE=y
++CONFIG_USB_MUSB_HDRC=y
++CONFIG_USB_DWC3=y
++CONFIG_USB_DWC2=y
++CONFIG_USB_CHIPIDEA=y
++CONFIG_USB_CHIPIDEA_UDC=y
++CONFIG_USB_CHIPIDEA_HOST=y
++CONFIG_USB_CHIPIDEA_ULPI=y
++CONFIG_USB_ISP1760=y
++CONFIG_USB_HSIC_USB3503=y
++CONFIG_NOP_USB_XCEIV=y
++CONFIG_USB_ULPI=y
++CONFIG_USB_GADGET=y
++CONFIG_USB_ULPI_BUS=y
++CONFIG_MMC=y
++CONFIG_MMC_BLOCK_MINORS=32
++CONFIG_MMC_ARMMMCI=y
++CONFIG_MMC_SDHCI=y
++CONFIG_MMC_SDHCI_ACPI=y
++CONFIG_MMC_SDHCI_PLTFM=y
++CONFIG_MMC_SDHCI_OF_ARASAN=y
++CONFIG_MMC_SDHCI_CADENCE=y
++CONFIG_MMC_SPI=y
++CONFIG_MMC_DW=y
++CONFIG_MMC_DW_K3=y
++CONFIG_MMC_DW_ROCKCHIP=y
++CONFIG_MMC_SDHCI_XENON=y
++CONFIG_NEW_LEDS=y
++CONFIG_LEDS_CLASS=y
++CONFIG_LEDS_GPIO=y
++CONFIG_LEDS_PWM=y
++CONFIG_LEDS_SYSCON=y
++CONFIG_LEDS_TRIGGER_DISK=y
++CONFIG_LEDS_TRIGGER_HEARTBEAT=y
++CONFIG_LEDS_TRIGGER_CPU=y
++CONFIG_LEDS_TRIGGER_DEFAULT_ON=y
++CONFIG_LEDS_TRIGGER_PANIC=y
++CONFIG_EDAC=y
++CONFIG_RTC_CLASS=y
++CONFIG_RTC_DRV_MAX77686=y
++CONFIG_RTC_DRV_RK808=y
++CONFIG_RTC_DRV_S5M=y
++CONFIG_RTC_DRV_DS3232=y
++CONFIG_RTC_DRV_PL031=y
++CONFIG_DMADEVICES=y
++CONFIG_MV_XOR_V2=y
++CONFIG_PL330_DMA=y
++CONFIG_VFIO=y
++CONFIG_VFIO_PCI=y
++CONFIG_VIRTIO_PCI=y
++CONFIG_VIRTIO_BALLOON=y
++CONFIG_VIRTIO_MMIO=y
++CONFIG_COMMON_CLK_RK808=y
++CONFIG_COMMON_CLK_SCPI=y
++CONFIG_COMMON_CLK_CS2000_CP=y
++CONFIG_COMMON_CLK_S2MPS11=y
++CONFIG_CLK_QORIQ=y
++CONFIG_COMMON_CLK_PWM=y
++CONFIG_HWSPINLOCK=y
++CONFIG_ARM_MHU=y
++CONFIG_PLATFORM_MHU=y
++CONFIG_ROCKCHIP_IOMMU=y
++CONFIG_ARM_SMMU=y
++CONFIG_ARM_SMMU_V3=y
++CONFIG_ROCKCHIP_PM_DOMAINS=y
++CONFIG_PM_DEVFREQ=y
++CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND=y
++CONFIG_DEVFREQ_GOV_PERFORMANCE=y
++CONFIG_DEVFREQ_GOV_POWERSAVE=y
++CONFIG_DEVFREQ_GOV_USERSPACE=y
++CONFIG_DEVFREQ_GOV_PASSIVE=y
++CONFIG_PM_DEVFREQ_EVENT=y
++CONFIG_EXTCON_USB_GPIO=y
++CONFIG_IIO=y
++CONFIG_ROCKCHIP_SARADC=y
++CONFIG_PWM=y
++CONFIG_PWM_CROS_EC=m
++CONFIG_PWM_ROCKCHIP=y
++CONFIG_PHY_ROCKCHIP_DP=y
++CONFIG_PHY_ROCKCHIP_EMMC=y
++CONFIG_PHY_ROCKCHIP_INNO_HDMI=y
++CONFIG_PHY_ROCKCHIP_INNO_USB2=y
++CONFIG_PHY_ROCKCHIP_PCIE=m
++CONFIG_PHY_ROCKCHIP_TYPEC=y
++CONFIG_PHY_ROCKCHIP_USB=y
++CONFIG_ROCKCHIP_EFUSE=y
++CONFIG_TEE=y
++CONFIG_OPTEE=y
++CONFIG_ARM_SCPI_PROTOCOL=y
++CONFIG_ACPI=y
++CONFIG_ACPI_HED=y
++CONFIG_EXT2_FS=y
++CONFIG_EXT3_FS=y
++CONFIG_EXT4_FS_POSIX_ACL=y
++CONFIG_BTRFS_FS=m
++CONFIG_BTRFS_FS_POSIX_ACL=y
++CONFIG_FANOTIFY=y
++CONFIG_FANOTIFY_ACCESS_PERMISSIONS=y
++CONFIG_QUOTA=y
++CONFIG_AUTOFS4_FS=y
++CONFIG_FUSE_FS=m
++CONFIG_CUSE=m
++CONFIG_OVERLAY_FS=m
++CONFIG_VFAT_FS=y
++CONFIG_TMPFS=y
++CONFIG_TMPFS_POSIX_ACL=y
++CONFIG_HUGETLBFS=y
++CONFIG_CONFIGFS_FS=y
++CONFIG_SQUASHFS=y
++CONFIG_SQUASHFS_LZ4=y
++CONFIG_SQUASHFS_LZO=y
++CONFIG_SQUASHFS_XZ=y
++CONFIG_SQUASHFS_ZSTD=y
++CONFIG_PSTORE=y
++CONFIG_NFS_FS=y
++CONFIG_NFS_V4=y
++CONFIG_NFS_V4_1=y
++CONFIG_NFS_V4_2=y
++CONFIG_ROOT_NFS=y
++CONFIG_9P_FS=y
++CONFIG_NLS_CODEPAGE_437=y
++CONFIG_NLS_ISO8859_1=y
++CONFIG_PRINTK_TIME=y
++CONFIG_DYNAMIC_DEBUG=y
++CONFIG_DEBUG_INFO=y
++CONFIG_DEBUG_FS=y
++CONFIG_MAGIC_SYSRQ=y
++CONFIG_DEBUG_KERNEL=y
++# CONFIG_SCHED_DEBUG is not set
++# CONFIG_RCU_TRACE is not set
++# CONFIG_FTRACE is not set
++# CONFIG_RUNTIME_TESTING_MENU is not set
++CONFIG_MEMTEST=y
++CONFIG_SECURITY=y
++CONFIG_CRYPTO_ECHAINIV=y
++CONFIG_CRYPTO_ANSI_CPRNG=y
++CONFIG_CRYPTO_USER_API_HASH=y
++CONFIG_CRYPTO_USER_API_SKCIPHER=y
++CONFIG_ARM64_CRYPTO=y
++CONFIG_CRYPTO_SHA512_ARM64=m
++CONFIG_CRYPTO_SHA1_ARM64_CE=y
++CONFIG_CRYPTO_SHA2_ARM64_CE=y
++CONFIG_CRYPTO_GHASH_ARM64_CE=y
++CONFIG_CRYPTO_CRC32_ARM64_CE=m
++CONFIG_CRYPTO_AES_ARM64_CE_CCM=y
++CONFIG_CRYPTO_AES_ARM64_CE_BLK=y
++CONFIG_CRYPTO_CHACHA20_NEON=m
++CONFIG_CRYPTO_AES_ARM64_BS=m
+
+From ac2b7e6a00d1953580a65b5075b26b5e49e2bd09 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] HACK: drm/bridge/synopsys: dw-hdmi: use underscan and full
+ range
+
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index be5c7b7135c9..3101368156d9 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -1378,7 +1378,7 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
+ 		break;
+ 	}
+ 
+-	frame.scan_mode = HDMI_SCAN_MODE_NONE;
++	frame.scan_mode = HDMI_SCAN_MODE_UNDERSCAN;
+ 
+ 	/*
+ 	 * The Designware IP uses a different byte format from standard
+@@ -1406,6 +1406,8 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
+ 	      (frame.active_aspect & 0xf);
+ 	hdmi_writeb(hdmi, val, HDMI_FC_AVICONF1);
+ 
++	frame.quantization_range = HDMI_QUANTIZATION_RANGE_FULL;
++
+ 	/* AVI data byte 3 differences: none */
+ 	val = ((frame.extended_colorimetry & 0x7) << 4) |
+ 	      ((frame.quantization_range & 0x3) << 2) |
+
+From dd843e810d63c8e94246625187ed8f9303010f40 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] WIP: update rk3328.dtsi
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328.dtsi | 84 ++++++++++++++++++++++--
+ 1 file changed, 77 insertions(+), 7 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328.dtsi b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+index 6b480d723fca..3527da019702 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+@@ -156,6 +156,13 @@
+ 		ports = <&vop_out>;
+ 	};
+ 
++	firmware {
++		optee {
++			compatible = "linaro,optee-tz";
++			method = "smc";
++		};
++	};
++
+ 	psci {
+ 		compatible = "arm,psci-1.0", "arm,psci-0.2";
+ 		method = "smc";
+@@ -206,6 +213,14 @@
+ 		clock-names = "i2s_clk", "i2s_hclk";
+ 		dmas = <&dmac 0>, <&dmac 1>;
+ 		dma-names = "tx", "rx";
++		pinctrl-names = "default", "sleep";
++		pinctrl-0 = <&i2s2m0_mclk
++			     &i2s2m0_sclk
++			     &i2s2m0_lrcktx
++			     &i2s2m0_lrckrx
++			     &i2s2m0_sdo
++			     &i2s2m0_sdi>;
++		pinctrl-1 = <&i2s2m0_sleep>;
+ 		status = "disabled";
+ 	};
+ 
+@@ -564,6 +579,43 @@
+ 		clocks = <&cru ACLK_GPU>, <&cru ACLK_GPU>;
+ 		clock-names = "bus", "core";
+ 		resets = <&cru SRST_GPU_A>;
++		#cooling-cells = <2>;
++		operating-points-v2 = <&gpu_opp_table>;
++
++		gpu_power_model: power_model {
++			compatible = "arm,mali-simple-power-model";
++			voltage = <900>;
++			frequency = <500>;
++			static-power = <300>;
++			dynamic-power = <396>;
++			ts = <32000 4700 (-80) 2>;
++			thermal-zone = "soc-thermal";
++		};
++	};
++
++	gpu_opp_table: gpu-opp-table {
++		compatible = "operating-points-v2";
++
++		opp-200000000 {
++			opp-hz = /bits/ 64 <200000000>;
++			opp-microvolt = <1050000>;
++		};
++		opp-300000000 {
++			opp-hz = /bits/ 64 <300000000>;
++			opp-microvolt = <1050000>;
++		};
++		opp-400000000 {
++			opp-hz = /bits/ 64 <400000000>;
++			opp-microvolt = <1050000>;
++		};
++		opp-500000000 {
++			opp-hz = /bits/ 64 <500000000>;
++			opp-microvolt = <1100000>;
++		};
++		opp-600000000 {
++			opp-hz = /bits/ 64 <600000000>;
++			opp-microvolt = <1150000>;
++		};
+ 	};
+ 
+ 	h265e_mmu: iommu@ff330200 {
+@@ -650,9 +702,11 @@
+ 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>,
+ 			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+ 		clocks = <&cru PCLK_HDMI>,
+-			 <&cru SCLK_HDMI_SFC>;
++			 <&cru SCLK_HDMI_SFC>,
++			 <&cru SCLK_RTC32K>;
+ 		clock-names = "iahb",
+-			      "isfr";
++			      "isfr",
++			      "cec";
+ 		phys = <&hdmiphy>;
+ 		phy-names = "hdmi";
+ 		pinctrl-names = "default";
+@@ -700,8 +754,7 @@
+ 			<&cru SCLK_RTC32K>, <&cru SCLK_UART0>,
+ 			<&cru SCLK_UART1>, <&cru SCLK_UART2>,
+ 			<&cru ACLK_BUS_PRE>, <&cru ACLK_PERI_PRE>,
+-			<&cru ACLK_VIO_PRE>, <&cru ACLK_RGA_PRE>,
+-			<&cru ACLK_VOP_PRE>, <&cru ACLK_RKVDEC_PRE>,
++			<&cru ACLK_RGA_PRE>, <&cru ACLK_RKVDEC_PRE>,
+ 			<&cru ACLK_RKVENC>, <&cru ACLK_VPU_PRE>,
+ 			<&cru SCLK_VDEC_CABAC>, <&cru SCLK_VDEC_CORE>,
+ 			<&cru SCLK_VENC_CORE>, <&cru SCLK_VENC_DSP>,
+@@ -711,7 +764,16 @@
+ 			<&cru ACLK_BUS_PRE>, <&cru HCLK_BUS_PRE>,
+ 			<&cru PCLK_BUS_PRE>, <&cru ACLK_PERI_PRE>,
+ 			<&cru HCLK_PERI>, <&cru PCLK_PERI>,
+-			<&cru SCLK_RTC32K>;
++			<&cru ACLK_VIO_PRE>, <&cru HCLK_VIO_PRE>,
++			<&cru ACLK_RGA_PRE>, <&cru SCLK_RGA>,
++			<&cru ACLK_VOP_PRE>, <&cru ACLK_RKVDEC_PRE>,
++			<&cru ACLK_RKVENC>, <&cru ACLK_VPU_PRE>,
++			<&cru SCLK_VDEC_CABAC>, <&cru SCLK_VDEC_CORE>,
++			<&cru SCLK_VENC_CORE>, <&cru SCLK_VENC_DSP>,
++			<&cru SCLK_EFUSE>, <&cru PCLK_DDR>,
++			<&cru ACLK_GMAC>, <&cru PCLK_GMAC>,
++			<&cru ACLK_GPU>,
++			<&cru SCLK_RTC32K>, <&cru SCLK_USB3OTG_SUSPEND>;
+ 		assigned-clock-parents =
+ 			<&cru HDMIPHY>, <&cru PLL_APLL>,
+ 			<&cru PLL_GPLL>, <&xin24m>,
+@@ -722,7 +784,6 @@
+ 			<24000000>, <24000000>,
+ 			<15000000>, <15000000>,
+ 			<100000000>, <100000000>,
+-			<100000000>, <100000000>,
+ 			<50000000>, <100000000>,
+ 			<100000000>, <100000000>,
+ 			<50000000>, <50000000>,
+@@ -732,7 +793,16 @@
+ 			<150000000>, <75000000>,
+ 			<75000000>, <150000000>,
+ 			<75000000>, <75000000>,
+-			<32768>;
++			<300000000>, <100000000>,
++			<300000000>, <200000000>,
++			<400000000>, <500000000>,
++			<200000000>, <300000000>,
++			<300000000>, <250000000>,
++			<200000000>, <100000000>,
++			<24000000>, <100000000>,
++			<150000000>, <50000000>,
++			<200000000>,
++			<32768>, <32768>;
+ 	};
+ 
+ 	usb2phy_grf: syscon@ff450000 {
+
+From 70d604241016218418f4bc0d9e327f3a92e00348 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] WIP: update rk3328-rock64.dts
+
+---
+ .../arm64/boot/dts/rockchip/rk3328-rock64.dts | 21 +++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index 90e22d047ddf..c73f8c89e269 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -69,6 +69,7 @@
+ 	ir-receiver {
+ 		compatible = "gpio-ir-receiver";
+ 		gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_LOW>;
++		linux,rc-map-name = "rc-pine64";
+ 		pinctrl-0 = <&ir_int>;
+ 		pinctrl-names = "default";
+ 	};
+@@ -136,6 +137,7 @@
+ 	assigned-clocks = <&cru SCLK_MAC2IO>, <&cru SCLK_MAC2IO_EXT>;
+ 	assigned-clock-parents = <&gmac_clkin>, <&gmac_clkin>;
+ 	clock_in_out = "input";
++	max-speed = <100>;
+ 	phy-supply = <&vcc_io>;
+ 	phy-mode = "rgmii";
+ 	pinctrl-names = "default";
+@@ -149,6 +151,10 @@
+ 	status = "okay";
+ };
+ 
++&gpu {
++	mali-supply = <&vdd_logic>;
++};
++
+ &hdmi {
+ 	#sound-dai-cells = <0>;
+ 	status = "okay";
+@@ -274,6 +280,21 @@
+ 	status = "okay";
+ };
+ 
++&i2s1 {
++	#sound-dai-cells = <0>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2s1_mclk
++		     &i2s1_sclk
++		     &i2s1_lrcktx
++		     &i2s1_lrckrx
++		     &i2s1_sdo
++		     &i2s1_sdi
++		     &i2s1_sdio1
++		     &i2s1_sdio2
++		     &i2s1_sdio3>;
++	status = "okay";
++};
++
+ &io_domains {
+ 	status = "okay";
+ 
+
+From 7d48a4062f72a04e8b16f1ad15c58f5ad09ce574 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] WIP: update rk3328-roc-cc.dts
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index b4690d9926c1..f16ace19afd9 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -145,6 +145,10 @@
+ 	status = "okay";
+ };
+ 
++&gpu {
++	mali-supply = <&vdd_logic>;
++};
++
+ &hdmi {
+ 	#sound-dai-cells = <0>;
+ 	status = "okay";
+@@ -320,6 +324,8 @@
+ };
+ 
+ &tsadc {
++	rockchip,hw-tshut-mode = <0>;
++	rockchip,hw-tshut-polarity = <0>;
+ 	status = "okay";
+ };
+ 
+
+From 387df29adcc53077d06cb24981f52b8e6a86e4c7 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 23:36:02 +0200
+Subject: [PATCH] ASoC: rockchip: i2s: use closest clock rate
+
+---
+ sound/soc/rockchip/rockchip_i2s.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/sound/soc/rockchip/rockchip_i2s.c b/sound/soc/rockchip/rockchip_i2s.c
+index 60d43d53a8f5..60440185970e 100644
+--- a/sound/soc/rockchip/rockchip_i2s.c
++++ b/sound/soc/rockchip/rockchip_i2s.c
+@@ -282,10 +282,10 @@ static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
+ 	if (i2s->is_master_mode) {
+ 		mclk_rate = clk_get_rate(i2s->mclk);
+ 		bclk_rate = 2 * 32 * params_rate(params);
+-		if (bclk_rate && mclk_rate % bclk_rate)
++		if (!bclk_rate)
+ 			return -EINVAL;
+ 
+-		div_bclk = mclk_rate / bclk_rate;
++		div_bclk = DIV_ROUND_CLOSEST(mclk_rate, bclk_rate);
+ 		div_lrck = bclk_rate / params_rate(params);
+ 		regmap_update_bits(i2s->regmap, I2S_CKR,
+ 				   I2S_CKR_MDIV_MASK,
+
+From 42ba940eab3cde4c87b26611cff970739f0be70b Mon Sep 17 00:00:00 2001
+From: Neil Armstrong <narmstrong@baylibre.com>
+Date: Mon, 2 Jul 2018 12:21:55 +0200
+Subject: [PATCH] drm: bridge: dw-hdmi: Use AUTO CTS setup mode when non-AHB
+ audio
+
+Signed-off-by: Neil Armstrong <narmstrong@baylibre.com>
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c | 41 ++++++++++++++---------
+ 1 file changed, 26 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 3101368156d9..230804a41635 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -430,8 +430,12 @@ static void hdmi_set_cts_n(struct dw_hdmi *hdmi, unsigned int cts,
+ 	/* nshift factor = 0 */
+ 	hdmi_modb(hdmi, 0, HDMI_AUD_CTS3_N_SHIFT_MASK, HDMI_AUD_CTS3);
+ 
+-	hdmi_writeb(hdmi, ((cts >> 16) & HDMI_AUD_CTS3_AUDCTS19_16_MASK) |
+-		    HDMI_AUD_CTS3_CTS_MANUAL, HDMI_AUD_CTS3);
++	/* Use Auto CTS mode with CTS is unknown */
++	if (cts)
++		hdmi_writeb(hdmi, ((cts >> 16) & HDMI_AUD_CTS3_AUDCTS19_16_MASK) |
++			    HDMI_AUD_CTS3_CTS_MANUAL, HDMI_AUD_CTS3);
++	else
++		hdmi_writeb(hdmi, 0, HDMI_AUD_CTS3);
+ 	hdmi_writeb(hdmi, (cts >> 8) & 0xff, HDMI_AUD_CTS2);
+ 	hdmi_writeb(hdmi, cts & 0xff, HDMI_AUD_CTS1);
+ 
+@@ -501,24 +505,31 @@ static void hdmi_set_clk_regenerator(struct dw_hdmi *hdmi,
+ {
+ 	unsigned long ftdms = pixel_clk;
+ 	unsigned int n, cts;
++	u8 config3;
+ 	u64 tmp;
+ 
+ 	n = hdmi_compute_n(sample_rate, pixel_clk);
+ 
+-	/*
+-	 * Compute the CTS value from the N value.  Note that CTS and N
+-	 * can be up to 20 bits in total, so we need 64-bit math.  Also
+-	 * note that our TDMS clock is not fully accurate; it is accurate
+-	 * to kHz.  This can introduce an unnecessary remainder in the
+-	 * calculation below, so we don't try to warn about that.
+-	 */
+-	tmp = (u64)ftdms * n;
+-	do_div(tmp, 128 * sample_rate);
+-	cts = tmp;
++	config3 = hdmi_readb(hdmi, HDMI_CONFIG3_ID);
+ 
+-	dev_dbg(hdmi->dev, "%s: fs=%uHz ftdms=%lu.%03luMHz N=%d cts=%d\n",
+-		__func__, sample_rate, ftdms / 1000000, (ftdms / 1000) % 1000,
+-		n, cts);
++	if (config3 & HDMI_CONFIG3_AHBAUDDMA) {
++		/*
++		 * Compute the CTS value from the N value.  Note that CTS and N
++		 * can be up to 20 bits in total, so we need 64-bit math.  Also
++		 * note that our TDMS clock is not fully accurate; it is
++		 * accurate to kHz.  This can introduce an unnecessary remainder
++		 * in the calculation below, so we don't try to warn about that.
++		 */
++		tmp = (u64)ftdms * n;
++		do_div(tmp, 128 * sample_rate);
++		cts = tmp;
++
++		dev_dbg(hdmi->dev, "%s: fs=%uHz ftdms=%lu.%03luMHz N=%d cts=%d\n",
++			__func__, sample_rate,
++			ftdms / 1000000, (ftdms / 1000) % 1000,
++			n, cts);
++	} else
++		cts = 0;
+ 
+ 	spin_lock_irq(&hdmi->audio_lock);
+ 	hdmi->audio_n = n;
+
+From 7b31e8e573d2ca6ce15720d85a78603e61c176b7 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 22:17:06 +0200
+Subject: [PATCH] ASoC: hdmi-codec: fix channel allocation
+
+---
+ sound/soc/codecs/hdmi-codec.c | 113 ++++++++++++++++------------------
+ 1 file changed, 52 insertions(+), 61 deletions(-)
+
+diff --git a/sound/soc/codecs/hdmi-codec.c b/sound/soc/codecs/hdmi-codec.c
+index d00734d31e04..c61e2a548961 100644
+--- a/sound/soc/codecs/hdmi-codec.c
++++ b/sound/soc/codecs/hdmi-codec.c
+@@ -202,78 +202,69 @@ static const struct snd_pcm_chmap_elem hdmi_codec_8ch_chmaps[] = {
+  */
+ static const struct hdmi_codec_cea_spk_alloc hdmi_codec_channel_alloc[] = {
+ 	{ .ca_id = 0x00, .n_ch = 2,
+-	  .mask = FL | FR},
+-	/* 2.1 */
+-	{ .ca_id = 0x01, .n_ch = 4,
+-	  .mask = FL | FR | LFE},
+-	/* Dolby Surround */
++	  .mask = FL | FR },
++	{ .ca_id = 0x03, .n_ch = 4,
++	  .mask = FL | FR | LFE | FC },
+ 	{ .ca_id = 0x02, .n_ch = 4,
+ 	  .mask = FL | FR | FC },
+-	/* surround51 */
++	{ .ca_id = 0x01, .n_ch = 4,
++	  .mask = FL | FR | LFE },
+ 	{ .ca_id = 0x0b, .n_ch = 6,
+-	  .mask = FL | FR | LFE | FC | RL | RR},
+-	/* surround40 */
+-	{ .ca_id = 0x08, .n_ch = 6,
+-	  .mask = FL | FR | RL | RR },
+-	/* surround41 */
+-	{ .ca_id = 0x09, .n_ch = 6,
+-	  .mask = FL | FR | LFE | RL | RR },
+-	/* surround50 */
++	  .mask = FL | FR | LFE | FC | RL | RR },
+ 	{ .ca_id = 0x0a, .n_ch = 6,
+ 	  .mask = FL | FR | FC | RL | RR },
+-	/* 6.1 */
+-	{ .ca_id = 0x0f, .n_ch = 8,
+-	  .mask = FL | FR | LFE | FC | RL | RR | RC },
+-	/* surround71 */
++	{ .ca_id = 0x09, .n_ch = 6,
++	  .mask = FL | FR | LFE | RL | RR },
++	{ .ca_id = 0x08, .n_ch = 6,
++	  .mask = FL | FR | RL | RR },
++	{ .ca_id = 0x07, .n_ch = 6,
++	  .mask = FL | FR | LFE | FC | RC },
++	{ .ca_id = 0x06, .n_ch = 6,
++	  .mask = FL | FR | FC | RC },
++	{ .ca_id = 0x05, .n_ch = 6,
++	  .mask = FL | FR | LFE | RC },
++	{ .ca_id = 0x04, .n_ch = 6,
++	  .mask = FL | FR | RC },
+ 	{ .ca_id = 0x13, .n_ch = 8,
+ 	  .mask = FL | FR | LFE | FC | RL | RR | RLC | RRC },
+-	/* others */
+-	{ .ca_id = 0x03, .n_ch = 8,
+-	  .mask = FL | FR | LFE | FC },
+-	{ .ca_id = 0x04, .n_ch = 8,
+-	  .mask = FL | FR | RC},
+-	{ .ca_id = 0x05, .n_ch = 8,
+-	  .mask = FL | FR | LFE | RC },
+-	{ .ca_id = 0x06, .n_ch = 8,
+-	  .mask = FL | FR | FC | RC },
+-	{ .ca_id = 0x07, .n_ch = 8,
+-	  .mask = FL | FR | LFE | FC | RC },
+-	{ .ca_id = 0x0c, .n_ch = 8,
+-	  .mask = FL | FR | RC | RL | RR },
+-	{ .ca_id = 0x0d, .n_ch = 8,
+-	  .mask = FL | FR | LFE | RL | RR | RC },
+-	{ .ca_id = 0x0e, .n_ch = 8,
+-	  .mask = FL | FR | FC | RL | RR | RC },
+-	{ .ca_id = 0x10, .n_ch = 8,
+-	  .mask = FL | FR | RL | RR | RLC | RRC },
+-	{ .ca_id = 0x11, .n_ch = 8,
+-	  .mask = FL | FR | LFE | RL | RR | RLC | RRC },
++	{ .ca_id = 0x1f, .n_ch = 8,
++	  .mask = FL | FR | LFE | FC | RL | RR | FLC | FRC },
+ 	{ .ca_id = 0x12, .n_ch = 8,
+ 	  .mask = FL | FR | FC | RL | RR | RLC | RRC },
+-	{ .ca_id = 0x14, .n_ch = 8,
+-	  .mask = FL | FR | FLC | FRC },
+-	{ .ca_id = 0x15, .n_ch = 8,
+-	  .mask = FL | FR | LFE | FLC | FRC },
+-	{ .ca_id = 0x16, .n_ch = 8,
+-	  .mask = FL | FR | FC | FLC | FRC },
+-	{ .ca_id = 0x17, .n_ch = 8,
+-	  .mask = FL | FR | LFE | FC | FLC | FRC },
+-	{ .ca_id = 0x18, .n_ch = 8,
+-	  .mask = FL | FR | RC | FLC | FRC },
+-	{ .ca_id = 0x19, .n_ch = 8,
+-	  .mask = FL | FR | LFE | RC | FLC | FRC },
+-	{ .ca_id = 0x1a, .n_ch = 8,
+-	  .mask = FL | FR | RC | FC | FLC | FRC },
+-	{ .ca_id = 0x1b, .n_ch = 8,
+-	  .mask = FL | FR | LFE | RC | FC | FLC | FRC },
+-	{ .ca_id = 0x1c, .n_ch = 8,
+-	  .mask = FL | FR | RL | RR | FLC | FRC },
+-	{ .ca_id = 0x1d, .n_ch = 8,
+-	  .mask = FL | FR | LFE | RL | RR | FLC | FRC },
+ 	{ .ca_id = 0x1e, .n_ch = 8,
+ 	  .mask = FL | FR | FC | RL | RR | FLC | FRC },
+-	{ .ca_id = 0x1f, .n_ch = 8,
+-	  .mask = FL | FR | LFE | FC | RL | RR | FLC | FRC },
++	{ .ca_id = 0x11, .n_ch = 8,
++	  .mask = FL | FR | LFE | RL | RR | RLC | RRC },
++	{ .ca_id = 0x1d, .n_ch = 8,
++	  .mask = FL | FR | LFE | RL | RR | FLC | FRC },
++	{ .ca_id = 0x10, .n_ch = 8,
++	  .mask = FL | FR | RL | RR | RLC | RRC },
++	{ .ca_id = 0x1c, .n_ch = 8,
++	  .mask = FL | FR | RL | RR | FLC | FRC },
++	{ .ca_id = 0x0f, .n_ch = 8,
++	  .mask = FL | FR | LFE | FC | RL | RR | RC },
++	{ .ca_id = 0x1b, .n_ch = 8,
++	  .mask = FL | FR | LFE | RC | FC | FLC | FRC },
++	{ .ca_id = 0x0e, .n_ch = 8,
++	  .mask = FL | FR | FC | RL | RR | RC },
++	{ .ca_id = 0x1a, .n_ch = 8,
++	  .mask = FL | FR | RC | FC | FLC | FRC },
++	{ .ca_id = 0x0d, .n_ch = 8,
++	  .mask = FL | FR | LFE | RL | RR | RC },
++	{ .ca_id = 0x19, .n_ch = 8,
++	  .mask = FL | FR | LFE | RC | FLC | FRC },
++	{ .ca_id = 0x0c, .n_ch = 8,
++	  .mask = FL | FR | RC | RL | RR },
++	{ .ca_id = 0x18, .n_ch = 8,
++	  .mask = FL | FR | RC | FLC | FRC },
++	{ .ca_id = 0x17, .n_ch = 8,
++	  .mask = FL | FR | LFE | FC | FLC | FRC },
++	{ .ca_id = 0x16, .n_ch = 8,
++	  .mask = FL | FR | FC | FLC | FRC },
++	{ .ca_id = 0x15, .n_ch = 8,
++	  .mask = FL | FR | LFE | FLC | FRC },
++	{ .ca_id = 0x14, .n_ch = 8,
++	  .mask = FL | FR | FLC | FRC },
+ };
+ 
+ struct hdmi_codec_priv {
+
+From 1247724a5f666ce47e68bb56a648cd21865747b9 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 22:17:06 +0200
+Subject: [PATCH] drm: dw-hdmi-i2s: add .get_eld callback for ALSA SoC
+
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi-audio.h     |  1 +
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.c | 12 ++++++++++++
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c           |  1 +
+ 3 files changed, 14 insertions(+)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-audio.h b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-audio.h
+index 63b5756f463b..cb07dc0da5a7 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-audio.h
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-audio.h
+@@ -14,6 +14,7 @@ struct dw_hdmi_audio_data {
+ 
+ struct dw_hdmi_i2s_audio_data {
+ 	struct dw_hdmi *hdmi;
++	u8 *eld;
+ 
+ 	void (*write)(struct dw_hdmi *hdmi, u8 val, int offset);
+ 	u8 (*read)(struct dw_hdmi *hdmi, int offset);
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.c
+index 8f9c8a6b46de..75433c823836 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.c
+@@ -8,6 +8,7 @@
+  * it under the terms of the GNU General Public License version 2 as
+  * published by the Free Software Foundation.
+  */
++#include <drm/drm_connector.h>
+ #include <drm/bridge/dw_hdmi.h>
+ 
+ #include <sound/hdmi-codec.h>
+@@ -83,6 +84,16 @@ static void dw_hdmi_i2s_audio_shutdown(struct device *dev, void *data)
+ 	hdmi_write(audio, HDMI_AUD_CONF0_SW_RESET, HDMI_AUD_CONF0);
+ }
+ 
++static int dw_hdmi_i2s_get_eld(struct device *dev, void *data,
++			       u8 *buf, size_t len)
++{
++	struct dw_hdmi_i2s_audio_data *audio = data;
++
++	memcpy(buf, audio->eld, min((size_t)MAX_ELD_BYTES, len));
++
++	return 0;
++}
++
+ static int dw_hdmi_i2s_get_dai_id(struct snd_soc_component *component,
+ 				  struct device_node *endpoint)
+ {
+@@ -106,6 +117,7 @@ static int dw_hdmi_i2s_get_dai_id(struct snd_soc_component *component,
+ static struct hdmi_codec_ops dw_hdmi_i2s_ops = {
+ 	.hw_params	= dw_hdmi_i2s_hw_params,
+ 	.audio_shutdown	= dw_hdmi_i2s_audio_shutdown,
++	.get_eld	= dw_hdmi_i2s_get_eld,
+ 	.get_dai_id	= dw_hdmi_i2s_get_dai_id,
+ };
+ 
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 230804a41635..02373471aa86 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -2520,6 +2520,7 @@ __dw_hdmi_probe(struct platform_device *pdev,
+ 		struct dw_hdmi_i2s_audio_data audio;
+ 
+ 		audio.hdmi	= hdmi;
++		audio.eld	= hdmi->connector.eld;
+ 		audio.write	= hdmi_writeb;
+ 		audio.read	= hdmi_readb;
+ 		hdmi->enable_audio = dw_hdmi_i2s_audio_enable;
+
+From 28e3b8399d4da74a65ecb8eff8783c7150c66df7 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Tue, 10 Jul 2018 20:54:33 +0200
+Subject: [PATCH] drm: dw-hdmi-i2s: add multi-channel lpcm support
+
+---
+ .../gpu/drm/bridge/synopsys/dw-hdmi-audio.h   |  1 +
+ .../drm/bridge/synopsys/dw-hdmi-i2s-audio.c   | 75 ++++++++++++++++++-
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c     |  1 +
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.h     | 24 ++++++
+ 4 files changed, 98 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-audio.h b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-audio.h
+index cb07dc0da5a7..248b531edd1d 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-audio.h
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-audio.h
+@@ -18,6 +18,7 @@ struct dw_hdmi_i2s_audio_data {
+ 
+ 	void (*write)(struct dw_hdmi *hdmi, u8 val, int offset);
+ 	u8 (*read)(struct dw_hdmi *hdmi, int offset);
++	void (*mod)(struct dw_hdmi *hdmi, u8 data, u8 mask, unsigned reg);
+ };
+ 
+ #endif
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.c
+index 75433c823836..1aedee443565 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-i2s-audio.c
+@@ -33,6 +33,14 @@ static inline u8 hdmi_read(struct dw_hdmi_i2s_audio_data *audio, int offset)
+ 	return audio->read(hdmi, offset);
+ }
+ 
++static inline void hdmi_update_bits(struct dw_hdmi_i2s_audio_data *audio,
++				    u8 data, u8 mask, unsigned int reg)
++{
++	struct dw_hdmi *hdmi = audio->hdmi;
++
++	audio->mod(hdmi, data, mask, reg);
++}
++
+ static int dw_hdmi_i2s_hw_params(struct device *dev, void *data,
+ 				 struct hdmi_codec_daifmt *fmt,
+ 				 struct hdmi_codec_params *hparms)
+@@ -42,6 +50,7 @@ static int dw_hdmi_i2s_hw_params(struct device *dev, void *data,
+ 	u8 conf0 = 0;
+ 	u8 conf1 = 0;
+ 	u8 inputclkfs = 0;
++	u8 val;
+ 
+ 	/* it cares I2S only */
+ 	if ((fmt->fmt != HDMI_I2S) ||
+@@ -50,8 +59,23 @@ static int dw_hdmi_i2s_hw_params(struct device *dev, void *data,
+ 		return -EINVAL;
+ 	}
+ 
+-	inputclkfs	= HDMI_AUD_INPUTCLKFS_64FS;
+-	conf0		= HDMI_AUD_CONF0_I2S_ALL_ENABLE;
++	inputclkfs = HDMI_AUD_INPUTCLKFS_64FS;
++
++	switch (hparms->channels) {
++	case 2:
++		conf0 = HDMI_AUD_CONF0_I2S_2CHANNEL_ENABLE;
++		break;
++	case 4:
++		conf0 = HDMI_AUD_CONF0_I2S_4CHANNEL_ENABLE;
++		break;
++	case 6:
++		conf0 = HDMI_AUD_CONF0_I2S_6CHANNEL_ENABLE;
++		break;
++	case 8:
++	default:
++		conf0 = HDMI_AUD_CONF0_I2S_ALL_ENABLE;
++		break;
++	}
+ 
+ 	switch (hparms->sample_width) {
+ 	case 16:
+@@ -63,12 +87,56 @@ static int dw_hdmi_i2s_hw_params(struct device *dev, void *data,
+ 		break;
+ 	}
+ 
++	hdmi_update_bits(audio, HDMI_AUD_CONF0_SW_RESET,
++			 HDMI_AUD_CONF0_SW_RESET, HDMI_AUD_CONF0);
++	hdmi_write(audio, (u8)~HDMI_MC_SWRSTZ_I2SSWRST_REQ, HDMI_MC_SWRSTZ);
++
+ 	dw_hdmi_set_sample_rate(hdmi, hparms->sample_rate);
+ 
+ 	hdmi_write(audio, inputclkfs, HDMI_AUD_INPUTCLKFS);
+ 	hdmi_write(audio, conf0, HDMI_AUD_CONF0);
+ 	hdmi_write(audio, conf1, HDMI_AUD_CONF1);
+ 
++	val = HDMI_FC_AUDSCONF_AUD_PACKET_LAYOUT_LAYOUT0;
++	if (hparms->channels > 2)
++		val = HDMI_FC_AUDSCONF_AUD_PACKET_LAYOUT_LAYOUT1;
++	hdmi_update_bits(audio, val, HDMI_FC_AUDSCONF_AUD_PACKET_LAYOUT_MASK,
++			 HDMI_FC_AUDSCONF);
++
++	switch (hparms->sample_rate) {
++	case 32000:
++		val = HDMI_FC_AUDSCHNLS_SAMPFREQ_32K;
++		break;
++	case 44100:
++		val = HDMI_FC_AUDSCHNLS_SAMPFREQ_441K;
++		break;
++	case 48000:
++		val = HDMI_FC_AUDSCHNLS_SAMPFREQ_48K;
++		break;
++	case 88200:
++		val = HDMI_FC_AUDSCHNLS_SAMPFREQ_882K;
++		break;
++	case 96000:
++		val = HDMI_FC_AUDSCHNLS_SAMPFREQ_96K;
++		break;
++	case 176400:
++		val = HDMI_FC_AUDSCHNLS_SAMPFREQ_1764K;
++		break;
++	case 192000:
++		val = HDMI_FC_AUDSCHNLS_SAMPFREQ_192K;
++		break;
++	default:
++		val = HDMI_FC_AUDSCHNLS_SAMPFREQ_441K;
++		break;
++	}
++
++	hdmi_update_bits(audio, val, HDMI_FC_AUDSCHNLS7_SAMPFREQ_MASK,
++			 HDMI_FC_AUDSCHNLS7);
++	hdmi_update_bits(audio,
++			 (hparms->channels - 1) << HDMI_FC_AUDICONF0_CC_OFFSET,
++			 HDMI_FC_AUDICONF0_CC_MASK, HDMI_FC_AUDICONF0);
++	hdmi_write(audio, hparms->cea.channel_allocation, HDMI_FC_AUDICONF2);
++
+ 	dw_hdmi_audio_enable(hdmi);
+ 
+ 	return 0;
+@@ -82,6 +150,7 @@ static void dw_hdmi_i2s_audio_shutdown(struct device *dev, void *data)
+ 	dw_hdmi_audio_disable(hdmi);
+ 
+ 	hdmi_write(audio, HDMI_AUD_CONF0_SW_RESET, HDMI_AUD_CONF0);
++	hdmi_write(audio, (u8)~HDMI_MC_SWRSTZ_I2SSWRST_REQ, HDMI_MC_SWRSTZ);
+ }
+ 
+ static int dw_hdmi_i2s_get_eld(struct device *dev, void *data,
+@@ -130,7 +199,7 @@ static int snd_dw_hdmi_probe(struct platform_device *pdev)
+ 
+ 	pdata.ops		= &dw_hdmi_i2s_ops;
+ 	pdata.i2s		= 1;
+-	pdata.max_i2s_channels	= 6;
++	pdata.max_i2s_channels	= 8;
+ 	pdata.data		= audio;
+ 
+ 	memset(&pdevinfo, 0, sizeof(pdevinfo));
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 02373471aa86..7c1db44ec476 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -2523,6 +2523,7 @@ __dw_hdmi_probe(struct platform_device *pdev,
+ 		audio.eld	= hdmi->connector.eld;
+ 		audio.write	= hdmi_writeb;
+ 		audio.read	= hdmi_readb;
++		audio.mod	= hdmi_modb;
+ 		hdmi->enable_audio = dw_hdmi_i2s_audio_enable;
+ 		hdmi->disable_audio = dw_hdmi_i2s_audio_disable;
+ 
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.h b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.h
+index 9d90eb9c46e5..760a087d2c68 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.h
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.h
+@@ -162,6 +162,15 @@
+ #define HDMI_FC_SPDDEVICEINF                    0x1062
+ #define HDMI_FC_AUDSCONF                        0x1063
+ #define HDMI_FC_AUDSSTAT                        0x1064
++#define HDMI_FC_AUDSCHNLS0                      0x1067
++#define HDMI_FC_AUDSCHNLS1                      0x1068
++#define HDMI_FC_AUDSCHNLS2                      0x1069
++#define HDMI_FC_AUDSCHNLS3                      0x106a
++#define HDMI_FC_AUDSCHNLS4                      0x106b
++#define HDMI_FC_AUDSCHNLS5                      0x106c
++#define HDMI_FC_AUDSCHNLS6                      0x106d
++#define HDMI_FC_AUDSCHNLS7                      0x106e
++#define HDMI_FC_AUDSCHNLS8                      0x106f
+ #define HDMI_FC_DATACH0FILL                     0x1070
+ #define HDMI_FC_DATACH1FILL                     0x1071
+ #define HDMI_FC_DATACH2FILL                     0x1072
+@@ -709,6 +718,8 @@ enum {
+ /* HDMI_FC_AUDSCHNLS7 field values */
+ 	HDMI_FC_AUDSCHNLS7_ACCURACY_OFFSET = 4,
+ 	HDMI_FC_AUDSCHNLS7_ACCURACY_MASK = 0x30,
++	HDMI_FC_AUDSCHNLS7_SAMPFREQ_OFFSET = 0,
++	HDMI_FC_AUDSCHNLS7_SAMPFREQ_MASK = 0x0f,
+ 
+ /* HDMI_FC_AUDSCHNLS8 field values */
+ 	HDMI_FC_AUDSCHNLS8_ORIGSAMPFREQ_MASK = 0xf0,
+@@ -716,6 +727,15 @@ enum {
+ 	HDMI_FC_AUDSCHNLS8_WORDLEGNTH_MASK = 0x0f,
+ 	HDMI_FC_AUDSCHNLS8_WORDLEGNTH_OFFSET = 0,
+ 
++/* HDMI_FC_AUDSCHNLS sampling frequency */
++	HDMI_FC_AUDSCHNLS_SAMPFREQ_32K = 0x3,
++	HDMI_FC_AUDSCHNLS_SAMPFREQ_441K = 0x0,
++	HDMI_FC_AUDSCHNLS_SAMPFREQ_48K = 0x2,
++	HDMI_FC_AUDSCHNLS_SAMPFREQ_882K = 0x8,
++	HDMI_FC_AUDSCHNLS_SAMPFREQ_96K = 0xa,
++	HDMI_FC_AUDSCHNLS_SAMPFREQ_1764K = 0xc,
++	HDMI_FC_AUDSCHNLS_SAMPFREQ_192K = 0xe,
++
+ /* FC_AUDSCONF field values */
+ 	HDMI_FC_AUDSCONF_AUD_PACKET_SAMPFIT_MASK = 0xF0,
+ 	HDMI_FC_AUDSCONF_AUD_PACKET_SAMPFIT_OFFSET = 4,
+@@ -868,6 +888,9 @@ enum {
+ 
+ /* AUD_CONF0 field values */
+ 	HDMI_AUD_CONF0_SW_RESET = 0x80,
++	HDMI_AUD_CONF0_I2S_2CHANNEL_ENABLE = 0x21,
++	HDMI_AUD_CONF0_I2S_4CHANNEL_ENABLE = 0x23,
++	HDMI_AUD_CONF0_I2S_6CHANNEL_ENABLE = 0x27,
+ 	HDMI_AUD_CONF0_I2S_ALL_ENABLE = 0x2F,
+ 
+ /* AUD_CONF1 field values */
+@@ -941,6 +964,7 @@ enum {
+ 	HDMI_MC_CLKDIS_PIXELCLK_DISABLE = 0x1,
+ 
+ /* MC_SWRSTZ field values */
++	HDMI_MC_SWRSTZ_I2SSWRST_REQ = 0x08,
+ 	HDMI_MC_SWRSTZ_TMDSSWRST_REQ = 0x02,
+ 
+ /* MC_FLOWCTRL field values */
+
+From 9eda7a5d05d113607efcce0f006830d21d2b6d4b Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 9 Jul 2018 21:25:15 +0200
+Subject: [PATCH] drm: dw-hdmi: call hdmi_set_cts_n after clock is enabled
+
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 7c1db44ec476..8eda0c167a22 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -570,6 +570,11 @@ static void hdmi_enable_audio_clk(struct dw_hdmi *hdmi, bool enable)
+ 	else
+ 		hdmi->mc_clkdis |= HDMI_MC_CLKDIS_AUDCLK_DISABLE;
+ 	hdmi_writeb(hdmi, hdmi->mc_clkdis, HDMI_MC_CLKDIS);
++
++	if (enable) {
++		hdmi_set_cts_n(hdmi, hdmi->audio_cts, 0);
++		hdmi_set_cts_n(hdmi, hdmi->audio_cts, hdmi->audio_n);
++	}
+ }
+ 
+ static void dw_hdmi_ahb_audio_enable(struct dw_hdmi *hdmi)
+
+From 0bd9cca33c2b8fda50d0343a522644fb3e19fbb6 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Wed, 11 Jul 2018 07:31:16 +0200
+Subject: [PATCH] drm: dw-hdmi: extract dw_hdmi_connector_update_edid
+
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c | 41 +++++++++++++----------
+ 1 file changed, 24 insertions(+), 17 deletions(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 8eda0c167a22..4548dad37733 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -1912,22 +1912,8 @@ static void dw_hdmi_update_phy_mask(struct dw_hdmi *hdmi)
+ 					  hdmi->rxsense);
+ }
+ 
+-static enum drm_connector_status
+-dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
+-{
+-	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+-					     connector);
+-
+-	mutex_lock(&hdmi->mutex);
+-	hdmi->force = DRM_FORCE_UNSPECIFIED;
+-	dw_hdmi_update_power(hdmi);
+-	dw_hdmi_update_phy_mask(hdmi);
+-	mutex_unlock(&hdmi->mutex);
+-
+-	return hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
+-}
+-
+-static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
++static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
++					  bool add_modes)
+ {
+ 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+ 					     connector);
+@@ -1946,7 +1932,8 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
+ 		hdmi->sink_has_audio = drm_detect_monitor_audio(edid);
+ 		drm_connector_update_edid_property(connector, edid);
+ 		cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
+-		ret = drm_add_edid_modes(connector, edid);
++		if (add_modes)
++			ret = drm_add_edid_modes(connector, edid);
+ 		kfree(edid);
+ 	} else {
+ 		dev_dbg(hdmi->dev, "failed to get edid\n");
+@@ -1955,6 +1942,26 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
+ 	return ret;
+ }
+ 
++static enum drm_connector_status
++dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
++{
++	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
++					     connector);
++
++	mutex_lock(&hdmi->mutex);
++	hdmi->force = DRM_FORCE_UNSPECIFIED;
++	dw_hdmi_update_power(hdmi);
++	dw_hdmi_update_phy_mask(hdmi);
++	mutex_unlock(&hdmi->mutex);
++
++	return hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
++}
++
++static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
++{
++	return dw_hdmi_connector_update_edid(connector, true);
++}
++
+ static void dw_hdmi_connector_force(struct drm_connector *connector)
+ {
+ 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+
+From bb005ffd55d91d9023f77bd0e5c302431d8e0d7b Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Wed, 11 Jul 2018 07:31:16 +0200
+Subject: [PATCH] drm: dw-hdmi: update edid on hpd event
+
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 4548dad37733..422c9c530777 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -1945,6 +1945,7 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
+ static enum drm_connector_status
+ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
+ {
++	enum drm_connector_status status;
+ 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+ 					     connector);
+ 
+@@ -1954,7 +1955,14 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
+ 	dw_hdmi_update_phy_mask(hdmi);
+ 	mutex_unlock(&hdmi->mutex);
+ 
+-	return hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
++	status = hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
++
++	if (status == connector_status_connected)
++		dw_hdmi_connector_update_edid(connector, false);
++	else
++		cec_notifier_set_phys_addr(hdmi->cec_notifier, CEC_PHYS_ADDR_INVALID);
++
++	return status;
+ }
+ 
+ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
+@@ -2170,10 +2178,6 @@ static irqreturn_t dw_hdmi_irq(int irq, void *dev_id)
+ 		dw_hdmi_setup_rx_sense(hdmi,
+ 				       phy_stat & HDMI_PHY_HPD,
+ 				       phy_stat & HDMI_PHY_RX_SENSE);
+-
+-		if ((phy_stat & (HDMI_PHY_RX_SENSE | HDMI_PHY_HPD)) == 0)
+-			cec_notifier_set_phys_addr(hdmi->cec_notifier,
+-						   CEC_PHYS_ADDR_INVALID);
+ 	}
+ 
+ 	if (intr_stat & HDMI_IH_PHY_STAT0_HPD) {
+
+From 3762cd52f53961d15779c9ef00cc557385ea65dc Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Wed, 6 Sep 2017 18:39:09 +0200
+Subject: [PATCH] [media] rc/keymaps: add keytable for Pine64 IR Remote
+ Controller
+
+---
+ drivers/media/rc/keymaps/Makefile    |  1 +
+ drivers/media/rc/keymaps/rc-pine64.c | 65 ++++++++++++++++++++++++++++
+ include/media/rc-map.h               |  1 +
+ 3 files changed, 67 insertions(+)
+ create mode 100644 drivers/media/rc/keymaps/rc-pine64.c
+
+diff --git a/drivers/media/rc/keymaps/Makefile b/drivers/media/rc/keymaps/Makefile
+index d6b913a3032d..b7359e36a2b5 100644
+--- a/drivers/media/rc/keymaps/Makefile
++++ b/drivers/media/rc/keymaps/Makefile
+@@ -76,6 +76,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
+ 			rc-norwood.o \
+ 			rc-npgtech.o \
+ 			rc-pctv-sedna.o \
++			rc-pine64.o \
+ 			rc-pinnacle-color.o \
+ 			rc-pinnacle-grey.o \
+ 			rc-pinnacle-pctv-hd.o \
+diff --git a/drivers/media/rc/keymaps/rc-pine64.c b/drivers/media/rc/keymaps/rc-pine64.c
+new file mode 100644
+index 000000000000..79a656b69dda
+--- /dev/null
++++ b/drivers/media/rc/keymaps/rc-pine64.c
+@@ -0,0 +1,65 @@
++/* Keytable for Pine64 IR Remote Controller
++ *
++ * Copyright (c) 2017 PINE64
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#include <media/rc-map.h>
++#include <linux/module.h>
++
++static struct rc_map_table pine64[] = {
++	{ 0x404000, KEY_NUMERIC_0 },
++	{ 0x404001, KEY_NUMERIC_1 },
++	{ 0x404002, KEY_NUMERIC_2 },
++	{ 0x404003, KEY_NUMERIC_3 },
++	{ 0x404004, KEY_NUMERIC_4 },
++	{ 0x404005, KEY_NUMERIC_5 },
++	{ 0x404006, KEY_NUMERIC_6 },
++	{ 0x404007, KEY_NUMERIC_7 },
++	{ 0x404008, KEY_NUMERIC_8 },
++	{ 0x404009, KEY_NUMERIC_9 },
++	{ 0x40400a, KEY_MUTE },
++	{ 0x40400b, KEY_UP },
++	{ 0x40400c, KEY_BACKSPACE },
++	{ 0x40400d, KEY_OK },
++	{ 0x40400e, KEY_DOWN },
++	{ 0x404010, KEY_LEFT },
++	{ 0x404011, KEY_RIGHT },
++	{ 0x404017, KEY_VOLUMEDOWN },
++	{ 0x404018, KEY_VOLUMEUP },
++	{ 0x40401a, KEY_HOME },
++	{ 0x40401d, KEY_MENU },
++	{ 0x40401f, KEY_WWW },
++	{ 0x404045, KEY_BACK },
++	{ 0x404047, KEY_INFO },
++	{ 0x40404d, KEY_POWER },
++};
++
++static struct rc_map_list pine64_map = {
++	.map = {
++		.scan     = pine64,
++		.size     = ARRAY_SIZE(pine64),
++		.rc_proto = RC_PROTO_NEC,
++		.name     = RC_MAP_PINE64,
++	}
++};
++
++static int __init init_rc_map_pine64(void)
++{
++	return rc_map_register(&pine64_map);
++}
++
++static void __exit exit_rc_map_pine64(void)
++{
++	rc_map_unregister(&pine64_map);
++}
++
++module_init(init_rc_map_pine64)
++module_exit(exit_rc_map_pine64)
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("PINE64");
+diff --git a/include/media/rc-map.h b/include/media/rc-map.h
+index bfa3017cecba..cbefba27b667 100644
+--- a/include/media/rc-map.h
++++ b/include/media/rc-map.h
+@@ -236,6 +236,7 @@ struct rc_map *rc_map_get(const char *name);
+ #define RC_MAP_NORWOOD                   "rc-norwood"
+ #define RC_MAP_NPGTECH                   "rc-npgtech"
+ #define RC_MAP_PCTV_SEDNA                "rc-pctv-sedna"
++#define RC_MAP_PINE64                    "rc-pine64"
+ #define RC_MAP_PINNACLE_COLOR            "rc-pinnacle-color"
+ #define RC_MAP_PINNACLE_GREY             "rc-pinnacle-grey"
+ #define RC_MAP_PINNACLE_PCTV_HD          "rc-pinnacle-pctv-hd"
+
+From ac6d50c3769dbf945f650c7d81fdc5781d702d23 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 2 Sep 2017 16:23:11 +0200
+Subject: [PATCH] [media] rc/keymaps: initialize rc-cec early
+
+---
+ drivers/media/rc/keymaps/rc-cec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/media/rc/keymaps/rc-cec.c b/drivers/media/rc/keymaps/rc-cec.c
+index 76d34abb7c85..6556934f5335 100644
+--- a/drivers/media/rc/keymaps/rc-cec.c
++++ b/drivers/media/rc/keymaps/rc-cec.c
+@@ -175,7 +175,7 @@ static void __exit exit_rc_map_cec(void)
+ 	rc_map_unregister(&cec_map);
+ }
+ 
+-module_init(init_rc_map_cec);
++subsys_initcall(init_rc_map_cec);
+ module_exit(exit_rc_map_cec);
+ 
+ MODULE_LICENSE("GPL");
+
+From cbbb45224759fc4e0ee37c7a186233648234cab7 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 3 Nov 2018 13:02:12 +0100
+Subject: [PATCH] ASoC: rockchip: add missing prepare_slave_config callback
+
+---
+ sound/soc/rockchip/rockchip_pcm.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/sound/soc/rockchip/rockchip_pcm.c b/sound/soc/rockchip/rockchip_pcm.c
+index 9e7b5fa4cf59..4ac78d7a4b2d 100644
+--- a/sound/soc/rockchip/rockchip_pcm.c
++++ b/sound/soc/rockchip/rockchip_pcm.c
+@@ -33,6 +33,7 @@ static const struct snd_pcm_hardware snd_rockchip_hardware = {
+ 
+ static const struct snd_dmaengine_pcm_config rk_dmaengine_pcm_config = {
+ 	.pcm_hardware = &snd_rockchip_hardware,
++	.prepare_slave_config = snd_dmaengine_pcm_prepare_slave_config,
+ 	.prealloc_buffer_size = 32 * 1024,
+ };
+ 
+
+From 627c52cf310ae1be80137f707614ce79f2bcdb15 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 3 Nov 2018 15:42:35 +0100
+Subject: [PATCH] arm64: dts: rockchip: enable usb3 nodes on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index f16ace19afd9..8d0ec14984c8 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -359,6 +359,15 @@
+ 	status = "okay";
+ };
+ 
++&usbdrd3 {
++	status = "okay";
++};
++
++&usbdrd_dwc3 {
++	dr_mode = "host";
++	status = "okay";
++};
++
+ &vop {
+ 	status = "okay";
+ };

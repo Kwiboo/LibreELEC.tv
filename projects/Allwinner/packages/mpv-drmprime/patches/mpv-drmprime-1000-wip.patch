@@ -1,0 +1,15 @@
+diff --git a/video/decode/vd_lavc.c b/video/decode/vd_lavc.c
+index 25049aa341..cedf9e41fb 100644
+--- a/video/decode/vd_lavc.c
++++ b/video/decode/vd_lavc.c
+@@ -395,6 +395,10 @@ static AVBufferRef *hwdec_create_dev(struct mp_filter *vd,
+             av_hwdevice_ctx_create(&ref, hwdec->lavc_device, NULL, NULL, 0);
+             return ref;
+         }
++    } else if (hwdec->lavc_device == AV_HWDEVICE_TYPE_DRM) {
++        AVBufferRef* ref = NULL;
++        av_hwdevice_ctx_create(&ref, hwdec->lavc_device, "/dev/dri/card0", NULL, 0);
++        return ref;
+     } else if (ctx->hwdec_devs) {
+         hwdec_devices_request_all(ctx->hwdec_devs);
+         return hwdec_devices_get_lavc(ctx->hwdec_devs, hwdec->lavc_device);

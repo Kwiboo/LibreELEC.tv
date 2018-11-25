@@ -1,0 +1,32 @@
+commit ff91a417f3ec2562a2fe0511185332ff4a180a4a
+Author: Marcus Cooper <codekipper@gmail.com>
+Date:   Sun Nov 25 09:48:57 2018 +0100
+
+    spdif for kodi
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64-pine64.dts b/arch/arm64/boot/dts/allwinner/sun50i-a64-pine64.dts
+index 467494745a21..f7cbe8514581 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64-pine64.dts
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64-pine64.dts
+@@ -261,7 +261,7 @@
+ 
+ /* On Euler connector */
+ &spdif {
+-	status = "disabled";
++	status = "okay";
+ };
+ 
+ /* On Exp and Euler connectors */
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index 2093f32cf112..6a0168c7b56f 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -148,7 +148,7 @@
+ 
+ 	sound_spdif {
+ 		compatible = "simple-audio-card";
+-		simple-audio-card,name = "On-board SPDIF";
++		simple-audio-card,name = "allwinner-spdif";
+ 
+ 		simple-audio-card,cpu {
+ 			sound-dai = <&spdif>;

@@ -1,0 +1,76 @@
+From patchwork Wed Dec  5 10:20:31 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Subject: [PATCHv4,01/10] videodev2.h: add tag support
+From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+X-Patchwork-Id: 53306
+Message-Id: <20181205102040.11741-2-hverkuil-cisco@xs4all.nl>
+X-Patchwork-Delegate: hverkuil@xs4all.nl
+To: linux-media@vger.kernel.org
+Cc: Alexandre Courbot <acourbot@chromium.org>,
+ maxime.ripard@bootlin.com, paul.kocialkowski@bootlin.com,
+ tfiga@chromium.org, nicolas@ndufresne.ca, sakari.ailus@linux.intel.com,
+ Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Date: Wed,  5 Dec 2018 11:20:31 +0100
+
+From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+
+Add support for 'tags' to struct v4l2_buffer. These can be used
+by m2m devices so userspace can set a tag for an output buffer and
+this value will then be copied to the capture buffer(s).
+
+This tag can be used to refer to capture buffers, something that
+is needed by stateless HW codecs.
+
+The new V4L2_BUF_CAP_SUPPORTS_TAGS capability indicates whether
+or not tags are supported.
+
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Reviewed-by: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+Reviewed-by: Alexandre Courbot <acourbot@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 2db1635de956..9095d7abe10d 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -881,6 +881,7 @@ struct v4l2_requestbuffers {
+ #define V4L2_BUF_CAP_SUPPORTS_MMAP	(1 << 0)
+ #define V4L2_BUF_CAP_SUPPORTS_DMABUF	(1 << 2)
+ #define V4L2_BUF_CAP_SUPPORTS_REQUESTS	(1 << 3)
++#define V4L2_BUF_CAP_SUPPORTS_TAGS	(1 << 5)
+ 
+ /**
+  * struct v4l2_plane - plane info for multi-planar buffers
+@@ -940,6 +941,7 @@ struct v4l2_plane {
+  * @length:	size in bytes of the buffer (NOT its payload) for single-plane
+  *		buffers (when type != *_MPLANE); number of elements in the
+  *		planes array for multi-plane buffers
++ * @tag:	buffer tag
+  * @request_fd: fd of the request that this buffer should use
+  *
+  * Contains data exchanged by application and driver using one of the Streaming
+@@ -964,7 +966,10 @@ struct v4l2_buffer {
+ 		__s32		fd;
+ 	} m;
+ 	__u32			length;
+-	__u32			reserved2;
++	union {
++		__u32		reserved2;
++		__u32		tag;
++	};
+ 	union {
+ 		__s32		request_fd;
+ 		__u32		reserved;
+@@ -990,6 +995,8 @@ struct v4l2_buffer {
+ #define V4L2_BUF_FLAG_IN_REQUEST		0x00000080
+ /* timecode field is valid */
+ #define V4L2_BUF_FLAG_TIMECODE			0x00000100
++/* tag field is valid */
++#define V4L2_BUF_FLAG_TAG			0x00000200
+ /* Buffer is prepared for queuing */
+ #define V4L2_BUF_FLAG_PREPARED			0x00000400
+ /* Cache handling flags */

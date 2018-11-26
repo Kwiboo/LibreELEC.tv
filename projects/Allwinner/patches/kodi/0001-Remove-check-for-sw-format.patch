@@ -1,0 +1,30 @@
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+index 3b0d0d832d..221f48f061 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+@@ -243,12 +362,6 @@ bool CDVDVideoCodecDRMPRIME::Open(CDVDStreamInfo& hints, CDVDCodecOptions& optio
+     return false;
+   }
+ 
+-  if (m_pCodecContext->pix_fmt != AV_PIX_FMT_DRM_PRIME)
+-  {
+-    CLog::Log(LOGNOTICE, "CDVDVideoCodecDRMPRIME::%s - unexpected pix fmt %s", __FUNCTION__, av_get_pix_fmt_name(m_pCodecContext->pix_fmt));
+-    avcodec_free_context(&m_pCodecContext);
+-    return false;
+-  }
+ 
+   const char* pixFmtName = av_get_pix_fmt_name(m_pCodecContext->pix_fmt);
+   m_processInfo.SetVideoPixelFormat(pixFmtName ? pixFmtName : "");
+
+index 8db3f4778d..ea7a683b7a 100644
+--- a/xbmc/windowing/gbm/OptionalsReg.cpp
++++ b/xbmc/windowing/gbm/OptionalsReg.cpp
+@@ -11,7 +11,7 @@
+ //-----------------------------------------------------------------------------
+ // VAAPI
+ //-----------------------------------------------------------------------------
+-#if defined (HAVE_LIBVA)
++#if 0
+ #include <va/va_drm.h>
+ #include "cores/VideoPlayer/DVDCodecs/Video/VAAPI.h"
+ #include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererVAAPIGLES.h"

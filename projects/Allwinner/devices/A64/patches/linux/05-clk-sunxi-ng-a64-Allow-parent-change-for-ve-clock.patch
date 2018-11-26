@@ -1,0 +1,30 @@
+From: Jernej Skrabec <jernej.skrabec@siol.net>
+Date: Mon, 3 Dec 2018 20:51:08 +0100
+Subject: [PATCH] clk: sunxi-ng: a64: Allow parent change for ve clock
+
+Cedrus driver wants to set VE clock higher than it's possible without
+changing parent rate.
+
+In order to correct that, allow changing parent rate for VE clock.
+
+Signed-off-by: Jernej Skrabec <jernej.skrabec@siol.net>
+---
+ drivers/clk/sunxi-ng/ccu-sun50i-a64.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/clk/sunxi-ng/ccu-sun50i-a64.c b/drivers/clk/sunxi-ng/ccu-sun50i-a64.c
+index eb5c608428fa..e52155770f39 100644
+--- a/drivers/clk/sunxi-ng/ccu-sun50i-a64.c
++++ b/drivers/clk/sunxi-ng/ccu-sun50i-a64.c
+@@ -481,7 +481,7 @@ static SUNXI_CCU_M_WITH_MUX_GATE(csi_mclk_clk, "csi-mclk", csi_mclk_parents,
+ 				 0x134, 0, 5, 8, 3, BIT(15), 0);
+ 
+ static SUNXI_CCU_M_WITH_GATE(ve_clk, "ve", "pll-ve",
+-			     0x13c, 16, 3, BIT(31), 0);
++			     0x13c, 16, 3, BIT(31), CLK_SET_RATE_PARENT);
+ 
+ static SUNXI_CCU_GATE(ac_dig_clk,	"ac-dig",	"pll-audio",
+ 		      0x140, BIT(31), CLK_SET_RATE_PARENT);
+-- 
+2.19.2
+

@@ -1,0 +1,33 @@
+From c6cc4d13073086c7ca196acc6a15133516ca2d37 Mon Sep 17 00:00:00 2001
+From: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+Date: Tue, 6 Nov 2018 06:21:29 -0500
+Subject: [PATCH 3/7] cedrus: check if kzalloc() fails
+
+As warned by static code analizer checkers:
+	drivers/staging/media/sunxi/cedrus/cedrus.c: drivers/staging/media/sunxi/cedrus/cedrus.c:93 cedrus_init_ctrls() error: potential null dereference 'ctx->ctrls'.  (kzalloc returns null)
+
+The problem is that it assumes that kzalloc() will always
+succeed.
+
+Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+Acked-by: Maxime Ripard <maxime.ripard@bootlin.com>
+---
+ drivers/staging/media/sunxi/cedrus/cedrus.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.c b/drivers/staging/media/sunxi/cedrus/cedrus.c
+index 699d62dceb6c..8398f219251b 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.c
+@@ -72,6 +72,8 @@ static int cedrus_init_ctrls(struct cedrus_dev *dev, struct cedrus_ctx *ctx)
+ 	ctrl_size = sizeof(ctrl) * CEDRUS_CONTROLS_COUNT + 1;
+ 
+ 	ctx->ctrls = kzalloc(ctrl_size, GFP_KERNEL);
++	if (!ctx->ctrls)
++		return -ENOMEM;
+ 	memset(ctx->ctrls, 0, ctrl_size);
+ 
+ 	for (i = 0; i < CEDRUS_CONTROLS_COUNT; i++) {
+-- 
+2.19.1
+

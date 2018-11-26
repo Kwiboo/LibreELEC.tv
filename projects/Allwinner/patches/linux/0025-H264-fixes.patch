@@ -1,0 +1,538 @@
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.c b/drivers/staging/media/sunxi/cedrus/cedrus.c
+index eda441693389..61391875384d 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.c
+@@ -64,6 +64,12 @@ static const struct cedrus_control cedrus_controls[] = {
+ 		.codec		= CEDRUS_CODEC_H264,
+ 		.required	= true,
+ 	},
++	{
++		.id		= V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX,
++		.elem_size	= sizeof(struct v4l2_ctrl_h264_scaling_matrix),
++		.codec		= CEDRUS_CODEC_H264,
++		.required	= true,
++	},
+ 	{
+ 		.id		= V4L2_CID_MPEG_VIDEO_HEVC_SPS,
+ 		.elem_size	= sizeof(struct v4l2_ctrl_hevc_sps),
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.h b/drivers/staging/media/sunxi/cedrus/cedrus.h
+index 1895108222c8..fbdd8f963d99 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.h
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.h
+@@ -58,6 +58,7 @@ struct cedrus_control {
+ struct cedrus_h264_run {
+ 	const struct v4l2_ctrl_h264_decode_param	*decode_param;
+ 	const struct v4l2_ctrl_h264_pps			*pps;
++	const struct v4l2_ctrl_h264_scaling_matrix	*scaling_matrix;
+ 	const struct v4l2_ctrl_h264_slice_param		*slice_param;
+ 	const struct v4l2_ctrl_h264_sps			*sps;
+ };
+@@ -114,6 +115,8 @@ struct cedrus_ctx {
+ 			dma_addr_t	mv_col_buf_dma;
+ 			ssize_t		mv_col_buf_field_size;
+ 			ssize_t		mv_col_buf_size;
++			void		*neighbor_info_buf;
++			dma_addr_t	neighbor_info_buf_dma;
+ 			void		*pic_info_buf;
+ 			dma_addr_t	pic_info_buf_dma;
+ 		} h264;
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
+index d5ddd3938581..bc41357ef3e6 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
+@@ -51,6 +51,8 @@ void cedrus_device_run(void *priv)
+ 			V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS);
+ 		run.h264.pps = cedrus_find_control_data(ctx,
+ 			V4L2_CID_MPEG_VIDEO_H264_PPS);
++		run.h264.scaling_matrix = cedrus_find_control_data(ctx,
++			V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX);
+ 		run.h264.slice_param = cedrus_find_control_data(ctx,
+ 			V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS);
+ 		run.h264.sps = cedrus_find_control_data(ctx,
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_h264.c b/drivers/staging/media/sunxi/cedrus/cedrus_h264.c
+index 73563ddaad13..c19bb3edcc15 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_h264.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_h264.c
+@@ -13,12 +13,14 @@
+ #include "cedrus_regs.h"
+ 
+ enum cedrus_h264_sram_off {
+-	CEDRUS_SRAM_H264_PRED_WEIGHT_TABLE	= 0x000,
++	CEDRUS_SRAM_H264_PRED_WEIGHT_TABLE0	= 0x000,
++	CEDRUS_SRAM_H264_PRED_WEIGHT_TABLE1	= 0x060,
+ 	CEDRUS_SRAM_H264_FRAMEBUFFER_LIST	= 0x100,
+ 	CEDRUS_SRAM_H264_REF_LIST_0		= 0x190,
+ 	CEDRUS_SRAM_H264_REF_LIST_1		= 0x199,
+-	CEDRUS_SRAM_H264_SCALING_LIST_8x8	= 0x200,
+-	CEDRUS_SRAM_H264_SCALING_LIST_4x4	= 0x218,
++	CEDRUS_SRAM_H264_SCALING_LIST_8x8_0	= 0x200,
++	CEDRUS_SRAM_H264_SCALING_LIST_8x8_1	= 0x210,
++	CEDRUS_SRAM_H264_SCALING_LIST_4x4	= 0x220,
+ };
+ 
+ struct cedrus_h264_sram_ref_pic {
+@@ -33,9 +35,10 @@ struct cedrus_h264_sram_ref_pic {
+ } __packed;
+ 
+ /* One for the output, 16 for the reference images */
+-#define CEDRUS_H264_FRAME_NUM		17
++#define CEDRUS_H264_FRAME_NUM		18
+ 
+-#define CEDRUS_PIC_INFO_BUF_SIZE	(128 * SZ_1K)
++#define CEDRUS_PIC_INFO_BUF_SIZE	(336 * SZ_1K)
++#define CEDRUS_NEIGHBOR_INFO_BUF_SIZE	(32 * SZ_1K)
+ 
+ static void cedrus_h264_write_sram(struct cedrus_dev *dev,
+ 				   enum cedrus_h264_sram_off off,
+@@ -85,6 +88,12 @@ static void cedrus_fill_ref_pic(struct cedrus_ctx *ctx,
+ 	pic->mv_col_bot_ptr = cedrus_h264_mv_col_buf_addr(ctx, position, 1);
+ }
+ 
++static unsigned long find_last_zero_bit(const unsigned long *addr, unsigned long size)
++{
++	unsigned long val = ~(*addr);
++	return find_last_bit(&val, size);
++}
++
+ static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
+ 				    struct cedrus_run *run)
+ {
+@@ -92,12 +101,13 @@ static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
+ 	const struct v4l2_ctrl_h264_decode_param *dec_param = run->h264.decode_param;
+ 	const struct v4l2_ctrl_h264_slice_param *slice = run->h264.slice_param;
+ 	const struct v4l2_ctrl_h264_sps *sps = run->h264.sps;
++	struct vb2_v4l2_buffer *v4l2_buf = to_vb2_v4l2_buffer(&run->dst->vb2_buf);
+ 	struct vb2_queue *cap_q = &ctx->fh.m2m_ctx->cap_q_ctx.q;
+ 	struct cedrus_buffer *output_buf;
+ 	struct cedrus_dev *dev = ctx->dev;
+ 	unsigned long used_dpbs = 0;
+ 	unsigned int position;
+-	unsigned int output = 0;
++	int output = -1;
+ 	unsigned int i;
+ 
+ 	memset(pic_list, 0, sizeof(pic_list));
+@@ -110,7 +120,11 @@ static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
+ 		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_VALID))
+ 			continue;
+ 
+-		buf_idx = vb2_find_tag(cap_q, dpb->tag, 0);
++		// field pictures may reference current output buffer and is not returned by vb2_find_tag
++		if (v4l2_buf->tag == dpb->tag)
++			buf_idx = v4l2_buf->vb2_buf.index;
++		else
++			buf_idx = vb2_find_tag(cap_q, dpb->tag, 0);
+ 		if (buf_idx < 0)
+ 			continue;
+ 
+@@ -118,6 +132,11 @@ static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
+ 		position = cedrus_buf->codec.h264.position;
+ 		used_dpbs |= BIT(position);
+ 
++		if (v4l2_buf->tag == dpb->tag) {
++			output = position;
++			continue;
++		}
++
+ 		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE))
+ 			continue;
+ 
+@@ -125,13 +144,16 @@ static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
+ 				    dpb->top_field_order_cnt,
+ 				    dpb->bottom_field_order_cnt,
+ 				    &pic_list[position]);
+-
+-		output = max(position, output);
+ 	}
+ 
+-	position = find_next_zero_bit(&used_dpbs, CEDRUS_H264_FRAME_NUM,
+-				      output);
+-	if (position >= CEDRUS_H264_FRAME_NUM)
++	/* do not reset position when there is a reference to current output buffer */
++	if (output >= 0)
++		position = output;
++	/* BSP code selects last position for non reference pictures, not really needed */
++	else if (dec_param->nal_ref_idc == 0)
++		position = find_last_zero_bit(&used_dpbs, CEDRUS_H264_FRAME_NUM);
++	/* first aviliable position can be used to simplify position selection */
++	else
+ 		position = find_first_zero_bit(&used_dpbs, CEDRUS_H264_FRAME_NUM);
+ 
+ 	output_buf = vb2_to_cedrus_buffer(&run->dst->vb2_buf);
+@@ -157,56 +179,58 @@ static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
+ 
+ #define CEDRUS_MAX_REF_IDX	32
+ 
++#define REF_IDX(v)		(v & GENMASK(5, 0))
++#define REF_FIELD(v)		(v >> 6)
++#define REF_FIELD_BOTTOM	2
++
+ static void _cedrus_write_ref_list(struct cedrus_ctx *ctx,
+ 				   struct cedrus_run *run,
+ 				   const u8 *ref_list, u8 num_ref,
+ 				   enum cedrus_h264_sram_off sram)
+ {
+ 	const struct v4l2_ctrl_h264_decode_param *decode = run->h264.decode_param;
++	struct vb2_v4l2_buffer *v4l2_buf = to_vb2_v4l2_buffer(&run->dst->vb2_buf);
+ 	struct vb2_queue *cap_q = &ctx->fh.m2m_ctx->cap_q_ctx.q;
+ 	struct cedrus_dev *dev = ctx->dev;
+-	u32 sram_array[CEDRUS_MAX_REF_IDX / sizeof(u32)];
+-	unsigned int size, i;
++	u8 sram_array[CEDRUS_MAX_REF_IDX];
++	unsigned int i;
+ 
+ 	memset(sram_array, 0, sizeof(sram_array));
++	num_ref = min(num_ref, (u8)CEDRUS_MAX_REF_IDX);
+ 
+-	for (i = 0; i < num_ref; i += 4) {
+-		unsigned int j;
+-
+-		for (j = 0; j < 4; j++) {
+-			const struct v4l2_h264_dpb_entry *dpb;
+-			const struct cedrus_buffer *cedrus_buf;
+-			const struct vb2_v4l2_buffer *ref_buf;
+-			unsigned int position;
+-			int buf_idx;
+-			u8 ref_idx = i + j;
+-			u8 dpb_idx;
+-
+-			if (ref_idx >= num_ref)
+-				break;
++	for (i = 0; i < num_ref; i++) {
++		const struct v4l2_h264_dpb_entry *dpb;
++		const struct cedrus_buffer *cedrus_buf;
++		const struct vb2_v4l2_buffer *ref_buf;
++		unsigned int position;
++		int buf_idx;
++		u8 dpb_idx;
+ 
+-			dpb_idx = ref_list[ref_idx];
+-			dpb = &decode->dpb[dpb_idx];
++		dpb_idx = REF_IDX(ref_list[i]);
++		dpb = &decode->dpb[dpb_idx];
+ 
+-			if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE))
+-				continue;
++		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE))
++			continue;
+ 
++		/* field pictures may reference current output buffer and is not returned by vb2_find_tag */
++		if (v4l2_buf->tag == dpb->tag)
++			buf_idx = v4l2_buf->vb2_buf.index;
++		else
+ 			buf_idx = vb2_find_tag(cap_q, dpb->tag, 0);
+-			if (buf_idx < 0)
+-				continue;
++		if (buf_idx < 0)
++			continue;
+ 
+-			ref_buf = to_vb2_v4l2_buffer(ctx->dst_bufs[buf_idx]);
+-			cedrus_buf = vb2_v4l2_to_cedrus_buffer(ref_buf);
+-			position = cedrus_buf->codec.h264.position;
++		ref_buf = to_vb2_v4l2_buffer(ctx->dst_bufs[buf_idx]);
++		cedrus_buf = vb2_v4l2_to_cedrus_buffer(ref_buf);
++		position = cedrus_buf->codec.h264.position;
+ 
+-			sram_array[i] |= position << (j * 8 + 1);
+-			if (ref_buf->field == V4L2_FIELD_BOTTOM)
+-				sram_array[i] |= BIT(j * 8);
+-		}
++		sram_array[i] |= position << 1;
++		/* set bottom field flag when reference is to bottom field */
++		if (REF_FIELD(ref_list[i]) == REF_FIELD_BOTTOM)
++			sram_array[i] |= BIT(0);
+ 	}
+ 
+-	size = min((unsigned int)ALIGN(num_ref, 4), sizeof(sram_array));
+-	cedrus_h264_write_sram(dev, sram, &sram_array, size);
++	cedrus_h264_write_sram(dev, sram, &sram_array, num_ref);
+ }
+ 
+ static void cedrus_write_ref_list0(struct cedrus_ctx *ctx,
+@@ -231,65 +255,98 @@ static void cedrus_write_ref_list1(struct cedrus_ctx *ctx,
+ 			       CEDRUS_SRAM_H264_REF_LIST_1);
+ }
+ 
+-static void cedrus_write_pred_weight_table(struct cedrus_ctx *ctx,
+-					   struct cedrus_run *run)
++static void _cedrus_write_pred_weight_table(struct cedrus_ctx *ctx,
++					    const struct v4l2_h264_weight_factors *factors,
++					    enum cedrus_h264_sram_off sram)
+ {
+-	const struct v4l2_ctrl_h264_slice_param *slice =
+-		run->h264.slice_param;
+-	const struct v4l2_h264_pred_weight_table *pred_weight =
+-		&slice->pred_weight_table;
+ 	struct cedrus_dev *dev = ctx->dev;
+-	int i, j, k;
++	int j, k;
+ 
+-	cedrus_write(dev, VE_H264_PRED_WEIGHT,
+-		     ((pred_weight->chroma_log2_weight_denom & 0xf) << 4) |
+-		     ((pred_weight->luma_log2_weight_denom & 0xf) << 0));
++	cedrus_write(dev, VE_AVC_SRAM_PORT_OFFSET, sram << 2);
+ 
+-	cedrus_write(dev, VE_AVC_SRAM_PORT_OFFSET,
+-		     CEDRUS_SRAM_H264_PRED_WEIGHT_TABLE << 2);
++	for (j = 0; j < ARRAY_SIZE(factors->luma_weight); j++) {
++		u32 val;
+ 
+-	for (i = 0; i < ARRAY_SIZE(pred_weight->weight_factors); i++) {
+-		const struct v4l2_h264_weight_factors *factors =
+-			&pred_weight->weight_factors[i];
++		val = ((((u32)factors->luma_offset[j]) & 0x1ff) << 16) |
++			(((u32)factors->luma_weight[j]) & 0xff);
++		cedrus_write(dev, VE_AVC_SRAM_PORT_DATA, val);
++	}
+ 
+-		for (j = 0; j < ARRAY_SIZE(factors->luma_weight); j++) {
++	for (j = 0; j < ARRAY_SIZE(factors->chroma_weight); j++) {
++		for (k = 0; k < ARRAY_SIZE(factors->chroma_weight[0]); k++) {
+ 			u32 val;
+ 
+-			val = ((factors->luma_offset[j] & 0x1ff) << 16) |
+-				(factors->luma_weight[j] & 0x1ff);
++			val = ((((u32)factors->chroma_offset[j][k]) & 0x1ff) << 16) |
++				(((u32)factors->chroma_weight[j][k]) & 0xff);
+ 			cedrus_write(dev, VE_AVC_SRAM_PORT_DATA, val);
+ 		}
++	}
++}
+ 
+-		for (j = 0; j < ARRAY_SIZE(factors->chroma_weight); j++) {
+-			for (k = 0; k < ARRAY_SIZE(factors->chroma_weight[0]); k++) {
+-				u32 val;
++static void cedrus_write_pred_weight_table0(struct cedrus_ctx *ctx,
++					    struct cedrus_run *run)
++{
++	const struct v4l2_ctrl_h264_slice_param *slice =
++		run->h264.slice_param;
++	const struct v4l2_h264_pred_weight_table *pred_weight =
++		&slice->pred_weight_table;
+ 
+-				val = ((factors->chroma_offset[j][k] & 0x1ff) << 16) |
+-					(factors->chroma_weight[j][k] & 0x1ff);
+-				cedrus_write(dev, VE_AVC_SRAM_PORT_DATA, val);
+-			}
+-		}
+-	}
++	_cedrus_write_pred_weight_table(ctx, &pred_weight->weight_factors[0],
++					CEDRUS_SRAM_H264_PRED_WEIGHT_TABLE0);
++}
++
++static void cedrus_write_pred_weight_table1(struct cedrus_ctx *ctx,
++					    struct cedrus_run *run)
++{
++	const struct v4l2_ctrl_h264_slice_param *slice =
++	run->h264.slice_param;
++	const struct v4l2_h264_pred_weight_table *pred_weight =
++	&slice->pred_weight_table;
++
++	_cedrus_write_pred_weight_table(ctx, &pred_weight->weight_factors[1],
++					CEDRUS_SRAM_H264_PRED_WEIGHT_TABLE1);
++}
++
++static void cedrus_write_scaling_lists(struct cedrus_ctx *ctx,
++				       struct cedrus_run *run)
++{
++	const struct v4l2_ctrl_h264_scaling_matrix *scaling =
++		run->h264.scaling_matrix;
++	struct cedrus_dev *dev = ctx->dev;
++
++	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_8x8_0,
++			       scaling->scaling_list_8x8[0],
++			       sizeof(scaling->scaling_list_8x8[0]));
++	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_8x8_1,
++			       scaling->scaling_list_8x8[3],
++			       sizeof(scaling->scaling_list_8x8[0]));
++	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_4x4,
++			       scaling->scaling_list_4x4,
++			       sizeof(scaling->scaling_list_4x4));
+ }
+ 
+ static void cedrus_set_params(struct cedrus_ctx *ctx,
+ 			      struct cedrus_run *run)
+ {
++	const struct v4l2_ctrl_h264_decode_param *decode = run->h264.decode_param;
+ 	const struct v4l2_ctrl_h264_slice_param *slice = run->h264.slice_param;
++	const struct v4l2_h264_pred_weight_table *pred_weight =
++		&slice->pred_weight_table;
+ 	const struct v4l2_ctrl_h264_pps *pps = run->h264.pps;
+ 	const struct v4l2_ctrl_h264_sps *sps = run->h264.sps;
+ 	struct cedrus_dev *dev = ctx->dev;
+ 	dma_addr_t src_buf_addr;
+ 	u32 offset = slice->header_bit_size;
+ 	u32 len = (slice->size * 8) - offset;
++	unsigned int pic_width_in_mbs;
++	bool mbaff_picture;
+ 	u32 reg;
+ 
+-	cedrus_write(dev, 0x220, 0x02000400);
+ 	cedrus_write(dev, VE_H264_VLD_LEN, len);
+ 	cedrus_write(dev, VE_H264_VLD_OFFSET, offset);
+ 
+ 	src_buf_addr = vb2_dma_contig_plane_dma_addr(&run->src->vb2_buf, 0);
+-	cedrus_write(dev, VE_H264_VLD_END, src_buf_addr + VBV_SIZE - 1);
++	cedrus_write(dev, VE_H264_VLD_END, ALIGN(src_buf_addr + slice->size, 1024) - 1);
+ 	cedrus_write(dev, VE_H264_VLD_ADDR,
+ 		     VE_H264_VLD_ADDR_VAL(src_buf_addr) |
+ 		     VE_H264_VLD_ADDR_FIRST | VE_H264_VLD_ADDR_VALID |
+@@ -304,12 +361,16 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
+ 	cedrus_write(dev, VE_H264_TRIGGER_TYPE,
+ 		     VE_H264_TRIGGER_TYPE_INIT_SWDEC);
+ 
+-	if (((pps->flags & V4L2_H264_PPS_FLAG_WEIGHTED_PRED) &&
+-	     (slice->slice_type == V4L2_H264_SLICE_TYPE_P ||
+-	      slice->slice_type == V4L2_H264_SLICE_TYPE_SP)) ||
+-	    (pps->weighted_bipred_idc == 1 &&
+-	     slice->slice_type == V4L2_H264_SLICE_TYPE_B))
+-		cedrus_write_pred_weight_table(ctx, run);
++	cedrus_write(dev, VE_H264_PRED_WEIGHT,
++		     ((pred_weight->chroma_log2_weight_denom & 7) << 4) |
++		     ((pred_weight->luma_log2_weight_denom & 7) << 0));
++
++	if (((pps->flags & V4L2_H264_PPS_FLAG_WEIGHTED_PRED) && slice->slice_type == V4L2_H264_SLICE_TYPE_P) ||
++	    (pps->weighted_bipred_idc == 1 && slice->slice_type == V4L2_H264_SLICE_TYPE_B))
++		cedrus_write_pred_weight_table0(ctx, run);
++
++	if (pps->weighted_bipred_idc == 1 && slice->slice_type == V4L2_H264_SLICE_TYPE_B)
++		cedrus_write_pred_weight_table1(ctx, run);
+ 
+ 	if ((slice->slice_type == V4L2_H264_SLICE_TYPE_P) ||
+ 	    (slice->slice_type == V4L2_H264_SLICE_TYPE_SP) ||
+@@ -339,7 +400,8 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
+ 	cedrus_write(dev, VE_H264_PIC_HDR, reg);
+ 
+ 	// sequence parameters
+-	reg = BIT(19);
++	reg = 0;
++	reg |= (sps->chroma_format_idc & 0x7) << 19;
+ 	reg |= (sps->pic_width_in_mbs_minus1 & 0xff) << 8;
+ 	reg |= sps->pic_height_in_map_units_minus1 & 0xff;
+ 	if (sps->flags & V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY)
+@@ -350,19 +412,20 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
+ 		reg |= BIT(16);
+ 	cedrus_write(dev, VE_H264_FRAME_SIZE, reg);
+ 
++	mbaff_picture = !(slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC) &&
++			(sps->flags & V4L2_H264_SPS_FLAG_MB_ADAPTIVE_FRAME_FIELD);
++	pic_width_in_mbs = sps->pic_width_in_mbs_minus1 + 1;
++
+ 	// slice parameters
+ 	reg = 0;
+-	/*
+-	 * FIXME: This bit marks all the frames as references. This
+-	 * should probably be set based on nal_ref_idc, but the libva
+-	 * doesn't pass that information along, so this is not always
+-	 * available. We should find something else, maybe change the
+-	 * kernel UAPI somehow?
+-	 */
+-	reg |= BIT(12);
++	reg |= ((slice->first_mb_in_slice % pic_width_in_mbs) & 0xff) << 24;
++	reg |= (((slice->first_mb_in_slice / pic_width_in_mbs) * (mbaff_picture ? 2 : 1)) & 0xff)  << 16;
++	if (decode->nal_ref_idc != 0)
++		reg |= BIT(12);
+ 	reg |= (slice->slice_type & 0xf) << 8;
+ 	reg |= slice->cabac_init_idc & 0x3;
+-	reg |= BIT(5);
++	if (decode->num_slices == 0)
++		reg |= BIT(5);
+ 	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC)
+ 		reg |= BIT(4);
+ 	if (slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD)
+@@ -372,6 +435,7 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
+ 	cedrus_write(dev, VE_H264_SLICE_HDR, reg);
+ 
+ 	reg = 0;
++	reg |= BIT(12);
+ 	reg |= (slice->num_ref_idx_l0_active_minus1 & 0x1f) << 24;
+ 	reg |= (slice->num_ref_idx_l1_active_minus1 & 0x1f) << 16;
+ 	reg |= (slice->disable_deblocking_filter_idc & 0x3) << 8;
+@@ -380,13 +444,6 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
+ 	cedrus_write(dev, VE_H264_SLICE_HDR2, reg);
+ 
+ 	reg = 0;
+-	/*
+-	 * FIXME: This bit tells the video engine to use the default
+-	 * quantization matrices. This will obviously need to be
+-	 * changed to support the profiles supporting custom
+-	 * quantization matrices.
+-	 */
+-	reg |= BIT(24);
+ 	reg |= (pps->second_chroma_qp_index_offset & 0x3f) << 16;
+ 	reg |= (pps->chroma_qp_index_offset & 0x3f) << 8;
+ 	reg |= (pps->pic_init_qp_minus26 + 26 + slice->slice_qp_delta) & 0x3f;
+@@ -396,8 +453,7 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
+ 	cedrus_write(dev, VE_H264_STATUS, cedrus_read(dev, VE_H264_STATUS));
+ 
+ 	// enable int
+-	reg = cedrus_read(dev, VE_H264_CTRL) | 0x7;
+-	cedrus_write(dev, VE_H264_CTRL, reg);
++	cedrus_write(dev, VE_H264_CTRL, 0x7);
+ }
+ 
+ static enum cedrus_irq_status
+@@ -434,15 +490,19 @@ static void cedrus_h264_setup(struct cedrus_ctx *ctx,
+ 			      struct cedrus_run *run)
+ {
+ 	struct cedrus_dev *dev = ctx->dev;
++	dma_addr_t addr;
+ 
+ 	cedrus_engine_enable(dev, CEDRUS_CODEC_H264);
+ 
+ 	cedrus_write(dev, VE_H264_SDROT_CTRL, 0);
+ 	cedrus_write(dev, VE_H264_EXTRA_BUFFER1,
+ 		     ctx->codec.h264.pic_info_buf_dma);
+-	cedrus_write(dev, VE_H264_EXTRA_BUFFER2,
+-		     (ctx->codec.h264.pic_info_buf_dma) + 0x48000);
++	addr = ALIGN(ctx->codec.h264.neighbor_info_buf_dma, 0x4000);
++	cedrus_write(dev, VE_H264_EXTRA_BUFFER2, addr);
++	cedrus_write(dev, VE_H264_CUR_MB_NUM, 0);
++	cedrus_write(dev, 0x260, 0);
+ 
++	cedrus_write_scaling_lists(ctx, run);
+ 	cedrus_write_frame_list(ctx, run);
+ 
+ 	cedrus_set_params(ctx, run);
+@@ -463,7 +523,8 @@ static int cedrus_h264_start(struct cedrus_ctx *ctx)
+ 		return -ENOMEM;
+ 
+ 	field_size = DIV_ROUND_UP(ctx->src_fmt.width, 16) *
+-		DIV_ROUND_UP(ctx->src_fmt.height, 16) * 32;
++		DIV_ROUND_UP(ctx->src_fmt.height, 16) * 32 * 2;
++	field_size = ALIGN(field_size, 1024);
+ 	ctx->codec.h264.mv_col_buf_field_size = field_size;
+ 
+ 	mv_col_size = field_size * 2 * CEDRUS_H264_FRAME_NUM;
+@@ -477,8 +538,21 @@ static int cedrus_h264_start(struct cedrus_ctx *ctx)
+ 		goto err_pic_buf;
+ 	}
+ 
++	ctx->codec.h264.neighbor_info_buf =
++		dma_alloc_coherent(dev->dev, CEDRUS_NEIGHBOR_INFO_BUF_SIZE,
++				   &ctx->codec.h264.neighbor_info_buf_dma,
++				   GFP_KERNEL);
++	if (!ctx->codec.h264.neighbor_info_buf) {
++		ret = -ENOMEM;
++		goto err_mv_col_buf;
++	}
++
+ 	return 0;
+ 
++err_mv_col_buf:
++	dma_free_coherent(dev->dev, ctx->codec.h264.mv_col_buf_size,
++			  ctx->codec.h264.mv_col_buf,
++			  ctx->codec.h264.mv_col_buf_dma);
+ err_pic_buf:
+ 	dma_free_coherent(dev->dev, CEDRUS_PIC_INFO_BUF_SIZE,
+ 			  ctx->codec.h264.pic_info_buf,
+@@ -496,6 +570,9 @@ static void cedrus_h264_stop(struct cedrus_ctx *ctx)
+ 	dma_free_coherent(dev->dev, CEDRUS_PIC_INFO_BUF_SIZE,
+ 			  ctx->codec.h264.pic_info_buf,
+ 			  ctx->codec.h264.pic_info_buf_dma);
++	dma_free_coherent(dev->dev, CEDRUS_NEIGHBOR_INFO_BUF_SIZE,
++			  ctx->codec.h264.neighbor_info_buf,
++			  ctx->codec.h264.neighbor_info_buf_dma);
+ }
+ 
+ static void cedrus_h264_trigger(struct cedrus_ctx *ctx)

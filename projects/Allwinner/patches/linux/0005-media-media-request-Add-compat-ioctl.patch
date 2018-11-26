@@ -1,0 +1,34 @@
+From b176347899ca2f68a15cab96cc8a43d843279993 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@siol.net>
+Date: Sun, 11 Nov 2018 12:06:21 +0100
+Subject: [PATCH 5/7] media: media-request: Add compat ioctl
+
+Currently media request ioctl operations fail on 64-bit kernel with
+32-bit userspace due to missing .compat_ioctl callback.
+
+Because no ioctl command uses any argument, just reuse existing ioctl
+handler for compat_ioctl too.
+
+Signed-off-by: Jernej Skrabec <jernej.skrabec@siol.net>
+Signed-off-by: Hans Verkuil <hverkuil@xs4all.nl>
+---
+ drivers/media/media-request.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/media/media-request.c b/drivers/media/media-request.c
+index 4e9db1fed697..c71a34ae6383 100644
+--- a/drivers/media/media-request.c
++++ b/drivers/media/media-request.c
+@@ -238,6 +238,9 @@ static const struct file_operations request_fops = {
+ 	.owner = THIS_MODULE,
+ 	.poll = media_request_poll,
+ 	.unlocked_ioctl = media_request_ioctl,
++#ifdef CONFIG_COMPAT
++	.compat_ioctl = media_request_ioctl,
++#endif /* CONFIG_COMPAT */
+ 	.release = media_request_close,
+ };
+ 
+-- 
+2.19.1
+

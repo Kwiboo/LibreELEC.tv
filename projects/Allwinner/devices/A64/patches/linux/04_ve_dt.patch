@@ -1,0 +1,41 @@
+diff -Nur a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi	2018-11-09 22:03:52.000000000 +0100
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi	2018-11-10 07:53:44.578239395 +0100
+@@ -268,6 +282,19 @@
+ 					reg = <0x0000 0x28000>;
+ 				};
+ 			};
++
++			sram_c1: sram@1d00000 {
++				compatible = "mmio-sram";
++				reg = <0x01d00000 0x80000>;
++				#address-cells = <1>;
++				#size-cells = <1>;
++				ranges = <0 0x01d00000 0x80000>;
++				ve_sram: sram-section@0 {
++					compatible = "allwinner,sun50i-a64-sram-c1",
++						     "allwinner,sun4i-a10-sram-c1";
++					reg = <0x000000 0x80000>;
++				};
++			};
+ 		};
+ 
+ 		dma: dma-controller@1c02000 {
+@@ -350,6 +377,17 @@
+ 			};
+ 		};
+ 
++		video-codec@01c0e000 {
++			compatible = "allwinner,sun8i-h3-video-engine";
++			reg = <0x01c0e000 0x1000>;
++			clocks = <&ccu CLK_BUS_VE>, <&ccu CLK_VE>,
++				 <&ccu CLK_DRAM_VE>;
++			clock-names = "ahb", "mod", "ram";
++			resets = <&ccu RST_BUS_VE>;
++			interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
++			allwinner,sram = <&ve_sram 1>;
++		};
++
+ 		mmc0: mmc@1c0f000 {
+ 			compatible = "allwinner,sun50i-a64-mmc";
+ 			reg = <0x01c0f000 0x1000>;

@@ -1,0 +1,260 @@
+diff --git a/drivers/media/v4l2-core/v4l2-ctrls.c b/drivers/media/v4l2-core/v4l2-ctrls.c
+index 03f424468428..c2cc8ab05451 100644
+--- a/drivers/media/v4l2-core/v4l2-ctrls.c
++++ b/drivers/media/v4l2-core/v4l2-ctrls.c
+@@ -916,6 +916,7 @@ const char *v4l2_ctrl_get_name(u32 id)
+ 	case V4L2_CID_MPEG_VIDEO_HEVC_SPS:			return "HEVC Sequence Parameter Set";
+ 	case V4L2_CID_MPEG_VIDEO_HEVC_PPS:			return "HEVC Picture Parameter Set";
+ 	case V4L2_CID_MPEG_VIDEO_HEVC_SLICE_PARAMS:		return "HEVC Slice Parameters";
++	case V4L2_CID_MPEG_VIDEO_HEVC_SCALING_MATRIX:		return "HEVC Scaling Matrix";
+ 
+ 	/* CAMERA controls */
+ 	/* Keep the order of the 'case's the same as in v4l2-controls.h! */
+@@ -1332,6 +1333,9 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
+ 	case V4L2_CID_MPEG_VIDEO_HEVC_SLICE_PARAMS:
+ 		*type = V4L2_CTRL_TYPE_HEVC_SLICE_PARAMS;
+ 		break;
++	case V4L2_CID_MPEG_VIDEO_HEVC_SCALING_MATRIX:
++		*type = V4L2_CTRL_TYPE_HEVC_SCALING_MATRIX;
++		break;
+ 	default:
+ 		*type = V4L2_CTRL_TYPE_INTEGER;
+ 		break;
+@@ -1708,6 +1712,7 @@ static int std_validate(const struct v4l2_ctrl *ctrl, u32 idx,
+ 	case V4L2_CTRL_TYPE_HEVC_SPS:
+ 	case V4L2_CTRL_TYPE_HEVC_PPS:
+ 	case V4L2_CTRL_TYPE_HEVC_SLICE_PARAMS:
++	case V4L2_CTRL_TYPE_HEVC_SCALING_MATRIX:
+ 		return 0;
+ 
+ 	default:
+@@ -2314,6 +2319,9 @@ static struct v4l2_ctrl *v4l2_ctrl_new(struct v4l2_ctrl_handler *hdl,
+ 	case V4L2_CTRL_TYPE_HEVC_SLICE_PARAMS:
+ 		elem_size = sizeof(struct v4l2_ctrl_hevc_slice_params);
+ 		break;
++	case V4L2_CTRL_TYPE_HEVC_SCALING_MATRIX:
++		elem_size = sizeof(struct v4l2_ctrl_hevc_scaling_matrix);
++		break;
+ 	default:
+ 		if (type < V4L2_CTRL_COMPOUND_TYPES)
+ 			elem_size = sizeof(s32);
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.c b/drivers/staging/media/sunxi/cedrus/cedrus.c
+index eda441693389..60dad55f16f8 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.c
+@@ -82,6 +82,12 @@ static const struct cedrus_control cedrus_controls[] = {
+ 		.codec		= CEDRUS_CODEC_H265,
+ 		.required	= true,
+ 	},
++	{
++		.id		= V4L2_CID_MPEG_VIDEO_HEVC_SCALING_MATRIX,
++		.elem_size	= sizeof(struct v4l2_ctrl_hevc_scaling_matrix),
++		.codec		= CEDRUS_CODEC_H265,
++		.required	= true,
++	},
+ };
+ 
+ #define CEDRUS_CONTROLS_COUNT	ARRAY_SIZE(cedrus_controls)
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.h b/drivers/staging/media/sunxi/cedrus/cedrus.h
+index 1895108222c8..a44c0f2dd0b1 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.h
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.h
+@@ -71,6 +71,7 @@ struct cedrus_h265_run {
+ 	const struct v4l2_ctrl_hevc_sps			*sps;
+ 	const struct v4l2_ctrl_hevc_pps			*pps;
+ 	const struct v4l2_ctrl_hevc_slice_params	*slice_params;
++	const struct v4l2_ctrl_hevc_scaling_matrix	*scaling_matrix;
+ };
+ 
+ struct cedrus_run {
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
+index d5ddd3938581..2c84833f010a 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
+@@ -64,6 +64,8 @@ void cedrus_device_run(void *priv)
+ 			V4L2_CID_MPEG_VIDEO_HEVC_PPS);
+ 		run.h265.slice_params = cedrus_find_control_data(ctx,
+ 			V4L2_CID_MPEG_VIDEO_HEVC_SLICE_PARAMS);
++		run.h265.scaling_matrix = cedrus_find_control_data(ctx,
++			V4L2_CID_MPEG_VIDEO_HEVC_SCALING_MATRIX);
+ 		break;
+ 
+ 	default:
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_h265.c b/drivers/staging/media/sunxi/cedrus/cedrus_h265.c
+index 36bf42528f9b..fa4f3b1c6331 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_h265.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_h265.c
+@@ -218,6 +218,71 @@ static void cedrus_h265_pred_weight_write(struct cedrus_dev *dev,
+ 	}
+ }
+ 
++static void cedrus_h265_write_scaling_list(struct cedrus_ctx *ctx,
++					   struct cedrus_run *run)
++{
++	const struct v4l2_ctrl_hevc_scaling_matrix *scaling;
++	struct cedrus_dev *dev = ctx->dev;
++	u32 word = 0;
++	int i, j;
++
++	scaling = run->h265.scaling_matrix;
++
++	cedrus_write(dev, VE_DEC_H265_SCALING_LIST_DC_COEF0,
++		     (scaling->scaling_list_dc_coef_32x32[1] << 24) |
++		     (scaling->scaling_list_dc_coef_32x32[0] << 16) |
++		     (scaling->scaling_list_dc_coef_16x16[1] << 8) |
++		     (scaling->scaling_list_dc_coef_16x16[0] << 0));
++
++	cedrus_write(dev, VE_DEC_H265_SCALING_LIST_DC_COEF1,
++		     (scaling->scaling_list_dc_coef_16x16[5] << 24) |
++		     (scaling->scaling_list_dc_coef_16x16[4] << 16) |
++		     (scaling->scaling_list_dc_coef_16x16[3] << 8) |
++		     (scaling->scaling_list_dc_coef_16x16[2] << 0));
++
++	cedrus_h265_sram_write_offset(dev, VE_DEC_H265_SRAM_OFFSET_SCALING_LISTS);
++
++	for (i = 0; i < 6; i++)
++		for (j = 0; j < 64; j++) {
++			word |= scaling->scaling_list_8x8[i][j] << ((j % 4) * 8);
++
++			if (j % 4 == 3) {
++				cedrus_h265_sram_write_data(dev, &word, 1);
++				word = 0x0;
++			}
++		}
++
++	for (i = 0; i < 2; i++)
++		for (j = 0; j < 64; j++) {
++			word |= scaling->scaling_list_32x32[i][j] << ((j % 4) * 8);
++
++			if (j % 4 == 3) {
++				cedrus_h265_sram_write_data(dev, &word, 1);
++				word = 0x0;
++			}
++		}
++
++	for (i = 0; i < 6; i++)
++		for (j = 0; j < 64; j++) {
++			word |= scaling->scaling_list_16x16[i][j] << ((j % 4) * 8);
++
++			if (j % 4 == 3) {
++				cedrus_h265_sram_write_data(dev, &word, 1);
++				word = 0x0;
++			}
++		}
++
++	for (i = 0; i < 6; i++)
++		for (j = 0; j < 16; j++) {
++			word |= scaling->scaling_list_4x4[i][j] << ((j % 4) * 8);
++
++			if (j % 4 == 3) {
++				cedrus_h265_sram_write_data(dev, &word, 1);
++				word = 0x0;
++			}
++		}
++}
++
+ static void cedrus_h265_setup(struct cedrus_ctx *ctx,
+ 			      struct cedrus_run *run)
+ {
+@@ -416,7 +481,12 @@ static void cedrus_h265_setup(struct cedrus_ctx *ctx,
+ 
+ 	/* Scaling list */
+ 
+-	reg = VE_DEC_H265_SCALING_LIST_CTRL0_DEFAULT;
++	if (sps->scaling_list_enabled_flag || pps->scaling_list_enable_flag) {
++		cedrus_h265_write_scaling_list(ctx, run);
++		reg = VE_DEC_H265_SCALING_LIST_CTRL0_ENABLED_FLAG(1);
++	} else {
++		reg = VE_DEC_H265_SCALING_LIST_CTRL0_DEFAULT;
++	}
+ 	cedrus_write(dev, VE_DEC_H265_SCALING_LIST_CTRL0, reg);
+ 
+ 	/* Neightbor information address. */
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_regs.h b/drivers/staging/media/sunxi/cedrus/cedrus_regs.h
+index d87d13d6ed16..f6e8bf23d9d8 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_regs.h
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_regs.h
+@@ -496,6 +496,9 @@
+ #define VE_DEC_H265_TILE_START_CTB		(VE_ENGINE_DEC_H265 + 0x68)
+ #define VE_DEC_H265_TILE_END_CTB		(VE_ENGINE_DEC_H265 + 0x6c)
+ 
++#define VE_DEC_H265_SCALING_LIST_DC_COEF0	(VE_ENGINE_DEC_H265 + 0x78)
++#define VE_DEC_H265_SCALING_LIST_DC_COEF1	(VE_ENGINE_DEC_H265 + 0x7c)
++
+ #define VE_DEC_H265_LOW_ADDR			(VE_ENGINE_DEC_H265 + 0x80)
+ 
+ #define VE_DEC_H265_LOW_ADDR_PRIMARY_CHROMA(a) \
+diff --git a/include/media/v4l2-ctrls.h b/include/media/v4l2-ctrls.h
+index 11664c5c3706..b4f126882fc3 100644
+--- a/include/media/v4l2-ctrls.h
++++ b/include/media/v4l2-ctrls.h
+@@ -51,6 +51,7 @@ struct poll_table_struct;
+  * @p_hevc_sps:			Pointer to an HEVC sequence parameter set structure.
+  * @p_hevc_pps:			Pointer to an HEVC picture parameter set structure.
+  * @p_hevc_slice_params		Pointer to an HEVC slice parameters structure.
++ * @p_hevc_scaling_matrix	Pointer to an HEVC scaling matrix structure.
+  * @p:				Pointer to a compound value.
+  */
+ union v4l2_ctrl_ptr {
+@@ -70,6 +71,7 @@ union v4l2_ctrl_ptr {
+ 	struct v4l2_ctrl_hevc_sps *p_hevc_sps;
+ 	struct v4l2_ctrl_hevc_pps *p_hevc_pps;
+ 	struct v4l2_ctrl_hevc_slice_params *p_hevc_slice_params;
++	struct v4l2_ctrl_hevc_scaling_matrix *p_hevc_scaling_matrix;
+ 	void *p;
+ };
+ 
+diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
+index 5bbf63b2dad1..7740c65ccf41 100644
+--- a/include/uapi/linux/v4l2-controls.h
++++ b/include/uapi/linux/v4l2-controls.h
+@@ -712,6 +712,7 @@ enum v4l2_cid_mpeg_video_hevc_size_of_length_field {
+ #define V4L2_CID_MPEG_VIDEO_HEVC_SPS			(V4L2_CID_MPEG_BASE + 645)
+ #define V4L2_CID_MPEG_VIDEO_HEVC_PPS			(V4L2_CID_MPEG_BASE + 646)
+ #define V4L2_CID_MPEG_VIDEO_HEVC_SLICE_PARAMS		(V4L2_CID_MPEG_BASE + 647)
++#define V4L2_CID_MPEG_VIDEO_HEVC_SCALING_MATRIX		(V4L2_CID_MPEG_BASE + 648)
+ 
+ /*  MPEG-class control IDs specific to the CX2341x driver as defined by V4L2 */
+ #define V4L2_CID_MPEG_CX2341X_BASE				(V4L2_CTRL_CLASS_MPEG | 0x1000)
+@@ -1398,6 +1399,7 @@ struct v4l2_ctrl_hevc_pps {
+ 	__u8	lists_modification_present_flag;
+ 	__u8	log2_parallel_merge_level_minus2;
+ 	__u8	slice_segment_header_extension_present_flag;
++	__u8	scaling_list_enable_flag;
+ };
+ 
+ #define V4L2_HEVC_DPB_ENTRY_RPS_ST_CURR_BEFORE	0x01
+@@ -1479,4 +1481,13 @@ struct v4l2_ctrl_hevc_slice_params {
+ 	struct v4l2_hevc_pred_weight_table pred_weight_table;
+ };
+ 
++struct v4l2_ctrl_hevc_scaling_matrix {
++	__u8	scaling_list_4x4[6][16];
++	__u8	scaling_list_8x8[6][64];
++	__u8	scaling_list_16x16[6][64];
++	__u8	scaling_list_32x32[2][64];
++	__u8	scaling_list_dc_coef_16x16[6];
++	__u8	scaling_list_dc_coef_32x32[2];
++};
++
+ #endif
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 26f5bec9e988..ac3e1f155878 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -1641,6 +1641,7 @@ struct v4l2_ext_control {
+ 		struct v4l2_ctrl_hevc_sps __user *p_hevc_sps;
+ 		struct v4l2_ctrl_hevc_pps __user *p_hevc_pps;
+ 		struct v4l2_ctrl_hevc_slice_params __user *p_hevc_slice_params;
++		struct v4l2_ctrl_hevc_scaling_matrix __user *p_hevc_scaling_matrix;
+ 		void __user *ptr;
+ 	};
+ } __attribute__ ((packed));
+@@ -1696,6 +1697,7 @@ enum v4l2_ctrl_type {
+ 	V4L2_CTRL_TYPE_HEVC_SPS = 0x0110,
+ 	V4L2_CTRL_TYPE_HEVC_PPS = 0x0111,
+ 	V4L2_CTRL_TYPE_HEVC_SLICE_PARAMS = 0x0112,
++	V4L2_CTRL_TYPE_HEVC_SCALING_MATRIX = 0x0113,
+ };
+ 
+ /*  Used in the VIDIOC_QUERYCTRL ioctl for querying controls */

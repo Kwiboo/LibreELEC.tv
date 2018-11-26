@@ -1,0 +1,24 @@
+diff -Nur a/arch/arm/boot/dts/sun8i-h3.dtsi b/arch/arm/boot/dts/sun8i-h3.dtsi
+--- a/arch/arm/boot/dts/sun8i-h3.dtsi	2018-11-18 22:33:44.000000000 +0100
++++ b/arch/arm/boot/dts/sun8i-h3.dtsi	2018-11-26 18:45:04.440233044 +0100
+@@ -119,20 +119,6 @@
+ 			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+ 	};
+ 
+-	reserved-memory {
+-		#address-cells = <1>;
+-		#size-cells = <1>;
+-		ranges;
+-
+-		cma_pool: cma@4a000000 {
+-			compatible = "shared-dma-pool";
+-			size = <0x6000000>;
+-			alloc-ranges = <0x4a000000 0x6000000>;
+-			reusable;
+-			linux,cma-default;
+-		};
+-	};
+-
+ 	soc {
+ 		system-control@1c00000 {
+ 			compatible = "allwinner,sun8i-h3-system-control";

@@ -1,0 +1,98 @@
+From patchwork Wed Dec  5 10:20:36 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Subject: [PATCHv4,
+ 06/10] v4l2-mem2mem: add v4l2_m2m_buf_copy_data helper function
+From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+X-Patchwork-Id: 53315
+Message-Id: <20181205102040.11741-7-hverkuil-cisco@xs4all.nl>
+X-Patchwork-Delegate: hverkuil@xs4all.nl
+To: linux-media@vger.kernel.org
+Cc: Alexandre Courbot <acourbot@chromium.org>,
+ maxime.ripard@bootlin.com, paul.kocialkowski@bootlin.com,
+ tfiga@chromium.org, nicolas@ndufresne.ca, sakari.ailus@linux.intel.com,
+ Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Date: Wed,  5 Dec 2018 11:20:36 +0100
+
+From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+
+Memory-to-memory devices should copy various parts of
+struct v4l2_buffer from the output buffer to the capture buffer.
+
+Add a helper function that does that to simplify the driver code.
+
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Reviewed-by: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+Reviewed-by: Alexandre Courbot <acourbot@chromium.org>
+---
+ drivers/media/v4l2-core/v4l2-mem2mem.c | 23 +++++++++++++++++++++++
+ include/media/v4l2-mem2mem.h           | 21 +++++++++++++++++++++
+ 2 files changed, 44 insertions(+)
+
+diff --git a/drivers/media/v4l2-core/v4l2-mem2mem.c b/drivers/media/v4l2-core/v4l2-mem2mem.c
+index 5bbdec55b7d7..a9cb1ac33dc0 100644
+--- a/drivers/media/v4l2-core/v4l2-mem2mem.c
++++ b/drivers/media/v4l2-core/v4l2-mem2mem.c
+@@ -975,6 +975,29 @@ void v4l2_m2m_buf_queue(struct v4l2_m2m_ctx *m2m_ctx,
+ }
+ EXPORT_SYMBOL_GPL(v4l2_m2m_buf_queue);
+ 
++void v4l2_m2m_buf_copy_data(const struct vb2_v4l2_buffer *out_vb,
++			    struct vb2_v4l2_buffer *cap_vb,
++			    bool copy_frame_flags)
++{
++	u32 mask = V4L2_BUF_FLAG_TIMECODE | V4L2_BUF_FLAG_TAG |
++		   V4L2_BUF_FLAG_TSTAMP_SRC_MASK;
++
++	if (copy_frame_flags)
++		mask |= V4L2_BUF_FLAG_KEYFRAME | V4L2_BUF_FLAG_PFRAME |
++			V4L2_BUF_FLAG_BFRAME;
++
++	cap_vb->vb2_buf.timestamp = out_vb->vb2_buf.timestamp;
++
++	if (out_vb->flags & V4L2_BUF_FLAG_TAG)
++		cap_vb->tag = out_vb->tag;
++	if (out_vb->flags & V4L2_BUF_FLAG_TIMECODE)
++		cap_vb->timecode = out_vb->timecode;
++	cap_vb->field = out_vb->field;
++	cap_vb->flags &= ~mask;
++	cap_vb->flags |= out_vb->flags & mask;
++}
++EXPORT_SYMBOL_GPL(v4l2_m2m_buf_copy_data);
++
+ void v4l2_m2m_request_queue(struct media_request *req)
+ {
+ 	struct media_request_object *obj, *obj_safe;
+diff --git a/include/media/v4l2-mem2mem.h b/include/media/v4l2-mem2mem.h
+index 5467264771ec..bb4feb6969d2 100644
+--- a/include/media/v4l2-mem2mem.h
++++ b/include/media/v4l2-mem2mem.h
+@@ -622,6 +622,27 @@ v4l2_m2m_dst_buf_remove_by_idx(struct v4l2_m2m_ctx *m2m_ctx, unsigned int idx)
+ 	return v4l2_m2m_buf_remove_by_idx(&m2m_ctx->cap_q_ctx, idx);
+ }
+ 
++/**
++ * v4l2_m2m_buf_copy_data() - copy buffer data from the output buffer to the
++ * capture buffer
++ *
++ * @out_vb: the output buffer that is the source of the data.
++ * @cap_vb: the capture buffer that will receive the data.
++ * @copy_frame_flags: copy the KEY/B/PFRAME flags as well.
++ *
++ * This helper function copies the timestamp, timecode (if the TIMECODE
++ * buffer flag was set), tag (if the TAG buffer flag was set), field
++ * and the TIMECODE, TAG, KEYFRAME, BFRAME, PFRAME and TSTAMP_SRC_MASK
++ * flags from @out_vb to @cap_vb.
++ *
++ * If @copy_frame_flags is false, then the KEYFRAME, BFRAME and PFRAME
++ * flags are not copied. This is typically needed for encoders that
++ * set this bits explicitly.
++ */
++void v4l2_m2m_buf_copy_data(const struct vb2_v4l2_buffer *out_vb,
++			    struct vb2_v4l2_buffer *cap_vb,
++			    bool copy_frame_flags);
++
+ /* v4l2 request helper */
+ 
+ void v4l2_m2m_request_queue(struct media_request *req);

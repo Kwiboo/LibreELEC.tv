@@ -1,0 +1,29 @@
+From 33c43eee4227a31b6db07e390915bddcc6667caf Mon Sep 17 00:00:00 2001
+From: Jasmin Jessich <jasmin@anw.at>
+Date: Fri, 9 Nov 2018 22:06:05 +0100
+Subject: [PATCH 4/7] media: Use wait_queue_head_t for media_request
+
+The portable type for a wait queue is wait_queue_head_t.
+
+Signed-off-by: Jasmin Jessich <jasmin@anw.at>
+Signed-off-by: Hans Verkuil <hverkuil@xs4all.nl>
+---
+ include/media/media-request.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/media/media-request.h b/include/media/media-request.h
+index 0ce75c35131f..bd36d7431698 100644
+--- a/include/media/media-request.h
++++ b/include/media/media-request.h
+@@ -68,7 +68,7 @@ struct media_request {
+ 	unsigned int access_count;
+ 	struct list_head objects;
+ 	unsigned int num_incomplete_objects;
+-	struct wait_queue_head poll_wait;
++	wait_queue_head_t poll_wait;
+ 	spinlock_t lock;
+ };
+ 
+-- 
+2.19.1
+

@@ -1,0 +1,39 @@
+diff --git a/drivers/media/v4l2-core/v4l2-compat-ioctl32.c b/drivers/media/v4l2-core/v4l2-compat-ioctl32.c
+index f4325329fbd6..6abdf11d60c4 100644
+--- a/drivers/media/v4l2-core/v4l2-compat-ioctl32.c
++++ b/drivers/media/v4l2-core/v4l2-compat-ioctl32.c
+@@ -484,7 +484,7 @@ struct v4l2_buffer32 {
+ 		__s32		fd;
+ 	} m;
+ 	__u32			length;
+-	__u32			reserved2;
++	__u32			tag;
+ 	__s32			request_fd;
+ };
+ 
+@@ -584,6 +584,7 @@ static int get_v4l2_buffer32(struct v4l2_buffer __user *p64,
+ {
+ 	u32 type;
+ 	u32 length;
++	u32 tag;
+ 	s32 request_fd;
+ 	enum v4l2_memory memory;
+ 	struct v4l2_plane32 __user *uplane32;
+@@ -600,6 +601,8 @@ static int get_v4l2_buffer32(struct v4l2_buffer __user *p64,
+ 	    put_user(memory, &p64->memory) ||
+ 	    get_user(length, &p32->length) ||
+ 	    put_user(length, &p64->length) ||
++	    get_user(tag, &p32->tag) ||
++	    put_user(tag, &p64->tag) ||
+ 	    get_user(request_fd, &p32->request_fd) ||
+ 	    put_user(request_fd, &p64->request_fd))
+ 		return -EFAULT;
+@@ -704,7 +707,7 @@ static int put_v4l2_buffer32(struct v4l2_buffer __user *p64,
+ 	    assign_in_user(&p32->timestamp.tv_usec, &p64->timestamp.tv_usec) ||
+ 	    copy_in_user(&p32->timecode, &p64->timecode, sizeof(p64->timecode)) ||
+ 	    assign_in_user(&p32->sequence, &p64->sequence) ||
+-	    assign_in_user(&p32->reserved2, &p64->reserved2) ||
++	    assign_in_user(&p32->tag, &p64->tag) ||
+ 	    assign_in_user(&p32->request_fd, &p64->request_fd) ||
+ 	    get_user(length, &p64->length) ||
+ 	    put_user(length, &p32->length))

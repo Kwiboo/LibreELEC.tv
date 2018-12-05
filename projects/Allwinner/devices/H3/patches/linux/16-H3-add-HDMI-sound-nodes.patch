@@ -1,10 +1,10 @@
 diff --git a/arch/arm/boot/dts/sunxi-h3-h5.dtsi b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-index 8aa2befc..d3d70eac 100644
+index 4b1530ebe427..c56dd3650e78 100644
 --- a/arch/arm/boot/dts/sunxi-h3-h5.dtsi
 +++ b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-@@ -53,6 +53,21 @@
- 	#address-cells = <1>;
- 	#size-cells = <1>;
+@@ -77,6 +77,23 @@
+ 		};
+ 	};
  
 +	sound_hdmi: sound {
 +		compatible = "simple-audio-card";
@@ -18,13 +18,15 @@ index 8aa2befc..d3d70eac 100644
 +
 +		simple-audio-card,cpu {
 +			sound-dai = <&i2s2>;
++			dai-tdm-slot-num = <2>;
++			dai-tdm-slot-width = <32>;
 +		};
 +	};
 +
  	clocks {
  		#address-cells = <1>;
  		#size-cells = <1>;
-@@ -631,6 +648,18 @@
+@@ -628,6 +645,20 @@
  			status = "disabled";
  		};
  
@@ -38,12 +40,14 @@ index 8aa2befc..d3d70eac 100644
 +			dmas = <&dma 27>;
 +			resets = <&ccu RST_BUS_I2S2>;
 +			dma-names = "tx";
++			allwinner,playback-channels = <8>;
++			status = "disabled";
 +		};
 +
  		codec: codec@1c22c00 {
  			#sound-dai-cells = <0>;
  			compatible = "allwinner,sun8i-h3-codec";
-@@ -110,6 +126,7 @@
+@@ -745,6 +776,7 @@
  		};
  
  		hdmi: hdmi@1ee0000 {

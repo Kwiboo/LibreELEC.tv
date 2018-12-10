@@ -1,0 +1,278 @@
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 96bd42359a68..95c54f9ab6cd 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -1928,6 +1928,8 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
+ 		cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
+ 		if (add_modes)
+ 			ret = drm_add_edid_modes(connector, edid);
++		else
++			drm_edid_to_eld(connector, edid);
+ 		kfree(edid);
+ 	} else {
+ 		dev_dbg(hdmi->dev, "failed to get edid\n");
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index b506e3622b08..694336e678f9 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -3892,7 +3892,7 @@ static void clear_eld(struct drm_connector *connector)
+ 	connector->audio_latency[1] = 0;
+ }
+ 
+-/*
++/**
+  * drm_edid_to_eld - build ELD from EDID
+  * @connector: connector corresponding to the HDMI/DP sink
+  * @edid: EDID to parse
+@@ -3900,7 +3900,7 @@ static void clear_eld(struct drm_connector *connector)
+  * Fill the ELD (EDID-Like Data) buffer for passing to the audio driver. The
+  * HDCP and Port_ID ELD fields are left for the graphics driver to fill in.
+  */
+-static void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
++void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
+ {
+ 	uint8_t *eld = connector->eld;
+ 	u8 *cea;
+@@ -3985,6 +3985,7 @@ static void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
+ 	DRM_DEBUG_KMS("ELD size %d, SAD count %d\n",
+ 		      drm_eld_size(eld), total_sad_count);
+ }
++EXPORT_SYMBOL(drm_edid_to_eld);
+ 
+ /**
+  * drm_edid_to_sad - extracts SADs from EDID
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_h264.c b/drivers/staging/media/sunxi/cedrus/cedrus_h264.c
+index c19bb3edcc15..a7d27fe40c1e 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_h264.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_h264.c
+@@ -424,7 +424,7 @@ static void cedrus_set_params(struct cedrus_ctx *ctx,
+ 		reg |= BIT(12);
+ 	reg |= (slice->slice_type & 0xf) << 8;
+ 	reg |= slice->cabac_init_idc & 0x3;
+-	if (decode->num_slices == 0)
++	if (decode->num_slices <= 1)
+ 		reg |= BIT(5);
+ 	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC)
+ 		reg |= BIT(4);
+diff --git a/include/drm/drm_edid.h b/include/drm/drm_edid.h
+index e3c404833115..3942d551be67 100644
+--- a/include/drm/drm_edid.h
++++ b/include/drm/drm_edid.h
+@@ -333,6 +333,7 @@ struct drm_encoder;
+ struct drm_connector;
+ struct drm_display_mode;
+ 
++void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid);
+ int drm_edid_to_sad(struct edid *edid, struct cea_sad **sads);
+ int drm_edid_to_speaker_allocation(struct edid *edid, u8 **sadb);
+ int drm_av_sync_delay(struct drm_connector *connector,
+diff --git a/sound/soc/sunxi/sun4i-i2s.c b/sound/soc/sunxi/sun4i-i2s.c
+index ce13becb7f67..d81fdf672135 100644
+--- a/sound/soc/sunxi/sun4i-i2s.c
++++ b/sound/soc/sunxi/sun4i-i2s.c
+@@ -27,7 +27,7 @@
+ 
+ #define SUN4I_I2S_CTRL_REG		0x00
+ #define SUN4I_I2S_CTRL_SDO_EN_MASK		GENMASK(11, 8)
+-#define SUN4I_I2S_CTRL_SDO_EN(lines)		(((1 << lines) - 1) << 8)
++#define SUN4I_I2S_CTRL_SDO_EN(lines)		(((1 << (lines)) - 1) << 8)
+ #define SUN4I_I2S_CTRL_MODE_MASK		BIT(5)
+ #define SUN4I_I2S_CTRL_MODE_SLAVE			(1 << 5)
+ #define SUN4I_I2S_CTRL_MODE_MASTER			(0 << 5)
+@@ -199,6 +199,7 @@ struct sun4i_i2s {
+ 	unsigned int	tdm_slots;
+ 	bool bit_clk_master;
+ 	bool loopback;
++	bool hdmi;
+ 
+ 	unsigned int	slot_width;
+ 	unsigned int	offset;
+@@ -419,7 +420,6 @@ static int sun4i_i2s_hw_params(struct snd_pcm_substream *substream,
+ 	struct sun4i_i2s *i2s = snd_soc_dai_get_drvdata(dai);
+ 	int sr, wss, channels;
+ 	u32 width;
+-	int lines;
+ 
+ 	printk("COOPS %s channels is %d, physical width is %d, rate is %d, period size is %d\n",
+ 		__func__, params_channels(params), params_physical_width(params),
+@@ -434,13 +434,6 @@ static int sun4i_i2s_hw_params(struct snd_pcm_substream *substream,
+ 			return -EINVAL;
+ 		}
+ 
+-		lines = (channels + 1) / 2;
+-
+-		/* Enable the required output lines */
+-		regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
+-				   SUN4I_I2S_CTRL_SDO_EN_MASK,
+-				   SUN4I_I2S_CTRL_SDO_EN(lines));
+-
+ 		if (i2s->variant->has_chcfg)
+ 			regmap_update_bits(i2s->regmap, SUN8I_I2S_CHAN_CFG_REG,
+ 					   SUN8I_I2S_CHAN_CFG_TX_SLOT_NUM_MASK,
+@@ -460,19 +453,19 @@ static int sun4i_i2s_hw_params(struct snd_pcm_substream *substream,
+ 				regmap_write(i2s->regmap,
+ 					     SUN8I_I2S_TX_CHAN_MAP_REG+4, 0x32);
+ 				regmap_write(i2s->regmap, SUN8I_I2S_TX_CHAN_SEL_REG+4,
+-					     chan_sel | 0xC0);
++					     chan_sel | 0x30);
+ 			}
+ 			if (channels > 4) {
+ 				regmap_write(i2s->regmap,
+ 					     SUN8I_I2S_TX_CHAN_MAP_REG+8, 0x54);
+ 				regmap_write(i2s->regmap, SUN8I_I2S_TX_CHAN_SEL_REG+8,
+-					     chan_sel | 0x300);
++					     chan_sel | 0x30);
+ 			}
+ 			if (channels > 6) {
+ 				regmap_write(i2s->regmap,
+ 					     SUN8I_I2S_TX_CHAN_MAP_REG+12, 0x76);
+ 				regmap_write(i2s->regmap, SUN8I_I2S_TX_CHAN_SEL_REG+12,
+-					     chan_sel | 0xC00);
++					     chan_sel | 0x30);
+ 			}
+ 		}
+ 	} else {
+@@ -684,9 +677,11 @@ static int sun4i_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ static void sun4i_i2s_start_capture(struct sun4i_i2s *i2s)
+ {
+ 	/* Flush RX FIFO */
++	regcache_cache_bypass(i2s->regmap, true);
+ 	regmap_update_bits(i2s->regmap, SUN4I_I2S_FIFO_CTRL_REG,
+ 			   SUN4I_I2S_FIFO_CTRL_FLUSH_RX,
+ 			   SUN4I_I2S_FIFO_CTRL_FLUSH_RX);
++	regcache_cache_bypass(i2s->regmap, false);
+ 
+ 	/* Clear RX counter */
+ 	regmap_write(i2s->regmap, SUN4I_I2S_RX_CNT_REG, 0);
+@@ -709,19 +704,23 @@ static void sun4i_i2s_start_capture(struct sun4i_i2s *i2s)
+ 
+ static void sun4i_i2s_start_playback(struct sun4i_i2s *i2s)
+ {
++	int i;
++
++	regcache_cache_bypass(i2s->regmap, true);
++
+ 	/* Flush TX FIFO */
+-	regmap_update_bits(i2s->regmap, SUN4I_I2S_FIFO_CTRL_REG,
+-			   SUN4I_I2S_FIFO_CTRL_FLUSH_TX,
+-			   SUN4I_I2S_FIFO_CTRL_FLUSH_TX);
++	for (i = 0; i < 4; i++) {
++		regmap_update_bits(i2s->regmap, SUN4I_I2S_FIFO_CTRL_REG,
++				   SUN4I_I2S_FIFO_CTRL_FLUSH_TX,
++				   SUN4I_I2S_FIFO_CTRL_FLUSH_TX);
++		mdelay(1);
++	}
++
++	regcache_cache_bypass(i2s->regmap, false);
+ 
+ 	/* Clear TX counter */
+ 	regmap_write(i2s->regmap, SUN4I_I2S_TX_CNT_REG, 0);
+ 
+-	/* Enable TX Block */
+-	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
+-			   SUN4I_I2S_CTRL_TX_EN,
+-			   SUN4I_I2S_CTRL_TX_EN);
+-
+ 	/* Enable TX DRQ */
+ 	regmap_update_bits(i2s->regmap, SUN4I_I2S_DMA_INT_CTRL_REG,
+ 			   SUN4I_I2S_DMA_INT_CTRL_TX_DRQ_EN,
+@@ -743,11 +742,6 @@ static void sun4i_i2s_stop_capture(struct sun4i_i2s *i2s)
+ 
+ static void sun4i_i2s_stop_playback(struct sun4i_i2s *i2s)
+ {
+-	/* Disable TX Block */
+-	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
+-			   SUN4I_I2S_CTRL_TX_EN,
+-			   0);
+-
+ 	/* Disable TX DRQ */
+ 	regmap_update_bits(i2s->regmap, SUN4I_I2S_DMA_INT_CTRL_REG,
+ 			   SUN4I_I2S_DMA_INT_CTRL_TX_DRQ_EN,
+@@ -897,7 +891,7 @@ static bool sun4i_i2s_rd_reg(struct device *dev, unsigned int reg)
+ {
+ 	switch (reg) {
+ 	case SUN4I_I2S_FIFO_TX_REG:
+-		return false;
++		return true;
+ 
+ 	default:
+ 		return true;
+@@ -920,6 +914,8 @@ static bool sun4i_i2s_volatile_reg(struct device *dev, unsigned int reg)
+ {
+ 	switch (reg) {
+ 	case SUN4I_I2S_FIFO_RX_REG:
++	case SUN4I_I2S_FIFO_TX_REG:
++	case SUN4I_I2S_FIFO_STA_REG:
+ 	case SUN4I_I2S_INT_STA_REG:
+ 	case SUN4I_I2S_RX_CNT_REG:
+ 	case SUN4I_I2S_TX_CNT_REG:
+@@ -934,7 +930,7 @@ static bool sun8i_i2s_rd_reg(struct device *dev, unsigned int reg)
+ {
+ 	switch (reg) {
+ 	case SUN8I_I2S_FIFO_TX_REG:
+-		return false;
++		return true;
+ 
+ 	default:
+ 		return true;
+@@ -946,7 +942,7 @@ static bool sun8i_i2s_volatile_reg(struct device *dev, unsigned int reg)
+ 	if (reg == SUN8I_I2S_INT_STA_REG)
+ 		return true;
+ 	if (reg == SUN8I_I2S_FIFO_TX_REG)
+-		return false;
++		return true;
+ 
+ 	return sun4i_i2s_volatile_reg(dev, reg);
+ }
+@@ -1025,14 +1021,18 @@ static int sun4i_i2s_runtime_resume(struct device *dev)
+ 		goto err_disable_clk;
+ 	}
+ 
++	/* Enable output lines */
++	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
++			   SUN4I_I2S_CTRL_SDO_EN_MASK,
++			   SUN4I_I2S_CTRL_SDO_EN(i2s->hdmi ? 4 : 1));
++
+ 	/* Enable the whole hardware block */
+ 	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
+ 			   SUN4I_I2S_CTRL_GL_EN, SUN4I_I2S_CTRL_GL_EN);
+ 
+-	/* Enable the first output line */
++	/* Enable TX Block */
+ 	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
+-			   SUN4I_I2S_CTRL_SDO_EN_MASK,
+-			   SUN4I_I2S_CTRL_SDO_EN(0));
++			   SUN4I_I2S_CTRL_TX_EN, SUN4I_I2S_CTRL_TX_EN);
+ 
+ 	ret = clk_prepare_enable(i2s->mod_clk);
+ 	if (ret) {
+@@ -1053,13 +1053,17 @@ static int sun4i_i2s_runtime_suspend(struct device *dev)
+ 
+ 	clk_disable_unprepare(i2s->mod_clk);
+ 
++	/* Disable the whole hardware block */
++	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
++			   SUN4I_I2S_CTRL_GL_EN, 0);
++
+ 	/* Disable our output lines */
+ 	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
+ 			   SUN4I_I2S_CTRL_SDO_EN_MASK, 0);
+ 
+-	/* Disable the whole hardware block */
++	/* Disable TX Block */
+ 	regmap_update_bits(i2s->regmap, SUN4I_I2S_CTRL_REG,
+-			   SUN4I_I2S_CTRL_GL_EN, 0);
++			   SUN4I_I2S_CTRL_TX_EN, 0);
+ 
+ 	regcache_cache_only(i2s->regmap, true);
+ 
+@@ -1322,6 +1326,9 @@ static int sun4i_i2s_probe(struct platform_device *pdev)
+ 			soc_dai->playback.channels_max = val;
+ 	}
+ 
++	// HACK: set hdmi mode
++	i2s->hdmi = soc_dai->playback.channels_max == 8;
++
+ 	if (of_property_read_bool(pdev->dev.of_node, "loopback"))
+ 		i2s->loopback = true;
+ 

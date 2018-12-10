@@ -41,7 +41,7 @@ index 4b1530ebe427..c56dd3650e78 100644
 +			resets = <&ccu RST_BUS_I2S2>;
 +			dma-names = "tx";
 +			allwinner,playback-channels = <8>;
-+			status = "disabled";
++			status = "okay";
 +		};
 +
  		codec: codec@1c22c00 {

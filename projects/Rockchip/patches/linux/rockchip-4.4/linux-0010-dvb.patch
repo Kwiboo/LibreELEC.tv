@@ -1,4 +1,4 @@
-From 77d2716cf5579c4ad74df978ad58d983419cc44b Mon Sep 17 00:00:00 2001
+From 99debadb1062012a3d293ff7d2ef093d65c01b79 Mon Sep 17 00:00:00 2001
 From: Jakub Kicinski <jakub.kicinski@netronome.com>
 Date: Wed, 31 Aug 2016 12:46:44 +0100
 Subject: [PATCH] UPSTREAM: add basic register-field manipulation macros
@@ -146,7 +146,7 @@ index 000000000000..f6505d83069d
 +
 +#endif
 diff --git a/include/linux/bug.h b/include/linux/bug.h
-index 7f4818673c41..edd3d8d3cd90 100644
+index 833746d361cf..90b0ab758360 100644
 --- a/include/linux/bug.h
 +++ b/include/linux/bug.h
 @@ -13,6 +13,7 @@ enum bug_trap_type {
@@ -167,7 +167,7 @@ index 7f4818673c41..edd3d8d3cd90 100644
  	BUILD_BUG_ON((n) == 0 || (((n) & ((n) - 1)) != 0))
  
 
-From 3841d053b087e87d8d3d77738452c3b14d724049 Mon Sep 17 00:00:00 2001
+From 5ea2d62ff3e22d9c414176fb92e94eb746049af7 Mon Sep 17 00:00:00 2001
 From: Jakub Kicinski <jakub.kicinski@netronome.com>
 Date: Thu, 9 Feb 2017 09:17:27 -0800
 Subject: [PATCH] UPSTREAM: bitfield.h: add FIELD_FIT() helper
@@ -207,7 +207,7 @@ index f6505d83069d..8b9d6fff002d 100644
   * FIELD_PREP() - prepare a bitfield element
   * @_mask: shifted mask defining the field's length and position
 
-From b0dcc7c8cc60ef7877baf3639a46344d8b184fc7 Mon Sep 17 00:00:00 2001
+From 10dce2b5e3d1e0e6202570fcfa58dfe8023c2f54 Mon Sep 17 00:00:00 2001
 From: Laurent Defert <laurent.defert@smartjog.com>
 Date: Wed, 11 Oct 2017 08:46:52 +0200
 Subject: [PATCH] FROMLIST: compat_ioctl: add compat handler for

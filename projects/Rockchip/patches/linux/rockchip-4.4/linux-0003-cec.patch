@@ -1,11 +1,10 @@
-From 0dcc2992b7f03fbe5bf9bd9f65edaf5479bf975a Mon Sep 17 00:00:00 2001
+From 396108223ba5d22452eecc60576ba00d474bd1ca Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 4 Sep 2017 22:34:19 +0200
 Subject: [PATCH] BACKPORT: HDMI CEC support from v4.15
 
 Skipped changes:
 857313e51006ff51524579bcd8808b70f9a80812 "media: utilize new cdev_device_add helper function"
-0f7499fddb153a333dff3c1dc4280c178b9b5a80 "[media] rc-main: assign driver type during allocation"
 ---
  Documentation/devicetree/bindings/media/cec.txt    |   8 +
  Documentation/media/kapi/cec-core.rst              | 381 +++++++++++++++++++++
@@ -24,20 +23,18 @@ Skipped changes:
  Documentation/media/uapi/cec/cec-ioc-g-mode.rst    | 293 ++++++++++++++++
  Documentation/media/uapi/cec/cec-ioc-receive.rst   | 344 +++++++++++++++++++
  MAINTAINERS                                        |  16 +
- drivers/media/cec/cec-adap.c                       |  61 +++-
- drivers/media/cec/cec-core.c                       |  15 +-
+ drivers/media/cec/cec-adap.c                       |  11 +-
+ drivers/media/cec/cec-core.c                       |   2 +-
  drivers/media/rc/keymaps/Makefile                  |   1 +
  drivers/media/rc/keymaps/rc-cec.c                  | 182 ++++++++++
- drivers/media/rc/rc-main.c                         |   1 +
  fs/compat_ioctl.c                                  |  12 +
  include/media/cec-notifier.h                       |  22 ++
- include/media/cec.h                                |  32 +-
- include/media/rc-map.h                             |   5 +-
+ include/media/cec.h                                |  27 +-
  include/uapi/linux/cec-funcs.h                     |   1 +
  include/uapi/linux/cec.h                           |   2 +-
  include/uapi/linux/input-event-codes.h             |  31 ++
  include/uapi/linux/input.h                         |   1 +
- 30 files changed, 2606 insertions(+), 15 deletions(-)
+ 28 files changed, 2535 insertions(+), 12 deletions(-)
  create mode 100644 Documentation/devicetree/bindings/media/cec.txt
  create mode 100644 Documentation/media/kapi/cec-core.rst
  create mode 100644 Documentation/media/uapi/cec/cec-api.rst
@@ -2392,7 +2389,7 @@ index 000000000000..bdad4b197bcd
 +ERESTARTSYS
 +    The wait for a successful transmit was interrupted (e.g. by Ctrl-C).
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 443bc975b562..225ab2c1d35b 100644
+index d09e4c9cf8f2..d5dcc11d2cde 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
 @@ -2674,6 +2674,22 @@ F:	drivers/net/ieee802154/cc2520.c
@@ -2419,7 +2416,7 @@ index 443bc975b562..225ab2c1d35b 100644
  M:	Arnd Bergmann <arnd@arndb.de>
  L:	linuxppc-dev@lists.ozlabs.org
 diff --git a/drivers/media/cec/cec-adap.c b/drivers/media/cec/cec-adap.c
-index 8c75a51333b2..4f5d382268f7 100644
+index 8c75a51333b2..66c3c16c31d4 100644
 --- a/drivers/media/cec/cec-adap.c
 +++ b/drivers/media/cec/cec-adap.c
 @@ -202,7 +202,10 @@ static void cec_queue_msg_fh(struct cec_fh *fh, const struct cec_msg *msg)
@@ -2434,142 +2431,43 @@ index 8c75a51333b2..4f5d382268f7 100644
  	};
  	struct cec_msg_entry *entry;
  
-@@ -1793,6 +1796,9 @@ static int cec_receive_notify(struct cec_adapter *adap, struct cec_msg *msg,
- 	int la_idx = cec_log_addr2idx(adap, dest_laddr);
- 	bool from_unregistered = init_laddr == 0xf;
- 	struct cec_msg tx_cec_msg = { };
-+#ifdef CONFIG_MEDIA_CEC_RC
-+	int scancode;
-+#endif
- 
- 	dprintk(2, "%s: %*ph\n", __func__, msg->len, msg->msg);
- 
-@@ -1888,11 +1894,9 @@ static int cec_receive_notify(struct cec_adapter *adap, struct cec_msg *msg,
+@@ -1888,10 +1891,10 @@ static int cec_receive_notify(struct cec_adapter *adap, struct cec_msg *msg,
  		 */
  		case 0x60:
  			if (msg->len == 2)
 -				rc_keydown(adap->rc, RC_TYPE_CEC,
--					   msg->msg[2], 0);
-+				scancode = msg->msg[2];
++				rc_keydown(adap->rc, RC_PROTO_CEC,
+ 					   msg->msg[2], 0);
  			else
 -				rc_keydown(adap->rc, RC_TYPE_CEC,
--					   msg->msg[2] << 8 | msg->msg[3], 0);
-+				scancode = msg->msg[2] << 8 | msg->msg[3];
++				rc_keydown(adap->rc, RC_PROTO_CEC,
+ 					   msg->msg[2] << 8 | msg->msg[3], 0);
  			break;
  		/*
- 		 * Other function messages that are not handled.
-@@ -1905,11 +1909,54 @@ static int cec_receive_notify(struct cec_adapter *adap, struct cec_msg *msg,
- 		 */
- 		case 0x56: case 0x57:
+@@ -1907,7 +1910,7 @@ static int cec_receive_notify(struct cec_adapter *adap, struct cec_msg *msg,
  		case 0x67: case 0x68: case 0x69: case 0x6a:
-+			scancode = -1;
  			break;
  		default:
 -			rc_keydown(adap->rc, RC_TYPE_CEC, msg->msg[2], 0);
-+			scancode = msg->msg[2];
-+			break;
-+		}
-+
-+		/* Was repeating, but keypress timed out */
-+		if (adap->rc_repeating && !adap->rc->keypressed) {
-+			adap->rc_repeating = false;
-+			adap->rc_last_scancode = -1;
-+		}
-+		/* Different keypress from last time, ends repeat mode */
-+		if (adap->rc_last_scancode != scancode) {
-+			rc_keyup(adap->rc);
-+			adap->rc_repeating = false;
-+		}
-+		/* We can't handle this scancode */
-+		if (scancode < 0) {
-+			adap->rc_last_scancode = scancode;
-+			break;
-+		}
-+
-+		/* Send key press */
-+		rc_keydown(adap->rc, RC_TYPE_CEC, scancode, 0);
-+
-+		/* When in repeating mode, we're done */
-+		if (adap->rc_repeating)
-+			break;
-+
-+		/*
-+		 * We are not repeating, but the new scancode is
-+		 * the same as the last one, and this second key press is
-+		 * within 550 ms (the 'Follower Safety Timeout') from the
-+		 * previous key press, so we now enable the repeating mode.
-+		 */
-+		if (adap->rc_last_scancode == scancode &&
-+		    msg->rx_ts - adap->rc_last_keypress < 550 * NSEC_PER_MSEC) {
-+			adap->rc_repeating = true;
++			rc_keydown(adap->rc, RC_PROTO_CEC, msg->msg[2], 0);
  			break;
  		}
-+		/*
-+		 * Not in repeating mode, so avoid triggering repeat mode
-+		 * by calling keyup.
-+		 */
-+		rc_keyup(adap->rc);
-+		adap->rc_last_scancode = scancode;
-+		adap->rc_last_keypress = msg->rx_ts;
  #endif
- 		break;
- 
-@@ -1919,6 +1966,8 @@ static int cec_receive_notify(struct cec_adapter *adap, struct cec_msg *msg,
- 			break;
- #ifdef CONFIG_MEDIA_CEC_RC
- 		rc_keyup(adap->rc);
-+		adap->rc_repeating = false;
-+		adap->rc_last_scancode = -1;
- #endif
- 		break;
- 
 diff --git a/drivers/media/cec/cec-core.c b/drivers/media/cec/cec-core.c
-index 969f770acf77..65d763be4385 100644
+index cb4f0cca0224..f9320a3df4a0 100644
 --- a/drivers/media/cec/cec-core.c
 +++ b/drivers/media/cec/cec-core.c
-@@ -263,7 +263,7 @@ struct cec_adapter *cec_allocate_adapter(const struct cec_adap_ops *ops,
- 		return adap;
- 
- 	/* Prepare the RC input device */
--	adap->rc = rc_allocate_device(RC_DRIVER_SCANCODE);
-+	adap->rc = rc_allocate_device();
- 	if (!adap->rc) {
- 		pr_err("cec-%s: failed to allocate memory for rc_dev\n",
- 		       name);
-@@ -283,11 +283,13 @@ struct cec_adapter *cec_allocate_adapter(const struct cec_adap_ops *ops,
- 	adap->rc->input_id.vendor = 0;
+@@ -284,7 +284,7 @@ struct cec_adapter *cec_allocate_adapter(const struct cec_adap_ops *ops,
  	adap->rc->input_id.product = 0;
  	adap->rc->input_id.version = 1;
-+	adap->rc->driver_type = RC_DRIVER_SCANCODE;
  	adap->rc->driver_name = CEC_NAME;
- 	adap->rc->allowed_protocols = RC_BIT_CEC;
+-	adap->rc->allowed_protocols = RC_BIT_CEC;
++	adap->rc->allowed_protocols = RC_PROTO_BIT_CEC;
  	adap->rc->priv = adap;
  	adap->rc->map_name = RC_MAP_CEC;
- 	adap->rc->timeout = MS_TO_NS(100);
-+	adap->rc_last_scancode = -1;
- #endif
- 	return adap;
- }
-@@ -319,6 +321,17 @@ int cec_register_adapter(struct cec_adapter *adap,
- 			adap->rc = NULL;
- 			return res;
- 		}
-+		/*
-+		 * The REP_DELAY for CEC is really the time between the initial
-+		 * 'User Control Pressed' message and the second. The first
-+		 * keypress is always seen as non-repeating, the second
-+		 * (provided it has the same UI Command) will start the 'Press
-+		 * and Hold' (aka repeat) behavior. By setting REP_DELAY to the
-+		 * same value as REP_PERIOD the expected CEC behavior is
-+		 * reproduced.
-+		 */
-+		adap->rc->input_dev->rep[REP_DELAY] =
-+			adap->rc->input_dev->rep[REP_PERIOD];
- 	}
- #endif
- 
+ 	adap->rc->timeout = MS_TO_NS(550);
 diff --git a/drivers/media/rc/keymaps/Makefile b/drivers/media/rc/keymaps/Makefile
-index fbbd3bbcd252..9cffcc61fdca 100644
+index 793df376e15f..f2446a5d252d 100644
 --- a/drivers/media/rc/keymaps/Makefile
 +++ b/drivers/media/rc/keymaps/Makefile
 @@ -18,6 +18,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
@@ -2582,7 +2480,7 @@ index fbbd3bbcd252..9cffcc61fdca 100644
  			rc-delock-61959.o \
 diff --git a/drivers/media/rc/keymaps/rc-cec.c b/drivers/media/rc/keymaps/rc-cec.c
 new file mode 100644
-index 000000000000..354c8e724b8e
+index 000000000000..76d34abb7c85
 --- /dev/null
 +++ b/drivers/media/rc/keymaps/rc-cec.c
 @@ -0,0 +1,182 @@
@@ -2748,7 +2646,7 @@ index 000000000000..354c8e724b8e
 +	.map = {
 +		.scan		= cec,
 +		.size		= ARRAY_SIZE(cec),
-+		.rc_type	= RC_TYPE_CEC,
++		.rc_proto	= RC_PROTO_CEC,
 +		.name		= RC_MAP_CEC,
 +	}
 +};
@@ -2768,18 +2666,6 @@ index 000000000000..354c8e724b8e
 +
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("Kamil Debski");
-diff --git a/drivers/media/rc/rc-main.c b/drivers/media/rc/rc-main.c
-index 3f0f71adabb4..a639ea653c7e 100644
---- a/drivers/media/rc/rc-main.c
-+++ b/drivers/media/rc/rc-main.c
-@@ -801,6 +801,7 @@ static struct {
- 	{ RC_BIT_SHARP,		"sharp"		},
- 	{ RC_BIT_MCE_KBD,	"mce_kbd"	},
- 	{ RC_BIT_XMP,		"xmp"		},
-+	{ RC_BIT_CEC,		"cec"		},
- };
- 
- /**
 diff --git a/fs/compat_ioctl.c b/fs/compat_ioctl.c
 index a52ca5cba015..b0b96fc01da3 100644
 --- a/fs/compat_ioctl.c
@@ -2851,7 +2737,7 @@ index ca19a9305782..8bb169ac7afd 100644
  
  /**
 diff --git a/include/media/cec.h b/include/media/cec.h
-index df3c94f05aa5..f64807a78064 100644
+index 1048888a96c2..5db31bbdf133 100644
 --- a/include/media/cec.h
 +++ b/include/media/cec.h
 @@ -31,6 +31,9 @@
@@ -2864,19 +2750,7 @@ index df3c94f05aa5..f64807a78064 100644
  /**
   * struct cec_devnode - cec device node
   * @dev:	cec device
-@@ -188,6 +191,11 @@ struct cec_adapter {
- 
- 	u32 tx_timeouts;
- 
-+#ifdef CONFIG_MEDIA_CEC_RC
-+	bool rc_repeating;
-+	int rc_last_scancode;
-+	u64 rc_last_keypress;
-+#endif
- #ifdef CONFIG_CEC_NOTIFIER
- 	struct cec_notifier *notifier;
- #endif
-@@ -226,7 +234,7 @@ static inline bool cec_is_sink(const struct cec_adapter *adap)
+@@ -226,7 +229,7 @@ static inline bool cec_is_sink(const struct cec_adapter *adap)
  
  struct edid;
  
@@ -2885,7 +2759,7 @@ index df3c94f05aa5..f64807a78064 100644
  struct cec_adapter *cec_allocate_adapter(const struct cec_adap_ops *ops,
  		void *priv, const char *name, u32 caps, u8 available_las);
  int cec_register_adapter(struct cec_adapter *adap, struct device *parent);
-@@ -373,11 +381,6 @@ u16 cec_phys_addr_for_input(u16 phys_addr, u8 input);
+@@ -373,11 +376,6 @@ u16 cec_phys_addr_for_input(u16 phys_addr, u8 input);
   */
  int cec_phys_addr_validate(u16 phys_addr, u16 *parent, u16 *port);
  
@@ -2897,7 +2771,7 @@ index df3c94f05aa5..f64807a78064 100644
  #else
  
  static inline int cec_register_adapter(struct cec_adapter *adap,
-@@ -424,9 +427,26 @@ static inline u16 cec_phys_addr_for_input(u16 phys_addr, u8 input)
+@@ -424,9 +422,26 @@ static inline u16 cec_phys_addr_for_input(u16 phys_addr, u8 input)
  
  static inline int cec_phys_addr_validate(u16 phys_addr, u16 *parent, u16 *port)
  {
@@ -2924,43 +2798,6 @@ index df3c94f05aa5..f64807a78064 100644
 +}
 +
  #endif /* _MEDIA_CEC_H */
-diff --git a/include/media/rc-map.h b/include/media/rc-map.h
-index 7c4bbc4dfab4..d9f87d5b4468 100644
---- a/include/media/rc-map.h
-+++ b/include/media/rc-map.h
-@@ -31,6 +31,7 @@ enum rc_type {
- 	RC_TYPE_RC6_MCE		= 16,	/* MCE (Philips RC6-6A-32 subtype) protocol */
- 	RC_TYPE_SHARP		= 17,	/* Sharp protocol */
- 	RC_TYPE_XMP		= 18,	/* XMP protocol */
-+	RC_TYPE_CEC		= 19,	/* CEC protocol */
- };
- 
- #define RC_BIT_NONE		0
-@@ -53,6 +54,7 @@ enum rc_type {
- #define RC_BIT_RC6_MCE		(1 << RC_TYPE_RC6_MCE)
- #define RC_BIT_SHARP		(1 << RC_TYPE_SHARP)
- #define RC_BIT_XMP		(1 << RC_TYPE_XMP)
-+#define RC_BIT_CEC		(1 << RC_TYPE_CEC)
- 
- #define RC_BIT_ALL	(RC_BIT_UNKNOWN | RC_BIT_OTHER | \
- 			 RC_BIT_RC5 | RC_BIT_RC5X | RC_BIT_RC5_SZ | \
-@@ -61,7 +63,7 @@ enum rc_type {
- 			 RC_BIT_NEC | RC_BIT_SANYO | RC_BIT_MCE_KBD | \
- 			 RC_BIT_RC6_0 | RC_BIT_RC6_6A_20 | RC_BIT_RC6_6A_24 | \
- 			 RC_BIT_RC6_6A_32 | RC_BIT_RC6_MCE | RC_BIT_SHARP | \
--			 RC_BIT_XMP)
-+			 RC_BIT_XMP | RC_BIT_CEC)
- 
- 
- #define RC_SCANCODE_UNKNOWN(x)			(x)
-@@ -123,6 +125,7 @@ void rc_map_init(void);
- #define RC_MAP_BEHOLD_COLUMBUS           "rc-behold-columbus"
- #define RC_MAP_BEHOLD                    "rc-behold"
- #define RC_MAP_BUDGET_CI_OLD             "rc-budget-ci-old"
-+#define RC_MAP_CEC                       "rc-cec"
- #define RC_MAP_CINERGY_1400              "rc-cinergy-1400"
- #define RC_MAP_CINERGY                   "rc-cinergy"
- #define RC_MAP_DELOCK_61959              "rc-delock-61959"
 diff --git a/include/uapi/linux/cec-funcs.h b/include/uapi/linux/cec-funcs.h
 index c451eec42a83..270b251a3d9b 100644
 --- a/include/uapi/linux/cec-funcs.h
@@ -3041,7 +2878,7 @@ index 2758687300b4..41e8dff588e1 100644
  /*
   * MT_TOOL types
 
-From 8e3b262321c2121f8ceed952be3619039aebea9d Mon Sep 17 00:00:00 2001
+From a59650f3b6c328659b63bec0c5cdb58a176e08b0 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 4 Sep 2017 22:34:22 +0200
 Subject: [PATCH] BACKPORT: Pulse Eight HDMI CEC from v4.15
@@ -3061,10 +2898,10 @@ Subject: [PATCH] BACKPORT: Pulse Eight HDMI CEC from v4.15
  create mode 100644 drivers/media/usb/pulse8-cec/pulse8-cec.c
 
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 225ab2c1d35b..0c1232c326a5 100644
+index d5dcc11d2cde..476515cf710e 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -8673,6 +8673,13 @@ F:	include/linux/tracehook.h
+@@ -8686,6 +8686,13 @@ F:	include/linux/tracehook.h
  F:	include/uapi/linux/ptrace.h
  F:	kernel/ptrace.c
  
@@ -3944,7 +3781,7 @@ index becdd78295cc..4588c66a8df0 100644
  
  #endif /* _UAPI_SERIO_H */
 
-From 7f6dbf0df7f833b1d9e8da72365eebffd046e7c7 Mon Sep 17 00:00:00 2001
+From cc8e225647bba088c4e5d7ea592919f70470d55a Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 4 Sep 2017 22:34:24 +0200
 Subject: [PATCH] BACKPORT: RainShadow Tech HDMI CEC from v4.15
@@ -3963,10 +3800,10 @@ Subject: [PATCH] BACKPORT: RainShadow Tech HDMI CEC from v4.15
  create mode 100644 drivers/media/usb/rainshadow-cec/rainshadow-cec.c
 
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 0c1232c326a5..551555a162c3 100644
+index 476515cf710e..8c80ce67f9b1 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -8912,6 +8912,13 @@ L:	linux-fbdev@vger.kernel.org
+@@ -8931,6 +8931,13 @@ L:	linux-fbdev@vger.kernel.org
  S:	Maintained
  F:	drivers/video/fbdev/aty/aty128fb.c
  
@@ -4427,7 +4264,7 @@ index 4588c66a8df0..89b72003fb68 100644
  
  #endif /* _UAPI_SERIO_H */
 
-From f532f514ca373430332f2733be987335af7ae75c Mon Sep 17 00:00:00 2001
+From 324b894c905e837deb590bb3532a3622df6e406d Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 2 Sep 2017 16:23:11 +0200
 Subject: [PATCH] [media] rc/keymaps: initialize rc-cec early
@@ -4437,7 +4274,7 @@ Subject: [PATCH] [media] rc/keymaps: initialize rc-cec early
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/media/rc/keymaps/rc-cec.c b/drivers/media/rc/keymaps/rc-cec.c
-index 354c8e724b8e..fb0c2b1f3814 100644
+index 76d34abb7c85..6556934f5335 100644
 --- a/drivers/media/rc/keymaps/rc-cec.c
 +++ b/drivers/media/rc/keymaps/rc-cec.c
 @@ -175,7 +175,7 @@ static void __exit exit_rc_map_cec(void)
@@ -4450,7 +4287,7 @@ index 354c8e724b8e..fb0c2b1f3814 100644
  
  MODULE_LICENSE("GPL");
 
-From 54c779a399fb852e06f11a03bf03c31090c4b722 Mon Sep 17 00:00:00 2001
+From 02555dfb76e1070fe81047c857a643a7cab0c072 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 2 Sep 2017 16:23:11 +0200
 Subject: [PATCH] drm/bridge: dw-hdmi: read edid on hpd event
@@ -4460,10 +4297,10 @@ Subject: [PATCH] drm/bridge: dw-hdmi: read edid on hpd event
  1 file changed, 19 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index 8cb2cb4e61a6..c045cc0717cd 100644
+index 68d998526071..6157cb00663f 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-@@ -2479,6 +2479,7 @@ static void dw_hdmi_bridge_nop(struct drm_bridge *bridge)
+@@ -2489,6 +2489,7 @@ static void dw_hdmi_bridge_nop(struct drm_bridge *bridge)
  static enum drm_connector_status
  dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
  {
@@ -4471,7 +4308,7 @@ index 8cb2cb4e61a6..c045cc0717cd 100644
  	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
  					     connector);
  
-@@ -2488,7 +2489,24 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
+@@ -2498,7 +2499,24 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
  	dw_hdmi_update_phy_mask(hdmi);
  	mutex_unlock(&hdmi->mutex);
  
@@ -4497,7 +4334,7 @@ index 8cb2cb4e61a6..c045cc0717cd 100644
  }
  
  static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
-@@ -2891,9 +2909,6 @@ static irqreturn_t dw_hdmi_irq(int irq, void *dev_id)
+@@ -2901,9 +2919,6 @@ static irqreturn_t dw_hdmi_irq(int irq, void *dev_id)
  			dw_hdmi_update_phy_mask(hdmi);
  		}
  		mutex_unlock(&hdmi->mutex);

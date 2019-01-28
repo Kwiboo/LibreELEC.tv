@@ -1,59 +1,4 @@
-From fa2bd9cdc869b32ba00f0bba79b63e1fd53f8cdb Mon Sep 17 00:00:00 2001
-From: Chris Zhong <zyw@rock-chips.com>
-Date: Mon, 18 Jul 2016 22:34:34 +0800
-Subject: [PATCH] UPSTREAM: ASoC: rockchip: correct the spdif clk
-
-The spdif mclk should be 128 times of sample rate, and there is a
-internal divider, the real rate of spdif mclk is mclk / (div + 1).
-Hence, the original driver always get the good frequency for
-48000/96000/44100/192000. But for 32000, the mclk is incorrect,
-it should be 32000*128, but get 48000*128. Do not use the internal
-divider here, just set all mclk to 128 * sample rate directly.
-
-Signed-off-by: Chris Zhong <zyw@rock-chips.com>
-Signed-off-by: Mark Brown <broonie@kernel.org>
-(cherry picked from commit 46dd2e28a90e48fbf1b7e253933fa3b7242e9b1b)
----
- sound/soc/rockchip/rockchip_spdif.c | 17 +----------------
- 1 file changed, 1 insertion(+), 16 deletions(-)
-
-diff --git a/sound/soc/rockchip/rockchip_spdif.c b/sound/soc/rockchip/rockchip_spdif.c
-index c211750b54ee..784941ca2408 100644
---- a/sound/soc/rockchip/rockchip_spdif.c
-+++ b/sound/soc/rockchip/rockchip_spdif.c
-@@ -105,21 +105,7 @@ static int rk_spdif_hw_params(struct snd_pcm_substream *substream,
- 	int ret;
- 
- 	srate = params_rate(params);
--	switch (srate) {
--	case 32000:
--	case 48000:
--	case 96000:
--		mclk = 96000 * 128; /* 12288000 hz */
--		break;
--	case 44100:
--		mclk = 44100 * 256; /* 11289600 hz */
--		break;
--	case 192000:
--		mclk = 192000 * 128; /* 24576000 hz */
--		break;
--	default:
--		return -EINVAL;
--	}
-+	mclk = srate * 128;
- 
- 	switch (params_format(params)) {
- 	case SNDRV_PCM_FORMAT_S16_LE:
-@@ -143,7 +129,6 @@ static int rk_spdif_hw_params(struct snd_pcm_substream *substream,
- 		return ret;
- 	}
- 
--	val |= SPDIF_CFGR_CLK_DIV(mclk/(srate * 256));
- 	ret = regmap_update_bits(spdif->regmap, SPDIF_CFGR,
- 		SPDIF_CFGR_CLK_DIV_MASK | SPDIF_CFGR_HALFWORD_ENABLE |
- 		SDPIF_CFGR_VDW_MASK,
-
-From 46e3e82a547b78ca5db11a8444f787fd15f8e8ce Mon Sep 17 00:00:00 2001
+From 09d52db9325b7c221f5f3cf1aa46aa6d15fb18d4 Mon Sep 17 00:00:00 2001
 From: Sugar Zhang <sugar.zhang@rock-chips.com>
 Date: Wed, 7 Sep 2016 14:30:21 +0800
 Subject: [PATCH] UPSTREAM: ASoC: rockchip: spdif: restore register during
@@ -70,7 +15,7 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
  1 file changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/sound/soc/rockchip/rockchip_spdif.c b/sound/soc/rockchip/rockchip_spdif.c
-index 784941ca2408..831e4caf29d3 100644
+index e8bdad39d648..fc0288e1f2c9 100644
 --- a/sound/soc/rockchip/rockchip_spdif.c
 +++ b/sound/soc/rockchip/rockchip_spdif.c
 @@ -69,6 +69,7 @@ static int __maybe_unused rk_spdif_runtime_suspend(struct device *dev)
@@ -100,7 +45,7 @@ index 784941ca2408..831e4caf29d3 100644
  
  static int rk_spdif_hw_params(struct snd_pcm_substream *substream,
 
-From d8a8c9964022565ecf7b5ea7249262c3ac381a1b Mon Sep 17 00:00:00 2001
+From 25ce0ce31558baf357b1224e55532901615b5959 Mon Sep 17 00:00:00 2001
 From: Arnaud Pouliquen <arnaud.pouliquen@st.com>
 Date: Tue, 3 Jan 2017 16:52:50 +0100
 Subject: [PATCH] UPSTREAM: DRM: add help to get ELD speaker allocation
@@ -148,7 +93,7 @@ index 85861b63e77a..55201e7e2ede 100644
  	int (*get_edid_block)(void *data, u8 *buf, unsigned int block,
  			      size_t len),
 
-From e622344ce58345eda1ce7372bf7e91e4e90ece5f Mon Sep 17 00:00:00 2001
+From 5f2f1105804e67bc9b7c91be49045bb28df2fa0f Mon Sep 17 00:00:00 2001
 From: Arnaud Pouliquen <arnaud.pouliquen@st.com>
 Date: Tue, 3 Jan 2017 16:52:51 +0100
 Subject: [PATCH] UPSTREAM: ASoC: core: add optional pcm_new callback for DAI
@@ -229,7 +174,7 @@ index 3c6713da3ad9..e46e80c0e07d 100644
  			INIT_DELAYED_WORK(&rtd->delayed_work,
  						codec2codec_close_delayed_work);
 
-From 3877e4beac5a5efc2898185fe75555e21cf6b090 Mon Sep 17 00:00:00 2001
+From 174e2d2c8e3d981f89b7e9c4225a8d57432c15dd Mon Sep 17 00:00:00 2001
 From: Arnaud Pouliquen <arnaud.pouliquen@st.com>
 Date: Tue, 3 Jan 2017 16:52:52 +0100
 Subject: [PATCH] UPSTREAM: ASoC: hdmi-codec: add channel mapping control
@@ -715,7 +660,7 @@ index 028d60c196ae..cb78d8971b41 100644
  	snd_soc_unregister_codec(&pdev->dev);
  	return 0;
 
-From 52c48ffd0956821dd3f1315b9ec3fd2a677b2b63 Mon Sep 17 00:00:00 2001
+From 71986733608219f3d1682951a87948bf56a356b6 Mon Sep 17 00:00:00 2001
 From: Christophe Jaillet <christophe.jaillet@wanadoo.fr>
 Date: Thu, 15 Jun 2017 07:53:11 +0200
 Subject: [PATCH] UPSTREAM: ASoC: rockchip: Fix an error handling in
@@ -734,10 +679,10 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
  1 file changed, 5 insertions(+), 4 deletions(-)
 
 diff --git a/sound/soc/rockchip/rockchip_i2s.c b/sound/soc/rockchip/rockchip_i2s.c
-index b359639c1038..02ff642499bf 100644
+index 2271e25b0675..16afc0461fe2 100644
 --- a/sound/soc/rockchip/rockchip_i2s.c
 +++ b/sound/soc/rockchip/rockchip_i2s.c
-@@ -658,12 +658,13 @@ static int rockchip_i2s_probe(struct platform_device *pdev)
+@@ -689,12 +689,13 @@ static int rockchip_i2s_probe(struct platform_device *pdev)
  			goto err_pm_disable;
  	}
  
@@ -756,7 +701,7 @@ index b359639c1038..02ff642499bf 100644
  		if (val >= 2 && val <= 8)
  			soc_dai->playback.channels_max = val;
 
-From 7b9368e1f2d50d7ca5b07ea50240fd8f45d884fe Mon Sep 17 00:00:00 2001
+From 73237b68aececd888fa4c38c073814e454034e6f Mon Sep 17 00:00:00 2001
 From: Markus Elfring <elfring@users.sourceforge.net>
 Date: Thu, 10 Aug 2017 18:38:09 +0200
 Subject: [PATCH] UPSTREAM: ASoC: rockchip: Delete an error message for a
@@ -775,10 +720,10 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
  1 file changed, 1 insertion(+), 3 deletions(-)
 
 diff --git a/sound/soc/rockchip/rockchip_i2s.c b/sound/soc/rockchip/rockchip_i2s.c
-index 02ff642499bf..16ff8d5e0033 100644
+index 16afc0461fe2..b41cba4fc25e 100644
 --- a/sound/soc/rockchip/rockchip_i2s.c
 +++ b/sound/soc/rockchip/rockchip_i2s.c
-@@ -594,10 +594,8 @@ static int rockchip_i2s_probe(struct platform_device *pdev)
+@@ -622,10 +622,8 @@ static int rockchip_i2s_probe(struct platform_device *pdev)
  	int val;
  
  	i2s = devm_kzalloc(&pdev->dev, sizeof(*i2s), GFP_KERNEL);
@@ -791,7 +736,7 @@ index 02ff642499bf..16ff8d5e0033 100644
  	i2s->dev = &pdev->dev;
  
 
-From f217d206adafde4eb886ffbd5ecd7779c37438ef Mon Sep 17 00:00:00 2001
+From e65fd09d7e91a244f7a58591cc8580389786553f Mon Sep 17 00:00:00 2001
 From: John Keeping <john@metanate.com>
 Date: Thu, 14 Sep 2017 16:58:55 +0100
 Subject: [PATCH] UPSTREAM: ASoC: rockchip: i2s: fix unbalanced clk_disable
@@ -808,10 +753,10 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
  1 file changed, 1 deletion(-)
 
 diff --git a/sound/soc/rockchip/rockchip_i2s.c b/sound/soc/rockchip/rockchip_i2s.c
-index 16ff8d5e0033..986ad2efc8e9 100644
+index b41cba4fc25e..0ad724587be3 100644
 --- a/sound/soc/rockchip/rockchip_i2s.c
 +++ b/sound/soc/rockchip/rockchip_i2s.c
-@@ -727,7 +727,6 @@ static int rockchip_i2s_remove(struct platform_device *pdev)
+@@ -758,7 +758,6 @@ static int rockchip_i2s_remove(struct platform_device *pdev)
  	if (!pm_runtime_status_suspended(&pdev->dev))
  		i2s_runtime_suspend(&pdev->dev);
  
@@ -820,74 +765,7 @@ index 16ff8d5e0033..986ad2efc8e9 100644
  
  	return 0;
 
-From 9cca8ff3584aedce10d3099b504e66737c9c9e44 Mon Sep 17 00:00:00 2001
-From: John Keeping <john@metanate.com>
-Date: Mon, 8 Jan 2018 16:01:04 +0000
-Subject: [PATCH] UPSTREAM: ASoC: rockchip: i2s: fix playback after runtime
- resume
-
-When restoring registers during runtime resume, we must not write to
-I2S_TXDR which is the transmit FIFO as this queues up a sample to be
-output and pushes all of the output channels down by one.
-
-This can be demonstrated with the speaker-test utility:
-
-	for i in a b c; do speaker-test -c 2 -s 1; done
-
-which should play a test through the left speaker three times but if the
-I2S hardware starts runtime suspended the first sample will be played
-through the right speaker.
-
-Fix this by marking I2S_TXDR as volatile (which also requires marking it
-as readble, even though it technically isn't).  This seems to be the
-most robust fix, the alternative of giving I2S_TXDR a default value is
-more fragile since it does not prevent regcache writing to the register
-in all circumstances.
-
-While here, also fix the configuration of I2S_RXDR and I2S_FIFOLR; these
-are not writable so they do not suffer from the same problem as I2S_TXDR
-but reading from I2S_RXDR does suffer from a similar problem.
-
-Fixes: f0447f6cbb20 ("ASoC: rockchip: i2s: restore register during runtime_suspend/resume cycle", 2016-09-07)
-Signed-off-by: John Keeping <john@metanate.com>
-(cherry picked from commit c66234cfedfc3e6e3b62563a5f2c1562be09a35d)
----
- sound/soc/rockchip/rockchip_i2s.c | 6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/sound/soc/rockchip/rockchip_i2s.c b/sound/soc/rockchip/rockchip_i2s.c
-index 986ad2efc8e9..5297373fe6c4 100644
---- a/sound/soc/rockchip/rockchip_i2s.c
-+++ b/sound/soc/rockchip/rockchip_i2s.c
-@@ -514,6 +514,7 @@ static bool rockchip_i2s_rd_reg(struct device *dev, unsigned int reg)
- 	case I2S_INTCR:
- 	case I2S_XFER:
- 	case I2S_CLR:
-+	case I2S_TXDR:
- 	case I2S_RXDR:
- 	case I2S_FIFOLR:
- 	case I2S_INTSR:
-@@ -528,6 +529,9 @@ static bool rockchip_i2s_volatile_reg(struct device *dev, unsigned int reg)
- 	switch (reg) {
- 	case I2S_INTSR:
- 	case I2S_CLR:
-+	case I2S_FIFOLR:
-+	case I2S_TXDR:
-+	case I2S_RXDR:
- 		return true;
- 	default:
- 		return false;
-@@ -537,6 +541,8 @@ static bool rockchip_i2s_volatile_reg(struct device *dev, unsigned int reg)
- static bool rockchip_i2s_precious_reg(struct device *dev, unsigned int reg)
- {
- 	switch (reg) {
-+	case I2S_RXDR:
-+		return true;
- 	default:
- 		return false;
- 	}
-
-From 7c877ceaa52d81023ebda69e3d90f54ab8403798 Mon Sep 17 00:00:00 2001
+From 896f317a6256e6065dea2d9208358c6331efdbe8 Mon Sep 17 00:00:00 2001
 From: Romain Perier <romain.perier@collabora.com>
 Date: Fri, 14 Apr 2017 10:31:12 +0200
 Subject: [PATCH] UPSTREAM: drm: dw-hdmi: add specific I2S and AHB functions
@@ -915,7 +793,7 @@ Link: http://patchwork.freedesktop.org/patch/msgid/20170414083113.4255-2-romain.
  1 file changed, 25 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index 8cb2cb4e61a6..8726498e9f73 100644
+index 68d998526071..57c372e4beeb 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 @@ -263,6 +263,9 @@ struct dw_hdmi {
@@ -969,7 +847,7 @@ index 8cb2cb4e61a6..8726498e9f73 100644
  	spin_unlock_irqrestore(&hdmi->audio_lock, flags);
  }
  EXPORT_SYMBOL_GPL(dw_hdmi_audio_disable);
-@@ -3706,6 +3726,8 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -3716,6 +3736,8 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
  		audio.irq = irq;
  		audio.hdmi = hdmi;
  		audio.eld = hdmi->connector.eld;
@@ -978,7 +856,7 @@ index 8cb2cb4e61a6..8726498e9f73 100644
  
  		pdevinfo.name = "dw-hdmi-ahb-audio";
  		pdevinfo.data = &audio;
-@@ -3719,6 +3741,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -3729,6 +3751,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
  		audio.write	= hdmi_writeb;
  		audio.read	= hdmi_readb;
  		audio.mod	= hdmi_modb;
@@ -987,7 +865,7 @@ index 8cb2cb4e61a6..8726498e9f73 100644
  		pdevinfo.name = "dw-hdmi-i2s-audio";
  		pdevinfo.data = &audio;
 
-From 8b1551df18617eba99d59f89724191954a7213a4 Mon Sep 17 00:00:00 2001
+From d23b46b7c968c8b4ca5ee1a853bdc201dc394485 Mon Sep 17 00:00:00 2001
 From: Romain Perier <romain.perier@collabora.com>
 Date: Thu, 20 Apr 2017 14:34:34 +0530
 Subject: [PATCH] UPSTREAM: drm: dw-hdmi: gate audio clock from the I2S
@@ -1015,7 +893,7 @@ Signed-off-by: Archit Taneja <architt@codeaurora.org>
  1 file changed, 17 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index 8726498e9f73..17c182cb07b5 100644
+index 57c372e4beeb..cf1fdc4db2d9 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 @@ -824,6 +824,15 @@ void dw_hdmi_set_sample_rate(struct dw_hdmi *hdmi, unsigned int rate)
@@ -1047,7 +925,7 @@ index 8726498e9f73..17c182cb07b5 100644
  }
  
  void dw_hdmi_audio_enable(struct dw_hdmi *hdmi)
-@@ -2149,12 +2164,6 @@ static void dw_hdmi_enable_video_path(struct dw_hdmi *hdmi)
+@@ -2146,12 +2161,6 @@ static void dw_hdmi_enable_video_path(struct dw_hdmi *hdmi)
  			    HDMI_MC_FLOWCTRL);
  }
  
@@ -1060,7 +938,7 @@ index 8726498e9f73..17c182cb07b5 100644
  /* Workaround to clear the overflow condition */
  static void dw_hdmi_clear_overflow(struct dw_hdmi *hdmi)
  {
-@@ -2306,7 +2315,7 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
+@@ -2316,7 +2325,7 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
  
  		/* HDMI Initialization Step E - Configure audio */
  		hdmi_clk_regenerator_update_pixel_clock(hdmi);
@@ -1069,7 +947,7 @@ index 8726498e9f73..17c182cb07b5 100644
  	}
  
  	/* not for DVI mode */
-@@ -3742,6 +3751,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -3752,6 +3761,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
  		audio.read	= hdmi_readb;
  		audio.mod	= hdmi_modb;
  		hdmi->enable_audio = dw_hdmi_i2s_audio_enable;
@@ -1078,7 +956,7 @@ index 8726498e9f73..17c182cb07b5 100644
  		pdevinfo.name = "dw-hdmi-i2s-audio";
  		pdevinfo.data = &audio;
 
-From 442b913082d21de7a8364344feb520946413da5b Mon Sep 17 00:00:00 2001
+From cbfc1c5aa41309b4b14bcf9eaa9e650bedeae726 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 7 Aug 2017 22:24:15 +0200
 Subject: [PATCH] drm: dw-hdmi-i2s: sync with upstream
@@ -1157,7 +1035,7 @@ index f1f62d8c1d16..5ff993a35ab6 100644
  		.name = DRIVER_NAME,
  		.owner = THIS_MODULE,
 
-From 1d3de24bd61e0bfba1a9e042e040fa65346ccd9d Mon Sep 17 00:00:00 2001
+From a66f14591adb79791209d05c56c0469893572408 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 2 Apr 2017 11:33:39 +0200
 Subject: [PATCH] drm: dw-hdmi-i2s: implement get_eld
@@ -1214,10 +1092,10 @@ index 5ff993a35ab6..e7312571e2cb 100644
  
  static int snd_dw_hdmi_probe(struct platform_device *pdev)
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index 17c182cb07b5..df1ea752ac3d 100644
+index cf1fdc4db2d9..834a57e0d5bc 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-@@ -3750,6 +3750,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -3760,6 +3760,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
  		audio.write	= hdmi_writeb;
  		audio.read	= hdmi_readb;
  		audio.mod	= hdmi_modb;
@@ -1226,7 +1104,7 @@ index 17c182cb07b5..df1ea752ac3d 100644
  		hdmi->disable_audio = dw_hdmi_i2s_audio_disable;
  
 
-From 1e16f2f6b861a7273d922c9251665acec542eed9 Mon Sep 17 00:00:00 2001
+From 6953938ad85f5a29890a8a66ab75ad8402db83cc Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 17 Apr 2017 13:09:16 +0200
 Subject: [PATCH] drm: dw-hdmi-i2s: configure channel allocation
@@ -1249,7 +1127,7 @@ index e7312571e2cb..1d4570e3fbed 100644
  	/* Set LFEPBLDOWN-MIX INH and LSV */
  	hdmi_write(audio, 0x00, HDMI_FC_AUDICONF3);
 
-From 747742580e282f4374100909906f6957c997c4a3 Mon Sep 17 00:00:00 2001
+From c118ebebfd7670d11d3671146f54f34eba6600ad Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 14 Aug 2017 00:14:05 +0200
 Subject: [PATCH] ASoC: hdmi-codec: reorder channel map
@@ -1394,7 +1272,7 @@ index cb78d8971b41..b74659bc3bbc 100644
  
  struct hdmi_codec_priv {
 
-From 1cdb1f115b4bc9781c90d01d914dd4bbac6d0977 Mon Sep 17 00:00:00 2001
+From be85004d990cac0d29efe4e94e33e31d10d01b0e Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 27 Aug 2017 23:32:40 +0200
 Subject: [PATCH] ASoC: codecs: rk3328: limit to working rates
@@ -1404,7 +1282,7 @@ Subject: [PATCH] ASoC: codecs: rk3328: limit to working rates
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/sound/soc/codecs/rk3328_codec.c b/sound/soc/codecs/rk3328_codec.c
-index af1b7429b6d4..d0b4578ffa0e 100644
+index 5d8784db4dc5..103bb7809884 100644
 --- a/sound/soc/codecs/rk3328_codec.c
 +++ b/sound/soc/codecs/rk3328_codec.c
 @@ -354,7 +354,12 @@ static struct snd_soc_dai_driver rk3328_dai[] = {
@@ -1422,7 +1300,7 @@ index af1b7429b6d4..d0b4578ffa0e 100644
  				    SNDRV_PCM_FMTBIT_S20_3LE |
  				    SNDRV_PCM_FMTBIT_S24_LE |
 
-From 878d789ff5faa02f0da5e68126e2276124611eeb Mon Sep 17 00:00:00 2001
+From 1c2e1d48e7d7c3baf5a363327849399b0589c196 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 8 Jul 2018 12:34:43 +0200
 Subject: [PATCH] drm: dw-hdmi: change audio config
@@ -1467,7 +1345,7 @@ index 1d4570e3fbed..d0904f6b7a82 100644
  
  static int dw_hdmi_i2s_get_eld(struct device *dev, void *data, u8 *buf, size_t len)
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index df1ea752ac3d..4bf4ff0fd741 100644
+index 834a57e0d5bc..1dbab6613b3f 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 @@ -89,6 +89,7 @@ static const struct dw_hdmi_audio_tmds_n common_tmds_n_table[] = {
@@ -1511,7 +1389,7 @@ index df1ea752ac3d..4bf4ff0fd741 100644
  
  static void dw_hdmi_ahb_audio_enable(struct dw_hdmi *hdmi)
 
-From 6bf23972f26fde1abad52cd1a65d1223d51d47c2 Mon Sep 17 00:00:00 2001
+From e24161a40ae03f29d5383da4a03e0e951da43a32 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 8 Jul 2018 12:56:51 +0200
 Subject: [PATCH] WIP: drm: dw-hdmi: use Auto CTS mode
@@ -1521,7 +1399,7 @@ Subject: [PATCH] WIP: drm: dw-hdmi: use Auto CTS mode
  1 file changed, 31 insertions(+), 21 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index 4bf4ff0fd741..2583320f3289 100644
+index 1dbab6613b3f..04199a45e4be 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 @@ -643,14 +643,18 @@ static struct i2c_adapter *dw_hdmi_i2c_adapter(struct dw_hdmi *hdmi)

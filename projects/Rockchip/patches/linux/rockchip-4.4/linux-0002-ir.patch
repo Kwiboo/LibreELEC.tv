@@ -1,4 +1,4 @@
-From 2031709371a600b1b803ec928cc1adb2e9b5a4c1 Mon Sep 17 00:00:00 2001
+From ae88fb5ffa6925bf0a3851757d3f56911accff3f Mon Sep 17 00:00:00 2001
 From: Mauro Carvalho Chehab <mchehab@osg.samsung.com>
 Date: Thu, 19 Nov 2015 11:41:36 -0200
 Subject: [PATCH] UPSTREAM: smsir.h: remove a now duplicated definition
@@ -26,7 +26,7 @@ index fc8b7925c532..d9abd96ef48b 100644
  
  struct ir_t {
 
-From 3b533a5c5f7880759fcad51e9400851a80295764 Mon Sep 17 00:00:00 2001
+From abc8eb9a8330cca33aa30217092075c7298fd9db Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Wed, 6 Sep 2017 18:39:09 +0200
 Subject: [PATCH] [media] rc/keymaps: add keytable for Pine64 IR Remote
@@ -40,10 +40,10 @@ Subject: [PATCH] [media] rc/keymaps: add keytable for Pine64 IR Remote
  create mode 100644 drivers/media/rc/keymaps/rc-pine64.c
 
 diff --git a/drivers/media/rc/keymaps/Makefile b/drivers/media/rc/keymaps/Makefile
-index fbbd3bbcd252..8816520600f7 100644
+index 793df376e15f..cbf9879d1a83 100644
 --- a/drivers/media/rc/keymaps/Makefile
 +++ b/drivers/media/rc/keymaps/Makefile
-@@ -66,6 +66,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
+@@ -67,6 +67,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
  			rc-norwood.o \
  			rc-npgtech.o \
  			rc-pctv-sedna.o \
@@ -53,7 +53,7 @@ index fbbd3bbcd252..8816520600f7 100644
  			rc-pinnacle-pctv-hd.o \
 diff --git a/drivers/media/rc/keymaps/rc-pine64.c b/drivers/media/rc/keymaps/rc-pine64.c
 new file mode 100644
-index 000000000000..bdf3975e7445
+index 000000000000..79a656b69dda
 --- /dev/null
 +++ b/drivers/media/rc/keymaps/rc-pine64.c
 @@ -0,0 +1,65 @@
@@ -100,10 +100,10 @@ index 000000000000..bdf3975e7445
 +
 +static struct rc_map_list pine64_map = {
 +	.map = {
-+		.scan    = pine64,
-+		.size    = ARRAY_SIZE(pine64),
-+		.rc_type = RC_TYPE_NEC,
-+		.name    = RC_MAP_PINE64,
++		.scan     = pine64,
++		.size     = ARRAY_SIZE(pine64),
++		.rc_proto = RC_PROTO_NEC,
++		.name     = RC_MAP_PINE64,
 +	}
 +};
 +
@@ -123,10 +123,10 @@ index 000000000000..bdf3975e7445
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("PINE64");
 diff --git a/include/media/rc-map.h b/include/media/rc-map.h
-index 7c4bbc4dfab4..3a34a9631dd1 100644
+index 6c951a1e8af0..6e9d62a80e5c 100644
 --- a/include/media/rc-map.h
 +++ b/include/media/rc-map.h
-@@ -173,6 +173,7 @@ void rc_map_init(void);
+@@ -229,6 +229,7 @@ struct rc_map *rc_map_get(const char *name);
  #define RC_MAP_NORWOOD                   "rc-norwood"
  #define RC_MAP_NPGTECH                   "rc-npgtech"
  #define RC_MAP_PCTV_SEDNA                "rc-pctv-sedna"
@@ -135,7 +135,7 @@ index 7c4bbc4dfab4..3a34a9631dd1 100644
  #define RC_MAP_PINNACLE_GREY             "rc-pinnacle-grey"
  #define RC_MAP_PINNACLE_PCTV_HD          "rc-pinnacle-pctv-hd"
 
-From 21e2e6f847c6e1d0f98ce3770e6d380b20af3064 Mon Sep 17 00:00:00 2001
+From f9562b5ce198139233e8b4a6a02bdbe13f162111 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Wed, 6 Sep 2017 18:39:09 +0200
 Subject: [PATCH] [media] rc/keymaps: add keytable for ODROID IR Remote
@@ -149,10 +149,10 @@ Subject: [PATCH] [media] rc/keymaps: add keytable for ODROID IR Remote
  create mode 100644 drivers/media/rc/keymaps/rc-odroid.c
 
 diff --git a/drivers/media/rc/keymaps/Makefile b/drivers/media/rc/keymaps/Makefile
-index 8816520600f7..f4321cfbbc79 100644
+index cbf9879d1a83..f394537a626b 100644
 --- a/drivers/media/rc/keymaps/Makefile
 +++ b/drivers/media/rc/keymaps/Makefile
-@@ -65,6 +65,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
+@@ -66,6 +66,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
  			rc-nec-terratec-cinergy-xs.o \
  			rc-norwood.o \
  			rc-npgtech.o \
@@ -162,7 +162,7 @@ index 8816520600f7..f4321cfbbc79 100644
  			rc-pinnacle-color.o \
 diff --git a/drivers/media/rc/keymaps/rc-odroid.c b/drivers/media/rc/keymaps/rc-odroid.c
 new file mode 100644
-index 000000000000..52089f0b7c1d
+index 000000000000..705d40794247
 --- /dev/null
 +++ b/drivers/media/rc/keymaps/rc-odroid.c
 @@ -0,0 +1,52 @@
@@ -196,10 +196,10 @@ index 000000000000..52089f0b7c1d
 +
 +static struct rc_map_list odroid_map = {
 +	.map = {
-+		.scan    = odroid,
-+		.size    = ARRAY_SIZE(odroid),
-+		.rc_type = RC_TYPE_NEC,
-+		.name    = RC_MAP_ODROID,
++		.scan     = odroid,
++		.size     = ARRAY_SIZE(odroid),
++		.rc_proto = RC_PROTO_NEC,
++		.name     = RC_MAP_ODROID,
 +	}
 +};
 +
@@ -219,10 +219,10 @@ index 000000000000..52089f0b7c1d
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("Hardkernel co., Ltd.");
 diff --git a/include/media/rc-map.h b/include/media/rc-map.h
-index 3a34a9631dd1..f1badbfbca90 100644
+index 6e9d62a80e5c..df86785ba182 100644
 --- a/include/media/rc-map.h
 +++ b/include/media/rc-map.h
-@@ -172,6 +172,7 @@ void rc_map_init(void);
+@@ -228,6 +228,7 @@ struct rc_map *rc_map_get(const char *name);
  #define RC_MAP_NEC_TERRATEC_CINERGY_XS   "rc-nec-terratec-cinergy-xs"
  #define RC_MAP_NORWOOD                   "rc-norwood"
  #define RC_MAP_NPGTECH                   "rc-npgtech"
@@ -231,7 +231,7 @@ index 3a34a9631dd1..f1badbfbca90 100644
  #define RC_MAP_PINE64                    "rc-pine64"
  #define RC_MAP_PINNACLE_COLOR            "rc-pinnacle-color"
 
-From 0cb159b68f91fb352861a23241a24611201e0d05 Mon Sep 17 00:00:00 2001
+From eb82eef8e3866e245d0fb3d5103db6c94bfdd595 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Wed, 6 Sep 2017 18:39:09 +0200
 Subject: [PATCH] [media] rc/keymaps: add keytable for WeTek Hub Remote
@@ -245,10 +245,10 @@ Subject: [PATCH] [media] rc/keymaps: add keytable for WeTek Hub Remote
  create mode 100644 drivers/media/rc/keymaps/rc-wetek-hub.c
 
 diff --git a/drivers/media/rc/keymaps/Makefile b/drivers/media/rc/keymaps/Makefile
-index f4321cfbbc79..e8e6434cbc13 100644
+index f394537a626b..31e73332bbe8 100644
 --- a/drivers/media/rc/keymaps/Makefile
 +++ b/drivers/media/rc/keymaps/Makefile
-@@ -101,6 +101,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
+@@ -102,6 +102,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
  			rc-tt-1500.o \
  			rc-twinhan-dtv-cab-ci.o \
  			rc-twinhan1027.o \
@@ -258,7 +258,7 @@ index f4321cfbbc79..e8e6434cbc13 100644
  			rc-videomate-tv-pvr.o \
 diff --git a/drivers/media/rc/keymaps/rc-wetek-hub.c b/drivers/media/rc/keymaps/rc-wetek-hub.c
 new file mode 100644
-index 000000000000..0955ecfcb77c
+index 000000000000..e103f1e15b1b
 --- /dev/null
 +++ b/drivers/media/rc/keymaps/rc-wetek-hub.c
 @@ -0,0 +1,52 @@
@@ -292,10 +292,10 @@ index 000000000000..0955ecfcb77c
 +
 +static struct rc_map_list wetek_hub_map = {
 +	.map = {
-+		.scan    = wetek_hub,
-+		.size    = ARRAY_SIZE(wetek_hub),
-+		.rc_type = RC_TYPE_NEC,
-+		.name    = RC_MAP_WETEK_HUB,
++		.scan     = wetek_hub,
++		.size     = ARRAY_SIZE(wetek_hub),
++		.rc_proto = RC_PROTO_NEC,
++		.name     = RC_MAP_WETEK_HUB,
 +	}
 +};
 +
@@ -315,10 +315,10 @@ index 000000000000..0955ecfcb77c
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("WeTek");
 diff --git a/include/media/rc-map.h b/include/media/rc-map.h
-index f1badbfbca90..cd8590c99e22 100644
+index df86785ba182..e20e23870ee4 100644
 --- a/include/media/rc-map.h
 +++ b/include/media/rc-map.h
-@@ -209,6 +209,7 @@ void rc_map_init(void);
+@@ -265,6 +265,7 @@ struct rc_map *rc_map_get(const char *name);
  #define RC_MAP_TT_1500                   "rc-tt-1500"
  #define RC_MAP_TWINHAN_DTV_CAB_CI        "rc-twinhan-dtv-cab-ci"
  #define RC_MAP_TWINHAN_VP1027_DVBS       "rc-twinhan1027"
@@ -327,7 +327,7 @@ index f1badbfbca90..cd8590c99e22 100644
  #define RC_MAP_VIDEOMATE_S350            "rc-videomate-s350"
  #define RC_MAP_VIDEOMATE_TV_PVR          "rc-videomate-tv-pvr"
 
-From d81bc903c323311f09eb3f8a298c10d99c62f601 Mon Sep 17 00:00:00 2001
+From 05b023bd115247e7339bf5ef302ae6ce12b2f362 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Wed, 6 Sep 2017 18:39:09 +0200
 Subject: [PATCH] [media] rc/keymaps: add keytable for WeTek Play 2 Remote
@@ -341,10 +341,10 @@ Subject: [PATCH] [media] rc/keymaps: add keytable for WeTek Play 2 Remote
  create mode 100644 drivers/media/rc/keymaps/rc-wetek-play-2.c
 
 diff --git a/drivers/media/rc/keymaps/Makefile b/drivers/media/rc/keymaps/Makefile
-index e8e6434cbc13..650481039f00 100644
+index 31e73332bbe8..48c028c94272 100644
 --- a/drivers/media/rc/keymaps/Makefile
 +++ b/drivers/media/rc/keymaps/Makefile
-@@ -102,6 +102,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
+@@ -103,6 +103,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
  			rc-twinhan-dtv-cab-ci.o \
  			rc-twinhan1027.o \
  			rc-wetek-hub.o \
@@ -354,7 +354,7 @@ index e8e6434cbc13..650481039f00 100644
  			rc-videomate-tv-pvr.o \
 diff --git a/drivers/media/rc/keymaps/rc-wetek-play-2.c b/drivers/media/rc/keymaps/rc-wetek-play-2.c
 new file mode 100644
-index 000000000000..37586cedbb8a
+index 000000000000..b1915adf7e50
 --- /dev/null
 +++ b/drivers/media/rc/keymaps/rc-wetek-play-2.c
 @@ -0,0 +1,83 @@
@@ -419,10 +419,10 @@ index 000000000000..37586cedbb8a
 +
 +static struct rc_map_list wetek_play_2_map = {
 +	.map = {
-+		.scan    = wetek_play_2,
-+		.size    = ARRAY_SIZE(wetek_play_2),
-+		.rc_type = RC_TYPE_NEC,
-+		.name    = RC_MAP_WETEK_PLAY_2,
++		.scan     = wetek_play_2,
++		.size     = ARRAY_SIZE(wetek_play_2),
++		.rc_proto = RC_PROTO_NEC,
++		.name     = RC_MAP_WETEK_PLAY_2,
 +	}
 +};
 +
@@ -442,10 +442,10 @@ index 000000000000..37586cedbb8a
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("WeTek");
 diff --git a/include/media/rc-map.h b/include/media/rc-map.h
-index cd8590c99e22..93cac05a5170 100644
+index e20e23870ee4..81d1dd3ce0ee 100644
 --- a/include/media/rc-map.h
 +++ b/include/media/rc-map.h
-@@ -210,6 +210,7 @@ void rc_map_init(void);
+@@ -266,6 +266,7 @@ struct rc_map *rc_map_get(const char *name);
  #define RC_MAP_TWINHAN_DTV_CAB_CI        "rc-twinhan-dtv-cab-ci"
  #define RC_MAP_TWINHAN_VP1027_DVBS       "rc-twinhan1027"
  #define RC_MAP_WETEK_HUB                 "rc-wetek-hub"
@@ -454,7 +454,7 @@ index cd8590c99e22..93cac05a5170 100644
  #define RC_MAP_VIDEOMATE_S350            "rc-videomate-s350"
  #define RC_MAP_VIDEOMATE_TV_PVR          "rc-videomate-tv-pvr"
 
-From 6518b8acbe53a153740bad1e93c9d361fed136fd Mon Sep 17 00:00:00 2001
+From fad937d9379a4a5d95d4cf4bddcbeb3592747587 Mon Sep 17 00:00:00 2001
 From: hzq <hzq@t-firefly.com>
 Date: Mon, 19 Mar 2018 16:47:24 +0800
 Subject: [PATCH] [media] rc/keymaps: add keytable for ROC-RK3328-CC Remote
@@ -468,10 +468,10 @@ Subject: [PATCH] [media] rc/keymaps: add keytable for ROC-RK3328-CC Remote
  create mode 100644 drivers/media/rc/keymaps/rc-roc-cc.c
 
 diff --git a/drivers/media/rc/keymaps/Makefile b/drivers/media/rc/keymaps/Makefile
-index 650481039f00..b743914487a5 100644
+index 48c028c94272..b254951ed4ea 100644
 --- a/drivers/media/rc/keymaps/Makefile
 +++ b/drivers/media/rc/keymaps/Makefile
-@@ -83,6 +83,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
+@@ -84,6 +84,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
  			rc-rc6-mce.o \
  			rc-real-audio-220-32-keys.o \
  			rc-reddo.o \
@@ -481,7 +481,7 @@ index 650481039f00..b743914487a5 100644
  			rc-tbs-nec.o \
 diff --git a/drivers/media/rc/keymaps/rc-roc-cc.c b/drivers/media/rc/keymaps/rc-roc-cc.c
 new file mode 100644
-index 000000000000..3a2a255d5723
+index 000000000000..a3605b9e9661
 --- /dev/null
 +++ b/drivers/media/rc/keymaps/rc-roc-cc.c
 @@ -0,0 +1,52 @@
@@ -515,10 +515,10 @@ index 000000000000..3a2a255d5723
 +
 +static struct rc_map_list roc_cc_map = {
 +	.map = {
-+		.scan    = roc_cc,
-+		.size    = ARRAY_SIZE(roc_cc),
-+		.rc_type = RC_TYPE_NEC,
-+		.name    = RC_MAP_ROC_CC,
++		.scan     = roc_cc,
++		.size     = ARRAY_SIZE(roc_cc),
++		.rc_proto = RC_PROTO_NEC,
++		.name     = RC_MAP_ROC_CC,
 +	}
 +};
 +
@@ -538,10 +538,10 @@ index 000000000000..3a2a255d5723
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("ROC-RK3328-CC");
 diff --git a/include/media/rc-map.h b/include/media/rc-map.h
-index 93cac05a5170..8bbe335e650c 100644
+index 81d1dd3ce0ee..0addf39b121b 100644
 --- a/include/media/rc-map.h
 +++ b/include/media/rc-map.h
-@@ -191,6 +191,7 @@ void rc_map_init(void);
+@@ -247,6 +247,7 @@ struct rc_map *rc_map_get(const char *name);
  #define RC_MAP_RC6_MCE                   "rc-rc6-mce"
  #define RC_MAP_REAL_AUDIO_220_32_KEYS    "rc-real-audio-220-32-keys"
  #define RC_MAP_REDDO                     "rc-reddo"
@@ -550,7 +550,7 @@ index 93cac05a5170..8bbe335e650c 100644
  #define RC_MAP_STREAMZAP                 "rc-streamzap"
  #define RC_MAP_TBS_NEC                   "rc-tbs-nec"
 
-From c0220800efec28f6a59eae563f4f083ceedff6cc Mon Sep 17 00:00:00 2001
+From a6e19430105ef7866a4644a2d8dab0985285adfe Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 3 Jul 2018 21:55:56 +0200
 Subject: [PATCH] [media] rc/keymaps: add keytable for T-Chip TRN9 IR Remote
@@ -564,10 +564,10 @@ Subject: [PATCH] [media] rc/keymaps: add keytable for T-Chip TRN9 IR Remote
  create mode 100644 drivers/media/rc/keymaps/rc-trn9.c
 
 diff --git a/drivers/media/rc/keymaps/Makefile b/drivers/media/rc/keymaps/Makefile
-index b743914487a5..2aaa1b33ddca 100644
+index b254951ed4ea..cef8e0f48b49 100644
 --- a/drivers/media/rc/keymaps/Makefile
 +++ b/drivers/media/rc/keymaps/Makefile
-@@ -102,6 +102,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
+@@ -103,6 +103,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
  			rc-tt-1500.o \
  			rc-twinhan-dtv-cab-ci.o \
  			rc-twinhan1027.o \
@@ -577,7 +577,7 @@ index b743914487a5..2aaa1b33ddca 100644
  			rc-videomate-m1f.o \
 diff --git a/drivers/media/rc/keymaps/rc-trn9.c b/drivers/media/rc/keymaps/rc-trn9.c
 new file mode 100644
-index 000000000000..f81bc3a419b3
+index 000000000000..3bbc6fe184fb
 --- /dev/null
 +++ b/drivers/media/rc/keymaps/rc-trn9.c
 @@ -0,0 +1,52 @@
@@ -611,10 +611,10 @@ index 000000000000..f81bc3a419b3
 +
 +static struct rc_map_list trn9_map = {
 +	.map = {
-+		.scan    = trn9,
-+		.size    = ARRAY_SIZE(trn9),
-+		.rc_type = RC_TYPE_NEC,
-+		.name    = RC_MAP_TRN9,
++		.scan     = trn9,
++		.size     = ARRAY_SIZE(trn9),
++		.rc_proto = RC_PROTO_NEC,
++		.name     = RC_MAP_TRN9,
 +	}
 +};
 +
@@ -634,10 +634,10 @@ index 000000000000..f81bc3a419b3
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("Omegamoon");
 diff --git a/include/media/rc-map.h b/include/media/rc-map.h
-index 8bbe335e650c..66e1c50b38fc 100644
+index 0addf39b121b..845000e92604 100644
 --- a/include/media/rc-map.h
 +++ b/include/media/rc-map.h
-@@ -210,6 +210,7 @@ void rc_map_init(void);
+@@ -266,6 +266,7 @@ struct rc_map *rc_map_get(const char *name);
  #define RC_MAP_TT_1500                   "rc-tt-1500"
  #define RC_MAP_TWINHAN_DTV_CAB_CI        "rc-twinhan-dtv-cab-ci"
  #define RC_MAP_TWINHAN_VP1027_DVBS       "rc-twinhan1027"
@@ -646,7 +646,7 @@ index 8bbe335e650c..66e1c50b38fc 100644
  #define RC_MAP_WETEK_PLAY_2              "rc-wetek-play-2"
  #define RC_MAP_VIDEOMATE_K100            "rc-videomate-k100"
 
-From 312b78202feca8f3966343b0362466e9c6ff2297 Mon Sep 17 00:00:00 2001
+From 33fb415a7f52e813d58c261182ee40bf4975e8c6 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 17 Dec 2018 07:41:16 +0100
 Subject: [PATCH] [media] rc/keymaps: add keytable for Khadas IR Remote
@@ -660,10 +660,10 @@ Subject: [PATCH] [media] rc/keymaps: add keytable for Khadas IR Remote
  create mode 100644 drivers/media/rc/keymaps/rc-khadas.c
 
 diff --git a/drivers/media/rc/keymaps/Makefile b/drivers/media/rc/keymaps/Makefile
-index 2aaa1b33ddca..fc0207d322a0 100644
+index cef8e0f48b49..f494e2b0711a 100644
 --- a/drivers/media/rc/keymaps/Makefile
 +++ b/drivers/media/rc/keymaps/Makefile
-@@ -47,6 +47,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
+@@ -49,6 +49,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
  			rc-it913x-v1.o \
  			rc-it913x-v2.o \
  			rc-kaiomy.o \
@@ -673,7 +673,7 @@ index 2aaa1b33ddca..fc0207d322a0 100644
  			rc-kworld-plus-tv-analog.o \
 diff --git a/drivers/media/rc/keymaps/rc-khadas.c b/drivers/media/rc/keymaps/rc-khadas.c
 new file mode 100644
-index 000000000000..492368db75d9
+index 000000000000..508deef3be86
 --- /dev/null
 +++ b/drivers/media/rc/keymaps/rc-khadas.c
 @@ -0,0 +1,52 @@
@@ -707,10 +707,10 @@ index 000000000000..492368db75d9
 +
 +static struct rc_map_list khadas_map = {
 +	.map = {
-+		.scan    = khadas,
-+		.size    = ARRAY_SIZE(khadas),
-+		.rc_type = RC_TYPE_NEC,
-+		.name    = RC_MAP_KHADAS,
++		.scan     = khadas,
++		.size     = ARRAY_SIZE(khadas),
++		.rc_proto = RC_PROTO_NEC,
++		.name     = RC_MAP_KHADAS,
 +	}
 +};
 +
@@ -730,10 +730,10 @@ index 000000000000..492368db75d9
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("Khadas");
 diff --git a/include/media/rc-map.h b/include/media/rc-map.h
-index 66e1c50b38fc..6b2db526fac0 100644
+index 845000e92604..a4fa6ad57232 100644
 --- a/include/media/rc-map.h
 +++ b/include/media/rc-map.h
-@@ -154,6 +154,7 @@ void rc_map_init(void);
+@@ -211,6 +211,7 @@ struct rc_map *rc_map_get(const char *name);
  #define RC_MAP_IT913X_V1                 "rc-it913x-v1"
  #define RC_MAP_IT913X_V2                 "rc-it913x-v2"
  #define RC_MAP_KAIOMY                    "rc-kaiomy"
@@ -741,3 +741,1674 @@ index 66e1c50b38fc..6b2db526fac0 100644
  #define RC_MAP_KWORLD_315U               "rc-kworld-315u"
  #define RC_MAP_KWORLD_PC150U             "rc-kworld-pc150u"
  #define RC_MAP_KWORLD_PLUS_TV_ANALOG     "rc-kworld-plus-tv-analog"
+
+From 6cedfb3f569af806d2aac641a519dd5584d81b2e Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 27 Jan 2019 23:10:47 +0000
+Subject: [PATCH] BACKPORT: media: rc: rename RC_TYPE_* to RC_PROTO_* and
+ RC_BIT_* to RC_PROTO_BIT_*
+
+---
+ drivers/media/pci/cx23885/cx23885-input.c   |  27 ++---
+ drivers/media/pci/cx88/cx88-input.c         |  30 +++---
+ drivers/media/pci/saa7134/saa7134-input.c   |  48 +++++----
+ drivers/media/pci/smipcie/smipcie-ir.c      |   3 +-
+ drivers/media/rc/igorplugusb.c              |   3 +-
+ drivers/media/rc/imon.c                     |  47 ++++-----
+ drivers/media/rc/meson-ir.c                 |   2 +-
+ drivers/media/rc/nuvoton-cir.c              |   5 +-
+ drivers/media/rc/redrat3.c                  |   5 +-
+ drivers/media/rc/winbond-cir.c              |   2 +-
+ drivers/media/usb/dvb-usb/dib0700_devices.c | 146 ++++++++++++++--------------
+ drivers/media/usb/em28xx/em28xx-input.c     | 129 ++++++++++++------------
+ drivers/media/usb/tm6000/tm6000-input.c     |  40 ++++----
+ 13 files changed, 246 insertions(+), 241 deletions(-)
+
+diff --git a/drivers/media/pci/cx23885/cx23885-input.c b/drivers/media/pci/cx23885/cx23885-input.c
+index c18590377223..745ee427fa28 100644
+--- a/drivers/media/pci/cx23885/cx23885-input.c
++++ b/drivers/media/pci/cx23885/cx23885-input.c
+@@ -267,8 +267,7 @@ int cx23885_input_init(struct cx23885_dev *dev)
+ 	struct cx23885_kernel_ir *kernel_ir;
+ 	struct rc_dev *rc;
+ 	char *rc_map;
+-	enum rc_driver_type driver_type;
+-	unsigned long allowed_protos;
++	u64 allowed_protos;
+ 
+ 	int ret;
+ 
+@@ -285,37 +284,32 @@ int cx23885_input_init(struct cx23885_dev *dev)
+ 	case CX23885_BOARD_HAUPPAUGE_HVR1290:
+ 	case CX23885_BOARD_HAUPPAUGE_HVR1250:
+ 		/* Integrated CX2388[58] IR controller */
+-		driver_type = RC_DRIVER_IR_RAW;
+-		allowed_protos = RC_BIT_ALL_IR_DECODER;
++		allowed_protos = RC_PROTO_BIT_ALL_IR_DECODER;
+ 		/* The grey Hauppauge RC-5 remote */
+ 		rc_map = RC_MAP_HAUPPAUGE;
+ 		break;
+ 	case CX23885_BOARD_TERRATEC_CINERGY_T_PCIE_DUAL:
+ 		/* Integrated CX23885 IR controller */
+-		driver_type = RC_DRIVER_IR_RAW;
+-		allowed_protos = RC_BIT_ALL_IR_DECODER;
++		allowed_protos = RC_PROTO_BIT_ALL_IR_DECODER;
+ 		/* The grey Terratec remote with orange buttons */
+ 		rc_map = RC_MAP_NEC_TERRATEC_CINERGY_XS;
+ 		break;
+ 	case CX23885_BOARD_TEVII_S470:
+ 		/* Integrated CX23885 IR controller */
+-		driver_type = RC_DRIVER_IR_RAW;
+-		allowed_protos = RC_BIT_ALL_IR_DECODER;
++		allowed_protos = RC_PROTO_BIT_ALL_IR_DECODER;
+ 		/* A guess at the remote */
+ 		rc_map = RC_MAP_TEVII_NEC;
+ 		break;
+ 	case CX23885_BOARD_MYGICA_X8507:
+ 		/* Integrated CX23885 IR controller */
+-		driver_type = RC_DRIVER_IR_RAW;
+-		allowed_protos = RC_BIT_ALL_IR_DECODER;
++		allowed_protos = RC_PROTO_BIT_ALL_IR_DECODER;
+ 		/* A guess at the remote */
+ 		rc_map = RC_MAP_TOTAL_MEDIA_IN_HAND_02;
+ 		break;
+ 	case CX23885_BOARD_TBS_6980:
+ 	case CX23885_BOARD_TBS_6981:
+ 		/* Integrated CX23885 IR controller */
+-		driver_type = RC_DRIVER_IR_RAW;
+-		allowed_protos = RC_BIT_ALL_IR_DECODER;
++		allowed_protos = RC_PROTO_BIT_ALL_IR_DECODER;
+ 		/* A guess at the remote */
+ 		rc_map = RC_MAP_TBS_NEC;
+ 		break;
+@@ -326,14 +320,12 @@ int cx23885_input_init(struct cx23885_dev *dev)
+ 	case CX23885_BOARD_DVBSKY_S952:
+ 	case CX23885_BOARD_DVBSKY_T982:
+ 		/* Integrated CX23885 IR controller */
+-		driver_type = RC_DRIVER_IR_RAW;
+-		allowed_protos = RC_BIT_ALL_IR_DECODER;
++		allowed_protos = RC_PROTO_BIT_ALL_IR_DECODER;
+ 		rc_map = RC_MAP_DVBSKY;
+ 		break;
+ 	case CX23885_BOARD_TT_CT2_4500_CI:
+ 		/* Integrated CX23885 IR controller */
+-		driver_type = RC_DRIVER_IR_RAW;
+-		allowed_protos = RC_BIT_ALL_IR_DECODER;
++		allowed_protos = RC_PROTO_BIT_ALL_IR_DECODER;
+ 		rc_map = RC_MAP_TT_1500;
+ 		break;
+ 	default:
+@@ -352,7 +344,7 @@ int cx23885_input_init(struct cx23885_dev *dev)
+ 				    pci_name(dev->pci));
+ 
+ 	/* input device */
+-	rc = rc_allocate_device();
++	rc = rc_allocate_device(RC_DRIVER_IR_RAW);
+ 	if (!rc) {
+ 		ret = -ENOMEM;
+ 		goto err_out_free;
+@@ -371,7 +363,6 @@ int cx23885_input_init(struct cx23885_dev *dev)
+ 		rc->input_id.product = dev->pci->device;
+ 	}
+ 	rc->dev.parent = &dev->pci->dev;
+-	rc->driver_type = driver_type;
+ 	rc->allowed_protocols = allowed_protos;
+ 	rc->priv = kernel_ir;
+ 	rc->open = cx23885_input_ir_open;
+diff --git a/drivers/media/pci/cx88/cx88-input.c b/drivers/media/pci/cx88/cx88-input.c
+index 540eaa36b60b..3117e1dcd034 100644
+--- a/drivers/media/pci/cx88/cx88-input.c
++++ b/drivers/media/pci/cx88/cx88-input.c
+@@ -130,7 +130,7 @@ static void cx88_ir_handle_key(struct cx88_IR *ir)
+ 
+ 		data = (data << 4) | ((gpio_key & 0xf0) >> 4);
+ 
+-		rc_keydown(ir->dev, RC_TYPE_UNKNOWN, data, 0);
++		rc_keydown(ir->dev, RC_PROTO_UNKNOWN, data, 0);
+ 
+ 	} else if (ir->core->boardnr == CX88_BOARD_PROLINK_PLAYTVPVR ||
+ 		   ir->core->boardnr == CX88_BOARD_PIXELVIEW_PLAYTV_ULTRA_PRO) {
+@@ -144,28 +144,30 @@ static void cx88_ir_handle_key(struct cx88_IR *ir)
+ 		scancode = RC_SCANCODE_NECX(addr, cmd);
+ 
+ 		if (0 == (gpio & ir->mask_keyup))
+-			rc_keydown_notimeout(ir->dev, RC_TYPE_NECX, scancode,
+-									0);
++			rc_keydown_notimeout(ir->dev, RC_PROTO_NECX, scancode,
++					     0);
+ 		else
+ 			rc_keyup(ir->dev);
+ 
+ 	} else if (ir->mask_keydown) {
+ 		/* bit set on keydown */
+ 		if (gpio & ir->mask_keydown)
+-			rc_keydown_notimeout(ir->dev, RC_TYPE_UNKNOWN, data, 0);
++			rc_keydown_notimeout(ir->dev, RC_PROTO_UNKNOWN, data,
++					     0);
+ 		else
+ 			rc_keyup(ir->dev);
+ 
+ 	} else if (ir->mask_keyup) {
+ 		/* bit cleared on keydown */
+ 		if (0 == (gpio & ir->mask_keyup))
+-			rc_keydown_notimeout(ir->dev, RC_TYPE_UNKNOWN, data, 0);
++			rc_keydown_notimeout(ir->dev, RC_PROTO_UNKNOWN, data,
++					     0);
+ 		else
+ 			rc_keyup(ir->dev);
+ 
+ 	} else {
+ 		/* can't distinguish keydown/up :-/ */
+-		rc_keydown_notimeout(ir->dev, RC_TYPE_UNKNOWN, data, 0);
++		rc_keydown_notimeout(ir->dev, RC_PROTO_UNKNOWN, data, 0);
+ 		rc_keyup(ir->dev);
+ 	}
+ }
+@@ -265,7 +267,7 @@ int cx88_ir_init(struct cx88_core *core, struct pci_dev *pci)
+ 	struct cx88_IR *ir;
+ 	struct rc_dev *dev;
+ 	char *ir_codes = NULL;
+-	u64 rc_type = RC_BIT_OTHER;
++	u64 rc_proto = RC_PROTO_BIT_OTHER;
+ 	int err = -ENOMEM;
+ 	u32 hardware_mask = 0;	/* For devices with a hardware mask, when
+ 				 * used with a full-code IR table
+@@ -346,7 +348,7 @@ int cx88_ir_init(struct cx88_core *core, struct pci_dev *pci)
+ 		 * 002-T mini RC, provided with newer PV hardware
+ 		 */
+ 		ir_codes = RC_MAP_PIXELVIEW_MK12;
+-		rc_type = RC_BIT_NECX;
++		rc_proto = RC_PROTO_BIT_NECX;
+ 		ir->gpio_addr = MO_GP1_IO;
+ 		ir->mask_keyup = 0x80;
+ 		ir->polling = 10; /* ms */
+@@ -485,7 +487,7 @@ int cx88_ir_init(struct cx88_core *core, struct pci_dev *pci)
+ 		dev->timeout = 10 * 1000 * 1000; /* 10 ms */
+ 	} else {
+ 		dev->driver_type = RC_DRIVER_SCANCODE;
+-		dev->allowed_protocols = rc_type;
++		dev->allowed_protocols = rc_proto;
+ 	}
+ 
+ 	ir->core = core;
+@@ -555,7 +557,7 @@ void cx88_ir_irq(struct cx88_core *core)
+ 	ir_raw_event_handle(ir->dev);
+ }
+ 
+-static int get_key_pvr2000(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_pvr2000(struct IR_i2c *ir, enum rc_proto *protocol,
+ 			   u32 *scancode, u8 *toggle)
+ {
+ 	int flags, code;
+@@ -580,7 +582,7 @@ static int get_key_pvr2000(struct IR_i2c *ir, enum rc_type *protocol,
+ 	dprintk("IR Key/Flags: (0x%02x/0x%02x)\n",
+ 		   code & 0xff, flags & 0xff);
+ 
+-	*protocol = RC_TYPE_UNKNOWN;
++	*protocol = RC_PROTO_UNKNOWN;
+ 	*scancode = code & 0xff;
+ 	*toggle = 0;
+ 	return 1;
+@@ -610,7 +612,7 @@ void cx88_i2c_init_ir(struct cx88_core *core)
+ 	case CX88_BOARD_LEADTEK_PVR2000:
+ 		addr_list = pvr2000_addr_list;
+ 		core->init_data.name = "cx88 Leadtek PVR 2000 remote";
+-		core->init_data.type = RC_BIT_UNKNOWN;
++		core->init_data.type = RC_PROTO_BIT_UNKNOWN;
+ 		core->init_data.get_key = get_key_pvr2000;
+ 		core->init_data.ir_codes = RC_MAP_EMPTY;
+ 		break;
+@@ -631,8 +633,8 @@ void cx88_i2c_init_ir(struct cx88_core *core)
+ 			/* Hauppauge XVR */
+ 			core->init_data.name = "cx88 Hauppauge XVR remote";
+ 			core->init_data.ir_codes = RC_MAP_HAUPPAUGE;
+-			core->init_data.type = RC_BIT_RC5 | RC_BIT_RC6_MCE |
+-							RC_BIT_RC6_6A_32;
++			core->init_data.type = RC_PROTO_BIT_RC5 |
++				RC_PROTO_BIT_RC6_MCE | RC_PROTO_BIT_RC6_6A_32;
+ 			core->init_data.internal_get_key_func = IR_KBD_GET_KEY_HAUP_XVR;
+ 
+ 			info.platform_data = &core->init_data;
+diff --git a/drivers/media/pci/saa7134/saa7134-input.c b/drivers/media/pci/saa7134/saa7134-input.c
+index 3e43d8f51339..91076d8f0f03 100644
+--- a/drivers/media/pci/saa7134/saa7134-input.c
++++ b/drivers/media/pci/saa7134/saa7134-input.c
+@@ -87,14 +87,16 @@ static int build_key(struct saa7134_dev *dev)
+ 		if (data == ir->mask_keycode)
+ 			rc_keyup(ir->dev);
+ 		else
+-			rc_keydown_notimeout(ir->dev, RC_TYPE_UNKNOWN, data, 0);
++			rc_keydown_notimeout(ir->dev, RC_PROTO_UNKNOWN, data,
++					     0);
+ 		return 0;
+ 	}
+ 
+ 	if (ir->polling) {
+ 		if ((ir->mask_keydown  &&  (0 != (gpio & ir->mask_keydown))) ||
+ 		    (ir->mask_keyup    &&  (0 == (gpio & ir->mask_keyup)))) {
+-			rc_keydown_notimeout(ir->dev, RC_TYPE_UNKNOWN, data, 0);
++			rc_keydown_notimeout(ir->dev, RC_PROTO_UNKNOWN, data,
++					     0);
+ 		} else {
+ 			rc_keyup(ir->dev);
+ 		}
+@@ -102,7 +104,8 @@ static int build_key(struct saa7134_dev *dev)
+ 	else {	/* IRQ driven mode - handle key press and release in one go */
+ 		if ((ir->mask_keydown  &&  (0 != (gpio & ir->mask_keydown))) ||
+ 		    (ir->mask_keyup    &&  (0 == (gpio & ir->mask_keyup)))) {
+-			rc_keydown_notimeout(ir->dev, RC_TYPE_UNKNOWN, data, 0);
++			rc_keydown_notimeout(ir->dev, RC_PROTO_UNKNOWN, data,
++					     0);
+ 			rc_keyup(ir->dev);
+ 		}
+ 	}
+@@ -112,7 +115,7 @@ static int build_key(struct saa7134_dev *dev)
+ 
+ /* --------------------- Chip specific I2C key builders ----------------- */
+ 
+-static int get_key_flydvb_trio(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_flydvb_trio(struct IR_i2c *ir, enum rc_proto *protocol,
+ 			       u32 *scancode, u8 *toggle)
+ {
+ 	int gpio;
+@@ -159,13 +162,14 @@ static int get_key_flydvb_trio(struct IR_i2c *ir, enum rc_type *protocol,
+ 		return -EIO;
+ 	}
+ 
+-	*protocol = RC_TYPE_UNKNOWN;
++	*protocol = RC_PROTO_UNKNOWN;
+ 	*scancode = b;
+ 	*toggle = 0;
+ 	return 1;
+ }
+ 
+-static int get_key_msi_tvanywhere_plus(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_msi_tvanywhere_plus(struct IR_i2c *ir,
++				       enum rc_proto *protocol,
+ 				       u32 *scancode, u8 *toggle)
+ {
+ 	unsigned char b;
+@@ -207,14 +211,14 @@ static int get_key_msi_tvanywhere_plus(struct IR_i2c *ir, enum rc_type *protocol
+ 	/* Button pressed */
+ 
+ 	input_dbg("get_key_msi_tvanywhere_plus: Key = 0x%02X\n", b);
+-	*protocol = RC_TYPE_UNKNOWN;
++	*protocol = RC_PROTO_UNKNOWN;
+ 	*scancode = b;
+ 	*toggle = 0;
+ 	return 1;
+ }
+ 
+ /* copied and modified from get_key_msi_tvanywhere_plus() */
+-static int get_key_kworld_pc150u(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_kworld_pc150u(struct IR_i2c *ir, enum rc_proto *protocol,
+ 				 u32 *scancode, u8 *toggle)
+ {
+ 	unsigned char b;
+@@ -256,13 +260,13 @@ static int get_key_kworld_pc150u(struct IR_i2c *ir, enum rc_type *protocol,
+ 	/* Button pressed */
+ 
+ 	input_dbg("get_key_kworld_pc150u: Key = 0x%02X\n", b);
+-	*protocol = RC_TYPE_UNKNOWN;
++	*protocol = RC_PROTO_UNKNOWN;
+ 	*scancode = b;
+ 	*toggle = 0;
+ 	return 1;
+ }
+ 
+-static int get_key_purpletv(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_purpletv(struct IR_i2c *ir, enum rc_proto *protocol,
+ 			    u32 *scancode, u8 *toggle)
+ {
+ 	unsigned char b;
+@@ -281,13 +285,13 @@ static int get_key_purpletv(struct IR_i2c *ir, enum rc_type *protocol,
+ 	if (b & 0x80)
+ 		return 1;
+ 
+-	*protocol = RC_TYPE_UNKNOWN;
++	*protocol = RC_PROTO_UNKNOWN;
+ 	*scancode = b;
+ 	*toggle = 0;
+ 	return 1;
+ }
+ 
+-static int get_key_hvr1110(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_hvr1110(struct IR_i2c *ir, enum rc_proto *protocol,
+ 			   u32 *scancode, u8 *toggle)
+ {
+ 	unsigned char buf[5];
+@@ -311,14 +315,14 @@ static int get_key_hvr1110(struct IR_i2c *ir, enum rc_type *protocol,
+ 	 *
+ 	 * FIXME: start bits could maybe be used...?
+ 	 */
+-	*protocol = RC_TYPE_RC5;
++	*protocol = RC_PROTO_RC5;
+ 	*scancode = RC_SCANCODE_RC5(buf[3] & 0x1f, buf[4] >> 2);
+ 	*toggle = !!(buf[3] & 0x40);
+ 	return 1;
+ }
+ 
+ 
+-static int get_key_beholdm6xx(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_beholdm6xx(struct IR_i2c *ir, enum rc_proto *protocol,
+ 			      u32 *scancode, u8 *toggle)
+ {
+ 	unsigned char data[12];
+@@ -345,7 +349,7 @@ static int get_key_beholdm6xx(struct IR_i2c *ir, enum rc_type *protocol,
+ 	if (data[9] != (unsigned char)(~data[8]))
+ 		return 0;
+ 
+-	*protocol = RC_TYPE_NECX;
++	*protocol = RC_PROTO_NECX;
+ 	*scancode = RC_SCANCODE_NECX(data[11] << 8 | data[10], data[9]);
+ 	*toggle = 0;
+ 	return 1;
+@@ -354,7 +358,7 @@ static int get_key_beholdm6xx(struct IR_i2c *ir, enum rc_type *protocol,
+ /* Common (grey or coloured) pinnacle PCTV remote handling
+  *
+  */
+-static int get_key_pinnacle(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_pinnacle(struct IR_i2c *ir, enum rc_proto *protocol,
+ 			    u32 *scancode, u8 *toggle, int parity_offset,
+ 			    int marker, int code_modulo)
+ {
+@@ -391,7 +395,7 @@ static int get_key_pinnacle(struct IR_i2c *ir, enum rc_type *protocol,
+ 
+ 	code %= code_modulo;
+ 
+-	*protocol = RC_TYPE_UNKNOWN;
++	*protocol = RC_PROTO_UNKNOWN;
+ 	*scancode = code;
+ 	*toggle = 0;
+ 
+@@ -408,7 +412,7 @@ static int get_key_pinnacle(struct IR_i2c *ir, enum rc_type *protocol,
+  *
+  * Sylvain Pasche <sylvain.pasche@gmail.com>
+  */
+-static int get_key_pinnacle_grey(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_pinnacle_grey(struct IR_i2c *ir, enum rc_proto *protocol,
+ 				 u32 *scancode, u8 *toggle)
+ {
+ 
+@@ -420,7 +424,7 @@ static int get_key_pinnacle_grey(struct IR_i2c *ir, enum rc_type *protocol,
+  *
+  * Ricardo Cerqueira <v4l@cerqueira.org>
+  */
+-static int get_key_pinnacle_color(struct IR_i2c *ir, enum rc_type *protocol,
++static int get_key_pinnacle_color(struct IR_i2c *ir, enum rc_proto *protocol,
+ 				  u32 *scancode, u8 *toggle)
+ {
+ 	/* code_modulo parameter (0x88) is used to reduce code value to fit inside IR_KEYTAB_SIZE
+@@ -863,8 +867,10 @@ int saa7134_input_init1(struct saa7134_dev *dev)
+ 	rc->priv = dev;
+ 	rc->open = saa7134_ir_open;
+ 	rc->close = saa7134_ir_close;
+-	if (raw_decode)
++	if (raw_decode) {
+ 		rc->driver_type = RC_DRIVER_IR_RAW;
++		rc->allowed_protocols = RC_PROTO_BIT_ALL_IR_DECODER;
++	}
+ 
+ 	rc->device_name = ir->name;
+ 	rc->input_phys = ir->phys;
+@@ -1006,7 +1012,7 @@ void saa7134_probe_i2c_ir(struct saa7134_dev *dev)
+ 		dev->init_data.name = "BeholdTV";
+ 		dev->init_data.get_key = get_key_beholdm6xx;
+ 		dev->init_data.ir_codes = RC_MAP_BEHOLD;
+-		dev->init_data.type = RC_BIT_NECX;
++		dev->init_data.type = RC_PROTO_BIT_NECX;
+ 		info.addr = 0x2d;
+ 		break;
+ 	case SAA7134_BOARD_AVERMEDIA_CARDBUS_501:
+diff --git a/drivers/media/pci/smipcie/smipcie-ir.c b/drivers/media/pci/smipcie/smipcie-ir.c
+index a5d4bc73d7af..363d1bc1d2bf 100644
+--- a/drivers/media/pci/smipcie/smipcie-ir.c
++++ b/drivers/media/pci/smipcie/smipcie-ir.c
+@@ -183,7 +183,7 @@ int smi_ir_init(struct smi_dev *dev)
+ 	struct rc_dev *rc_dev;
+ 	struct smi_rc *ir = &dev->ir;
+ 
+-	rc_dev = rc_allocate_device();
++	rc_dev = rc_allocate_device(RC_DRIVER_SCANCODE);
+ 	if (!rc_dev)
+ 		return -ENOMEM;
+ 
+@@ -202,7 +202,6 @@ int smi_ir_init(struct smi_dev *dev)
+ 	rc_dev->input_id.product = dev->pci_dev->subsystem_device;
+ 	rc_dev->dev.parent = &dev->pci_dev->dev;
+ 
+-	rc_dev->driver_type = RC_DRIVER_SCANCODE;
+ 	rc_dev->map_name = RC_MAP_DVBSKY;
+ 
+ 	ir->rc_dev = rc_dev;
+diff --git a/drivers/media/rc/igorplugusb.c b/drivers/media/rc/igorplugusb.c
+index 8118769c89af..8c8e4e567c78 100644
+--- a/drivers/media/rc/igorplugusb.c
++++ b/drivers/media/rc/igorplugusb.c
+@@ -190,12 +190,11 @@ static int igorplugusb_probe(struct usb_interface *intf,
+ 
+ 	usb_make_path(udev, ir->phys, sizeof(ir->phys));
+ 
+-	rc = rc_allocate_device();
++	rc = rc_allocate_device(RC_DRIVER_IR_RAW);
+ 	rc->input_name = DRIVER_DESC;
+ 	rc->input_phys = ir->phys;
+ 	usb_to_input_id(udev, &rc->input_id);
+ 	rc->dev.parent = &intf->dev;
+-	rc->driver_type = RC_DRIVER_IR_RAW;
+ 	/*
+ 	 * This device can only store 36 pulses + spaces, which is not enough
+ 	 * for the NEC protocol and many others.
+diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c
+index b6dff860fb5d..beaae334cef1 100644
+--- a/drivers/media/rc/imon.c
++++ b/drivers/media/rc/imon.c
+@@ -145,7 +145,7 @@ struct imon_context {
+ 	u32 last_keycode;		/* last reported input keycode */
+ 	u32 rc_scancode;		/* the computed remote scancode */
+ 	u8 rc_toggle;			/* the computed remote toggle bit */
+-	u64 rc_type;			/* iMON or MCE (RC6) IR protocol? */
++	u64 rc_proto;			/* iMON or MCE (RC6) IR protocol? */
+ 	bool release_code;		/* some keys send a release code */
+ 
+ 	u8 display_type;		/* store the display type */
+@@ -1099,7 +1099,7 @@ static void imon_touch_display_timeout(unsigned long data)
+  * it is not, so we must acquire it prior to calling send_packet, which
+  * requires that the lock is held.
+  */
+-static int imon_ir_change_protocol(struct rc_dev *rc, u64 *rc_type)
++static int imon_ir_change_protocol(struct rc_dev *rc, u64 *rc_proto)
+ {
+ 	int retval;
+ 	struct imon_context *ictx = rc->priv;
+@@ -1108,25 +1108,25 @@ static int imon_ir_change_protocol(struct rc_dev *rc, u64 *rc_type)
+ 	unsigned char ir_proto_packet[] = {
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x86 };
+ 
+-	if (*rc_type && !(*rc_type & rc->allowed_protocols))
++	if (*rc_proto && !(*rc_proto & rc->allowed_protocols))
+ 		dev_warn(dev, "Looks like you're trying to use an IR protocol this device does not support\n");
+ 
+-	if (*rc_type & RC_BIT_RC6_MCE) {
++	if (*rc_proto & RC_PROTO_BIT_RC6_MCE) {
+ 		dev_dbg(dev, "Configuring IR receiver for MCE protocol\n");
+ 		ir_proto_packet[0] = 0x01;
+-		*rc_type = RC_BIT_RC6_MCE;
+-	} else if (*rc_type & RC_BIT_OTHER) {
++		*rc_proto = RC_PROTO_BIT_RC6_MCE;
++	} else if (*rc_proto & RC_PROTO_BIT_OTHER) {
+ 		dev_dbg(dev, "Configuring IR receiver for iMON protocol\n");
+ 		if (!pad_stabilize)
+ 			dev_dbg(dev, "PAD stabilize functionality disabled\n");
+ 		/* ir_proto_packet[0] = 0x00; // already the default */
+-		*rc_type = RC_BIT_OTHER;
++		*rc_proto = RC_PROTO_BIT_OTHER;
+ 	} else {
+ 		dev_warn(dev, "Unsupported IR protocol specified, overriding to iMON IR protocol\n");
+ 		if (!pad_stabilize)
+ 			dev_dbg(dev, "PAD stabilize functionality disabled\n");
+ 		/* ir_proto_packet[0] = 0x00; // already the default */
+-		*rc_type = RC_BIT_OTHER;
++		*rc_proto = RC_PROTO_BIT_OTHER;
+ 	}
+ 
+ 	memcpy(ictx->usb_tx_buf, &ir_proto_packet, sizeof(ir_proto_packet));
+@@ -1140,7 +1140,7 @@ static int imon_ir_change_protocol(struct rc_dev *rc, u64 *rc_type)
+ 	if (retval)
+ 		goto out;
+ 
+-	ictx->rc_type = *rc_type;
++	ictx->rc_proto = *rc_proto;
+ 	ictx->pad_mouse = false;
+ 
+ out:
+@@ -1416,7 +1416,7 @@ static void imon_pad_to_keys(struct imon_context *ictx, unsigned char *buf)
+ 		rel_x = buf[2];
+ 		rel_y = buf[3];
+ 
+-		if (ictx->rc_type == RC_BIT_OTHER && pad_stabilize) {
++		if (ictx->rc_proto == RC_PROTO_BIT_OTHER && pad_stabilize) {
+ 			if ((buf[1] == 0) && ((rel_x != 0) || (rel_y != 0))) {
+ 				dir = stabilize((int)rel_x, (int)rel_y,
+ 						timeout, threshold);
+@@ -1483,7 +1483,7 @@ static void imon_pad_to_keys(struct imon_context *ictx, unsigned char *buf)
+ 		buf[0] = 0x01;
+ 		buf[1] = buf[4] = buf[5] = buf[6] = buf[7] = 0;
+ 
+-		if (ictx->rc_type == RC_BIT_OTHER && pad_stabilize) {
++		if (ictx->rc_proto == RC_PROTO_BIT_OTHER && pad_stabilize) {
+ 			dir = stabilize((int)rel_x, (int)rel_y,
+ 					timeout, threshold);
+ 			if (!dir) {
+@@ -1605,7 +1605,7 @@ static void imon_incoming_packet(struct imon_context *ictx,
+ 		ictx->release_code = false;
+ 	} else {
+ 		scancode = be32_to_cpu(*((__be32 *)buf));
+-		if (ictx->rc_type == RC_BIT_RC6_MCE) {
++		if (ictx->rc_proto == RC_PROTO_BIT_RC6_MCE) {
+ 			ktype = IMON_KEY_IMON;
+ 			if (buf[0] == 0x80)
+ 				ktype = IMON_KEY_MCE;
+@@ -1670,10 +1670,10 @@ static void imon_incoming_packet(struct imon_context *ictx,
+ 		if (press_type == 0)
+ 			rc_keyup(ictx->rdev);
+ 		else {
+-			if (ictx->rc_type == RC_BIT_RC6_MCE ||
+-			    ictx->rc_type == RC_BIT_OTHER)
++			if (ictx->rc_proto == RC_PROTO_BIT_RC6_MCE ||
++			    ictx->rc_proto == RC_PROTO_BIT_OTHER)
+ 				rc_keydown(ictx->rdev,
+-					   ictx->rc_type == RC_BIT_RC6_MCE ? RC_TYPE_RC6_MCE : RC_TYPE_OTHER,
++					   ictx->rc_proto == RC_PROTO_BIT_RC6_MCE ? RC_PROTO_RC6_MCE : RC_PROTO_OTHER,
+ 					   ictx->rc_scancode, ictx->rc_toggle);
+ 			spin_lock_irqsave(&ictx->kc_lock, flags);
+ 			ictx->last_keycode = ictx->kc;
+@@ -1831,7 +1831,7 @@ static void imon_get_ffdc_type(struct imon_context *ictx)
+ {
+ 	u8 ffdc_cfg_byte = ictx->usb_rx_buf[6];
+ 	u8 detected_display_type = IMON_DISPLAY_TYPE_NONE;
+-	u64 allowed_protos = RC_BIT_OTHER;
++	u64 allowed_protos = RC_PROTO_BIT_OTHER;
+ 
+ 	switch (ffdc_cfg_byte) {
+ 	/* iMON Knob, no display, iMON IR + vol knob */
+@@ -1862,27 +1862,27 @@ static void imon_get_ffdc_type(struct imon_context *ictx)
+ 	case 0x9e:
+ 		dev_info(ictx->dev, "0xffdc iMON VFD, MCE IR");
+ 		detected_display_type = IMON_DISPLAY_TYPE_VFD;
+-		allowed_protos = RC_BIT_RC6_MCE;
++		allowed_protos = RC_PROTO_BIT_RC6_MCE;
+ 		break;
+ 	/* iMON LCD, MCE IR */
+ 	case 0x9f:
+ 		dev_info(ictx->dev, "0xffdc iMON LCD, MCE IR");
+ 		detected_display_type = IMON_DISPLAY_TYPE_LCD;
+-		allowed_protos = RC_BIT_RC6_MCE;
++		allowed_protos = RC_PROTO_BIT_RC6_MCE;
+ 		break;
+ 	default:
+ 		dev_info(ictx->dev, "Unknown 0xffdc device, defaulting to VFD and iMON IR");
+ 		detected_display_type = IMON_DISPLAY_TYPE_VFD;
+ 		/* We don't know which one it is, allow user to set the
+ 		 * RC6 one from userspace if OTHER wasn't correct. */
+-		allowed_protos |= RC_BIT_RC6_MCE;
++		allowed_protos |= RC_PROTO_BIT_RC6_MCE;
+ 		break;
+ 	}
+ 
+ 	printk(KERN_CONT " (id 0x%02x)\n", ffdc_cfg_byte);
+ 
+ 	ictx->display_type = detected_display_type;
+-	ictx->rc_type = allowed_protos;
++	ictx->rc_proto = allowed_protos;
+ }
+ 
+ static void imon_set_display_type(struct imon_context *ictx)
+@@ -1960,7 +1960,8 @@ static struct rc_dev *imon_init_rdev(struct imon_context *ictx)
+ 	rdev->dev.parent = ictx->dev;
+ 
+ 	rdev->priv = ictx;
+-	rdev->allowed_protocols = RC_BIT_OTHER | RC_BIT_RC6_MCE; /* iMON PAD or MCE */
++	/* iMON PAD or MCE */
++	rdev->allowed_protocols = RC_PROTO_BIT_OTHER | RC_PROTO_BIT_RC6_MCE;
+ 	rdev->change_protocol = imon_ir_change_protocol;
+ 	rdev->driver_name = MOD_NAME;
+ 
+@@ -1973,12 +1974,12 @@ static struct rc_dev *imon_init_rdev(struct imon_context *ictx)
+ 
+ 	if (ictx->product == 0xffdc) {
+ 		imon_get_ffdc_type(ictx);
+-		rdev->allowed_protocols = ictx->rc_type;
++		rdev->allowed_protocols = ictx->rc_proto;
+ 	}
+ 
+ 	imon_set_display_type(ictx);
+ 
+-	if (ictx->rc_type == RC_BIT_RC6_MCE)
++	if (ictx->rc_proto == RC_PROTO_BIT_RC6_MCE)
+ 		rdev->map_name = RC_MAP_IMON_MCE;
+ 	else
+ 		rdev->map_name = RC_MAP_IMON_PAD;
+diff --git a/drivers/media/rc/meson-ir.c b/drivers/media/rc/meson-ir.c
+index bd7b0c4e052b..b8db661c9ba7 100644
+--- a/drivers/media/rc/meson-ir.c
++++ b/drivers/media/rc/meson-ir.c
+@@ -134,7 +134,7 @@ static int meson_ir_probe(struct platform_device *pdev)
+ 	map_name = of_get_property(node, "linux,rc-map-name", NULL);
+ 	ir->rc->map_name = map_name ? map_name : RC_MAP_EMPTY;
+ 	ir->rc->dev.parent = dev;
+-	ir->rc->allowed_protocols = RC_BIT_ALL_IR_DECODER;
++	ir->rc->allowed_protocols = RC_PROTO_BIT_ALL_IR_DECODER;
+ 	ir->rc->rx_resolution = US_TO_NS(MESON_TRATE);
+ 	ir->rc->timeout = MS_TO_NS(200);
+ 	ir->rc->driver_name = DRIVER_NAME;
+diff --git a/drivers/media/rc/nuvoton-cir.c b/drivers/media/rc/nuvoton-cir.c
+index 6d47b9c70136..1c89e0fa9c28 100644
+--- a/drivers/media/rc/nuvoton-cir.c
++++ b/drivers/media/rc/nuvoton-cir.c
+@@ -979,7 +979,7 @@ static int nvt_probe(struct pnp_dev *pdev, const struct pnp_device_id *dev_id)
+ 		return ret;
+ 
+ 	/* input device for IR remote (and tx) */
+-	rdev = rc_allocate_device();
++	rdev = rc_allocate_device(RC_DRIVER_IR_RAW);
+ 	if (!rdev)
+ 		goto exit_free_dev_rdev;
+ 
+@@ -1042,8 +1042,7 @@ static int nvt_probe(struct pnp_dev *pdev, const struct pnp_device_id *dev_id)
+ 
+ 	/* Set up the rc device */
+ 	rdev->priv = nvt;
+-	rdev->driver_type = RC_DRIVER_IR_RAW;
+-	rdev->allowed_protocols = RC_BIT_ALL_IR_DECODER;
++	rdev->allowed_protocols = RC_PROTO_BIT_ALL_IR_DECODER;
+ 	rdev->open = nvt_open;
+ 	rdev->close = nvt_close;
+ 	rdev->tx_ir = nvt_tx_ir;
+diff --git a/drivers/media/rc/redrat3.c b/drivers/media/rc/redrat3.c
+index c88953082c99..b38fb8adcc90 100644
+--- a/drivers/media/rc/redrat3.c
++++ b/drivers/media/rc/redrat3.c
+@@ -855,7 +855,7 @@ static struct rc_dev *redrat3_init_rc_dev(struct redrat3_dev *rr3)
+ 	int ret = -ENODEV;
+ 	u16 prod = le16_to_cpu(rr3->udev->descriptor.idProduct);
+ 
+-	rc = rc_allocate_device();
++	rc = rc_allocate_device(RC_DRIVER_IR_RAW);
+ 	if (!rc) {
+ 		dev_err(dev, "remote input dev allocation failed\n");
+ 		goto out;
+@@ -872,8 +872,7 @@ static struct rc_dev *redrat3_init_rc_dev(struct redrat3_dev *rr3)
+ 	usb_to_input_id(rr3->udev, &rc->input_id);
+ 	rc->dev.parent = dev;
+ 	rc->priv = rr3;
+-	rc->driver_type = RC_DRIVER_IR_RAW;
+-	rc->allowed_protocols = RC_BIT_ALL;
++	rc->allowed_protocols = RC_PROTO_BIT_ALL_IR_DECODER;
+ 	rc->timeout = US_TO_NS(2750);
+ 	rc->tx_ir = redrat3_transmit_ir;
+ 	rc->s_tx_carrier = redrat3_set_tx_carrier;
+diff --git a/drivers/media/rc/winbond-cir.c b/drivers/media/rc/winbond-cir.c
+index a47637f06089..12e34241a717 100644
+--- a/drivers/media/rc/winbond-cir.c
++++ b/drivers/media/rc/winbond-cir.c
+@@ -1078,7 +1078,7 @@ wbcir_probe(struct pnp_dev *device, const struct pnp_device_id *dev_id)
+ 	data->dev->dev.parent = &device->dev;
+ 	data->dev->timeout = MS_TO_NS(100);
+ 	data->dev->rx_resolution = US_TO_NS(2);
+-	data->dev->allowed_protocols = RC_BIT_ALL;
++	data->dev->allowed_protocols = RC_PROTO_BIT_ALL_IR_DECODER;
+ 
+ 	err = rc_register_device(data->dev);
+ 	if (err)
+diff --git a/drivers/media/usb/dvb-usb/dib0700_devices.c b/drivers/media/usb/dvb-usb/dib0700_devices.c
+index 38c03283a441..a254374fd0e0 100644
+--- a/drivers/media/usb/dvb-usb/dib0700_devices.c
++++ b/drivers/media/usb/dvb-usb/dib0700_devices.c
+@@ -519,7 +519,7 @@ static u8 rc_request[] = { REQUEST_POLL_RC, 0 };
+ static int dib0700_rc_query_old_firmware(struct dvb_usb_device *d)
+ {
+ 	u8 key[4];
+-	enum rc_type protocol;
++	enum rc_proto protocol;
+ 	u32 scancode;
+ 	u8 toggle;
+ 	int i;
+@@ -548,7 +548,7 @@ static int dib0700_rc_query_old_firmware(struct dvb_usb_device *d)
+ 	dib0700_rc_setup(d, NULL); /* reset ir sensor data to prevent false events */
+ 
+ 	switch (d->props.rc.core.protocol) {
+-	case RC_BIT_NEC:
++	case RC_PROTO_BIT_NEC:
+ 		/* NEC protocol sends repeat code as 0 0 0 FF */
+ 		if ((key[3-2] == 0x00) && (key[3-3] == 0x00) &&
+ 		    (key[3] == 0xff)) {
+@@ -556,14 +556,14 @@ static int dib0700_rc_query_old_firmware(struct dvb_usb_device *d)
+ 			return 0;
+ 		}
+ 
+-		protocol = RC_TYPE_NEC;
++		protocol = RC_PROTO_NEC;
+ 		scancode = RC_SCANCODE_NEC(key[3-2], key[3-3]);
+ 		toggle = 0;
+ 		break;
+ 
+ 	default:
+ 		/* RC-5 protocol changes toggle bit on new keypress */
+-		protocol = RC_TYPE_RC5;
++		protocol = RC_PROTO_RC5;
+ 		scancode = RC_SCANCODE_RC5(key[3-2], key[3-3]);
+ 		toggle = key[3-1];
+ 		break;
+@@ -3887,9 +3887,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_interval      = DEFAULT_RC_INTERVAL,
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -3927,9 +3927,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_interval      = DEFAULT_RC_INTERVAL,
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -3992,9 +3992,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_interval      = DEFAULT_RC_INTERVAL,
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4037,9 +4037,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4118,9 +4118,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4163,9 +4163,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4220,9 +4220,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4286,9 +4286,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4335,9 +4335,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_NEC_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4404,9 +4404,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4440,9 +4440,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4516,9 +4516,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4560,9 +4560,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_NEC_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4609,9 +4609,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4646,9 +4646,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4683,9 +4683,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4720,9 +4720,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4757,9 +4757,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4794,9 +4794,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4845,9 +4845,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4880,9 +4880,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4917,9 +4917,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	}, { DIB0700_DEFAULT_DEVICE_PROPERTIES,
+@@ -4955,9 +4955,9 @@ struct dvb_usb_device_properties dib0700_devices[] = {
+ 			.rc_codes         = RC_MAP_DIB0700_RC5_TABLE,
+ 			.module_name	  = "dib0700",
+ 			.rc_query         = dib0700_rc_query_old_firmware,
+-			.allowed_protos   = RC_BIT_RC5 |
+-					    RC_BIT_RC6_MCE |
+-					    RC_BIT_NEC,
++			.allowed_protos   = RC_PROTO_BIT_RC5 |
++					    RC_PROTO_BIT_RC6_MCE |
++					    RC_PROTO_BIT_NEC,
+ 			.change_protocol  = dib0700_change_protocol,
+ 		},
+ 	},
+diff --git a/drivers/media/usb/em28xx/em28xx-input.c b/drivers/media/usb/em28xx/em28xx-input.c
+index 1e3d33a7a440..7c335c06ed23 100644
+--- a/drivers/media/usb/em28xx/em28xx-input.c
++++ b/drivers/media/usb/em28xx/em28xx-input.c
+@@ -54,7 +54,7 @@ struct em28xx_ir_poll_result {
+ 	unsigned int toggle_bit:1;
+ 	unsigned int read_count:7;
+ 
+-	enum rc_type protocol;
++	enum rc_proto protocol;
+ 	u32 scancode;
+ };
+ 
+@@ -69,11 +69,12 @@ struct em28xx_IR {
+ 	struct delayed_work work;
+ 	unsigned int full_code:1;
+ 	unsigned int last_readcount;
+-	u64 rc_type;
++	u64 rc_proto;
+ 
+ 	struct i2c_client *i2c_client;
+ 
+-	int  (*get_key_i2c)(struct i2c_client *ir, enum rc_type *protocol, u32 *scancode);
++	int  (*get_key_i2c)(struct i2c_client *ir, enum rc_proto *protocol,
++			    u32 *scancode);
+ 	int  (*get_key)(struct em28xx_IR *, struct em28xx_ir_poll_result *);
+ };
+ 
+@@ -82,7 +83,7 @@ struct em28xx_IR {
+  **********************************************************/
+ 
+ static int em28xx_get_key_terratec(struct i2c_client *i2c_dev,
+-				   enum rc_type *protocol, u32 *scancode)
++				   enum rc_proto *protocol, u32 *scancode)
+ {
+ 	unsigned char b;
+ 
+@@ -100,13 +101,13 @@ static int em28xx_get_key_terratec(struct i2c_client *i2c_dev,
+ 		/* keep old data */
+ 		return 1;
+ 
+-	*protocol = RC_TYPE_UNKNOWN;
++	*protocol = RC_PROTO_UNKNOWN;
+ 	*scancode = b;
+ 	return 1;
+ }
+ 
+ static int em28xx_get_key_em_haup(struct i2c_client *i2c_dev,
+-				  enum rc_type *protocol, u32 *scancode)
++				  enum rc_proto *protocol, u32 *scancode)
+ {
+ 	unsigned char buf[2];
+ 	int size;
+@@ -130,13 +131,14 @@ static int em28xx_get_key_em_haup(struct i2c_client *i2c_dev,
+ 	 * So, the code translation is not complete. Yet, it is enough to
+ 	 * work with the provided RC5 IR.
+ 	 */
+-	*protocol = RC_TYPE_RC5;
++	*protocol = RC_PROTO_RC5;
+ 	*scancode = (bitrev8(buf[1]) & 0x1f) << 8 | bitrev8(buf[0]) >> 2;
+ 	return 1;
+ }
+ 
+ static int em28xx_get_key_pinnacle_usb_grey(struct i2c_client *i2c_dev,
+-					    enum rc_type *protocol, u32 *scancode)
++					    enum rc_proto *protocol,
++					    u32 *scancode)
+ {
+ 	unsigned char buf[3];
+ 
+@@ -148,13 +150,14 @@ static int em28xx_get_key_pinnacle_usb_grey(struct i2c_client *i2c_dev,
+ 	if (buf[0] != 0x00)
+ 		return 0;
+ 
+-	*protocol = RC_TYPE_UNKNOWN;
++	*protocol = RC_PROTO_UNKNOWN;
+ 	*scancode = buf[2] & 0x3f;
+ 	return 1;
+ }
+ 
+ static int em28xx_get_key_winfast_usbii_deluxe(struct i2c_client *i2c_dev,
+-					       enum rc_type *protocol, u32 *scancode)
++					       enum rc_proto *protocol,
++					       u32 *scancode)
+ {
+ 	unsigned char subaddr, keydetect, key;
+ 
+@@ -174,7 +177,7 @@ static int em28xx_get_key_winfast_usbii_deluxe(struct i2c_client *i2c_dev,
+ 	if (key == 0x00)
+ 		return 0;
+ 
+-	*protocol = RC_TYPE_UNKNOWN;
++	*protocol = RC_PROTO_UNKNOWN;
+ 	*scancode = key;
+ 	return 1;
+ }
+@@ -206,19 +209,19 @@ static int default_polling_getkey(struct em28xx_IR *ir,
+ 	poll_result->read_count = (msg[0] & 0x7f);
+ 
+ 	/* Remote Control Address/Data (Regs 0x46/0x47) */
+-	switch (ir->rc_type) {
+-	case RC_BIT_RC5:
+-		poll_result->protocol = RC_TYPE_RC5;
++	switch (ir->rc_proto) {
++	case RC_PROTO_BIT_RC5:
++		poll_result->protocol = RC_PROTO_RC5;
+ 		poll_result->scancode = RC_SCANCODE_RC5(msg[1], msg[2]);
+ 		break;
+ 
+-	case RC_BIT_NEC:
+-		poll_result->protocol = RC_TYPE_NEC;
++	case RC_PROTO_BIT_NEC:
++		poll_result->protocol = RC_PROTO_NEC;
+ 		poll_result->scancode = RC_SCANCODE_NEC(msg[1], msg[2]);
+ 		break;
+ 
+ 	default:
+-		poll_result->protocol = RC_TYPE_UNKNOWN;
++		poll_result->protocol = RC_PROTO_UNKNOWN;
+ 		poll_result->scancode = msg[1] << 8 | msg[2];
+ 		break;
+ 	}
+@@ -251,34 +254,37 @@ static int em2874_polling_getkey(struct em28xx_IR *ir,
+ 	 * Remote Control Address (Reg 0x52)
+ 	 * Remote Control Data (Reg 0x53-0x55)
+ 	 */
+-	switch (ir->rc_type) {
+-	case RC_BIT_RC5:
+-		poll_result->protocol = RC_TYPE_RC5;
++	switch (ir->rc_proto) {
++	case RC_PROTO_BIT_RC5:
++		poll_result->protocol = RC_PROTO_RC5;
+ 		poll_result->scancode = RC_SCANCODE_RC5(msg[1], msg[2]);
+ 		break;
+ 
+-	case RC_BIT_NEC:
+-		poll_result->protocol = RC_TYPE_RC5;
++	case RC_PROTO_BIT_NEC:
+ 		poll_result->scancode = msg[1] << 8 | msg[2];
+-		if ((msg[3] ^ msg[4]) != 0xff)		/* 32 bits NEC */
++		if ((msg[3] ^ msg[4]) != 0xff) {	/* 32 bits NEC */
++			poll_result->protocol = RC_PROTO_NEC32;
+ 			poll_result->scancode = RC_SCANCODE_NEC32((msg[1] << 24) |
+ 								  (msg[2] << 16) |
+ 								  (msg[3] << 8)  |
+ 								  (msg[4]));
+-		else if ((msg[1] ^ msg[2]) != 0xff)	/* 24 bits NEC */
++		} else if ((msg[1] ^ msg[2]) != 0xff) {	/* 24 bits NEC */
++			poll_result->protocol = RC_PROTO_NECX;
+ 			poll_result->scancode = RC_SCANCODE_NECX(msg[1] << 8 |
+ 								 msg[2], msg[3]);
+-		else					/* Normal NEC */
++		} else {				/* Normal NEC */
++			poll_result->protocol = RC_PROTO_NEC;
+ 			poll_result->scancode = RC_SCANCODE_NEC(msg[1], msg[3]);
++		}
+ 		break;
+ 
+-	case RC_BIT_RC6_0:
+-		poll_result->protocol = RC_TYPE_RC6_0;
++	case RC_PROTO_BIT_RC6_0:
++		poll_result->protocol = RC_PROTO_RC6_0;
+ 		poll_result->scancode = RC_SCANCODE_RC6_0(msg[1], msg[2]);
+ 		break;
+ 
+ 	default:
+-		poll_result->protocol = RC_TYPE_UNKNOWN;
++		poll_result->protocol = RC_PROTO_UNKNOWN;
+ 		poll_result->scancode = (msg[1] << 24) | (msg[2] << 16) |
+ 					(msg[3] << 8)  | msg[4];
+ 		break;
+@@ -294,7 +300,7 @@ static int em2874_polling_getkey(struct em28xx_IR *ir,
+ static int em28xx_i2c_ir_handle_key(struct em28xx_IR *ir)
+ {
+ 	static u32 scancode;
+-	enum rc_type protocol;
++	enum rc_proto protocol;
+ 	int rc;
+ 
+ 	rc = ir->get_key_i2c(ir->i2c_client, &protocol, &scancode);
+@@ -334,7 +340,7 @@ static void em28xx_ir_handle_key(struct em28xx_IR *ir)
+ 				   poll_result.toggle_bit);
+ 		else
+ 			rc_keydown(ir->rc,
+-				   RC_TYPE_UNKNOWN,
++				   RC_PROTO_UNKNOWN,
+ 				   poll_result.scancode & 0xff,
+ 				   poll_result.toggle_bit);
+ 
+@@ -379,70 +385,71 @@ static void em28xx_ir_stop(struct rc_dev *rc)
+ 	cancel_delayed_work_sync(&ir->work);
+ }
+ 
+-static int em2860_ir_change_protocol(struct rc_dev *rc_dev, u64 *rc_type)
++static int em2860_ir_change_protocol(struct rc_dev *rc_dev, u64 *rc_proto)
+ {
+ 	struct em28xx_IR *ir = rc_dev->priv;
+ 	struct em28xx *dev = ir->dev;
+ 
+ 	/* Adjust xclk based on IR table for RC5/NEC tables */
+-	if (*rc_type & RC_BIT_RC5) {
++	if (*rc_proto & RC_PROTO_BIT_RC5) {
+ 		dev->board.xclk |= EM28XX_XCLK_IR_RC5_MODE;
+ 		ir->full_code = 1;
+-		*rc_type = RC_BIT_RC5;
+-	} else if (*rc_type & RC_BIT_NEC) {
++		*rc_proto = RC_PROTO_BIT_RC5;
++	} else if (*rc_proto & RC_PROTO_BIT_NEC) {
+ 		dev->board.xclk &= ~EM28XX_XCLK_IR_RC5_MODE;
+ 		ir->full_code = 1;
+-		*rc_type = RC_BIT_NEC;
+-	} else if (*rc_type & RC_BIT_UNKNOWN) {
+-		*rc_type = RC_BIT_UNKNOWN;
++		*rc_proto = RC_PROTO_BIT_NEC;
++	} else if (*rc_proto & RC_PROTO_BIT_UNKNOWN) {
++		*rc_proto = RC_PROTO_BIT_UNKNOWN;
+ 	} else {
+-		*rc_type = ir->rc_type;
++		*rc_proto = ir->rc_proto;
+ 		return -EINVAL;
+ 	}
+ 	em28xx_write_reg_bits(dev, EM28XX_R0F_XCLK, dev->board.xclk,
+ 			      EM28XX_XCLK_IR_RC5_MODE);
+ 
+-	ir->rc_type = *rc_type;
++	ir->rc_proto = *rc_proto;
+ 
+ 	return 0;
+ }
+ 
+-static int em2874_ir_change_protocol(struct rc_dev *rc_dev, u64 *rc_type)
++static int em2874_ir_change_protocol(struct rc_dev *rc_dev, u64 *rc_proto)
+ {
+ 	struct em28xx_IR *ir = rc_dev->priv;
+ 	struct em28xx *dev = ir->dev;
+ 	u8 ir_config = EM2874_IR_RC5;
+ 
+ 	/* Adjust xclk and set type based on IR table for RC5/NEC/RC6 tables */
+-	if (*rc_type & RC_BIT_RC5) {
++	if (*rc_proto & RC_PROTO_BIT_RC5) {
+ 		dev->board.xclk |= EM28XX_XCLK_IR_RC5_MODE;
+ 		ir->full_code = 1;
+-		*rc_type = RC_BIT_RC5;
+-	} else if (*rc_type & RC_BIT_NEC) {
++		*rc_proto = RC_PROTO_BIT_RC5;
++	} else if (*rc_proto & RC_PROTO_BIT_NEC) {
+ 		dev->board.xclk &= ~EM28XX_XCLK_IR_RC5_MODE;
+ 		ir_config = EM2874_IR_NEC | EM2874_IR_NEC_NO_PARITY;
+ 		ir->full_code = 1;
+-		*rc_type = RC_BIT_NEC;
+-	} else if (*rc_type & RC_BIT_RC6_0) {
++		*rc_proto = RC_PROTO_BIT_NEC;
++	} else if (*rc_proto & RC_PROTO_BIT_RC6_0) {
+ 		dev->board.xclk |= EM28XX_XCLK_IR_RC5_MODE;
+ 		ir_config = EM2874_IR_RC6_MODE_0;
+ 		ir->full_code = 1;
+-		*rc_type = RC_BIT_RC6_0;
+-	} else if (*rc_type & RC_BIT_UNKNOWN) {
+-		*rc_type = RC_BIT_UNKNOWN;
++		*rc_proto = RC_PROTO_BIT_RC6_0;
++	} else if (*rc_proto & RC_PROTO_BIT_UNKNOWN) {
++		*rc_proto = RC_PROTO_BIT_UNKNOWN;
+ 	} else {
+-		*rc_type = ir->rc_type;
++		*rc_proto = ir->rc_proto;
+ 		return -EINVAL;
+ 	}
+ 	em28xx_write_regs(dev, EM2874_R50_IR_CONFIG, &ir_config, 1);
+ 	em28xx_write_reg_bits(dev, EM28XX_R0F_XCLK, dev->board.xclk,
+ 			      EM28XX_XCLK_IR_RC5_MODE);
+ 
+-	ir->rc_type = *rc_type;
++	ir->rc_proto = *rc_proto;
+ 
+ 	return 0;
+ }
+-static int em28xx_ir_change_protocol(struct rc_dev *rc_dev, u64 *rc_type)
++
++static int em28xx_ir_change_protocol(struct rc_dev *rc_dev, u64 *rc_proto)
+ {
+ 	struct em28xx_IR *ir = rc_dev->priv;
+ 	struct em28xx *dev = ir->dev;
+@@ -451,12 +458,12 @@ static int em28xx_ir_change_protocol(struct rc_dev *rc_dev, u64 *rc_type)
+ 	switch (dev->chip_id) {
+ 	case CHIP_ID_EM2860:
+ 	case CHIP_ID_EM2883:
+-		return em2860_ir_change_protocol(rc_dev, rc_type);
++		return em2860_ir_change_protocol(rc_dev, rc_proto);
+ 	case CHIP_ID_EM2884:
+ 	case CHIP_ID_EM2874:
+ 	case CHIP_ID_EM28174:
+ 	case CHIP_ID_EM28178:
+-		return em2874_ir_change_protocol(rc_dev, rc_type);
++		return em2874_ir_change_protocol(rc_dev, rc_proto);
+ 	default:
+ 		printk("Unrecognized em28xx chip id 0x%02x: IR not supported\n",
+ 		       dev->chip_id);
+@@ -678,7 +685,7 @@ static int em28xx_ir_init(struct em28xx *dev)
+ 	struct em28xx_IR *ir;
+ 	struct rc_dev *rc;
+ 	int err = -ENOMEM;
+-	u64 rc_type;
++	u64 rc_proto;
+ 	u16 i2c_rc_dev_addr = 0;
+ 
+ 	if (dev->is_audio_only) {
+@@ -740,7 +747,7 @@ static int em28xx_ir_init(struct em28xx *dev)
+ 		case EM2820_BOARD_HAUPPAUGE_WINTV_USB_2:
+ 			rc->map_name = RC_MAP_HAUPPAUGE;
+ 			ir->get_key_i2c = em28xx_get_key_em_haup;
+-			rc->allowed_protocols = RC_BIT_RC5;
++			rc->allowed_protocols = RC_PROTO_BIT_RC5;
+ 			break;
+ 		case EM2820_BOARD_LEADTEK_WINFAST_USBII_DELUXE:
+ 			rc->map_name = RC_MAP_WINFAST_USBII_DELUXE;
+@@ -762,7 +769,8 @@ static int em28xx_ir_init(struct em28xx *dev)
+ 		switch (dev->chip_id) {
+ 		case CHIP_ID_EM2860:
+ 		case CHIP_ID_EM2883:
+-			rc->allowed_protocols = RC_BIT_RC5 | RC_BIT_NEC;
++			rc->allowed_protocols = RC_PROTO_BIT_RC5 |
++						RC_PROTO_BIT_NEC;
+ 			ir->get_key = default_polling_getkey;
+ 			break;
+ 		case CHIP_ID_EM2884:
+@@ -770,8 +778,9 @@ static int em28xx_ir_init(struct em28xx *dev)
+ 		case CHIP_ID_EM28174:
+ 		case CHIP_ID_EM28178:
+ 			ir->get_key = em2874_polling_getkey;
+-			rc->allowed_protocols = RC_BIT_RC5 | RC_BIT_NEC |
+-					     RC_BIT_RC6_0;
++			rc->allowed_protocols = RC_PROTO_BIT_RC5 |
++				RC_PROTO_BIT_NEC | RC_PROTO_BIT_NECX |
++				RC_PROTO_BIT_NEC32 | RC_PROTO_BIT_RC6_0;
+ 			break;
+ 		default:
+ 			err = -ENODEV;
+@@ -782,8 +791,8 @@ static int em28xx_ir_init(struct em28xx *dev)
+ 		rc->map_name = dev->board.ir_codes;
+ 
+ 		/* By default, keep protocol field untouched */
+-		rc_type = RC_BIT_UNKNOWN;
+-		err = em28xx_ir_change_protocol(rc, &rc_type);
++		rc_proto = RC_PROTO_BIT_UNKNOWN;
++		err = em28xx_ir_change_protocol(rc, &rc_proto);
+ 		if (err)
+ 			goto error;
+ 	}
+diff --git a/drivers/media/usb/tm6000/tm6000-input.c b/drivers/media/usb/tm6000/tm6000-input.c
+index af184238da36..acdfa41bdaf7 100644
+--- a/drivers/media/usb/tm6000/tm6000-input.c
++++ b/drivers/media/usb/tm6000/tm6000-input.c
+@@ -71,7 +71,7 @@ struct tm6000_IR {
+ 	struct urb		*int_urb;
+ 
+ 	/* IR device properties */
+-	u64			rc_type;
++	u64			rc_proto;
+ };
+ 
+ void tm6000_ir_wait(struct tm6000_core *dev, u8 state)
+@@ -108,13 +108,13 @@ static int tm6000_ir_config(struct tm6000_IR *ir)
+ 	 * IR, in order to discard such decoding
+ 	 */
+ 
+-	switch (ir->rc_type) {
+-	case RC_BIT_NEC:
++	switch (ir->rc_proto) {
++	case RC_PROTO_BIT_NEC:
+ 		leader = 900;	/* ms */
+ 		pulse  = 700;	/* ms - the actual value would be 562 */
+ 		break;
+ 	default:
+-	case RC_BIT_RC5:
++	case RC_PROTO_BIT_RC5:
+ 		leader = 900;	/* ms - from the NEC decoding */
+ 		pulse  = 1780;	/* ms - The actual value would be 1776 */
+ 		break;
+@@ -122,12 +122,12 @@ static int tm6000_ir_config(struct tm6000_IR *ir)
+ 
+ 	pulse = ir_clock_mhz * pulse;
+ 	leader = ir_clock_mhz * leader;
+-	if (ir->rc_type == RC_BIT_NEC)
++	if (ir->rc_proto == RC_PROTO_BIT_NEC)
+ 		leader = leader | 0x8000;
+ 
+ 	dprintk(2, "%s: %s, %d MHz, leader = 0x%04x, pulse = 0x%06x \n",
+ 		__func__,
+-		(ir->rc_type == RC_BIT_NEC) ? "NEC" : "RC-5",
++		(ir->rc_proto == RC_PROTO_BIT_NEC) ? "NEC" : "RC-5",
+ 		ir_clock_mhz, leader, pulse);
+ 
+ 	/* Remote WAKEUP = enable, normal mode, from IR decoder output */
+@@ -167,24 +167,24 @@ static void tm6000_ir_keydown(struct tm6000_IR *ir,
+ {
+ 	u8 device, command;
+ 	u32 scancode;
+-	enum rc_type protocol;
++	enum rc_proto protocol;
+ 
+ 	if (len < 1)
+ 		return;
+ 
+ 	command = buf[0];
+ 	device = (len > 1 ? buf[1] : 0x0);
+-	switch (ir->rc_type) {
+-	case RC_BIT_RC5:
+-		protocol = RC_TYPE_RC5;
++	switch (ir->rc_proto) {
++	case RC_PROTO_BIT_RC5:
++		protocol = RC_PROTO_RC5;
+ 		scancode = RC_SCANCODE_RC5(device, command);
+ 		break;
+-	case RC_BIT_NEC:
+-		protocol = RC_TYPE_NEC;
++	case RC_PROTO_BIT_NEC:
++		protocol = RC_PROTO_NEC;
+ 		scancode = RC_SCANCODE_NEC(device, command);
+ 		break;
+ 	default:
+-		protocol = RC_TYPE_OTHER;
++		protocol = RC_PROTO_OTHER;
+ 		scancode = RC_SCANCODE_OTHER(device << 8 | command);
+ 		break;
+ 	}
+@@ -316,7 +316,7 @@ static void tm6000_ir_stop(struct rc_dev *rc)
+ 	cancel_delayed_work_sync(&ir->work);
+ }
+ 
+-static int tm6000_ir_change_protocol(struct rc_dev *rc, u64 *rc_type)
++static int tm6000_ir_change_protocol(struct rc_dev *rc, u64 *rc_proto)
+ {
+ 	struct tm6000_IR *ir = rc->priv;
+ 
+@@ -325,10 +325,10 @@ static int tm6000_ir_change_protocol(struct rc_dev *rc, u64 *rc_type)
+ 
+ 	dprintk(2, "%s\n",__func__);
+ 
+-	if ((rc->rc_map.scan) && (*rc_type == RC_BIT_NEC))
++	if ((rc->rc_map.scan) && (*rc_proto == RC_PROTO_NEC))
+ 		ir->key_addr = ((rc->rc_map.scan[0].scancode >> 8) & 0xffff);
+ 
+-	ir->rc_type = *rc_type;
++	ir->rc_proto = *rc_proto;
+ 
+ 	tm6000_ir_config(ir);
+ 	/* TODO */
+@@ -417,7 +417,7 @@ int tm6000_ir_init(struct tm6000_core *dev)
+ 	struct tm6000_IR *ir;
+ 	struct rc_dev *rc;
+ 	int err = -ENOMEM;
+-	u64 rc_type;
++	u64 rc_proto;
+ 
+ 	if (!enable_ir)
+ 		return -ENODEV;
+@@ -441,7 +441,7 @@ int tm6000_ir_init(struct tm6000_core *dev)
+ 	ir->rc = rc;
+ 
+ 	/* input setup */
+-	rc->allowed_protocols = RC_BIT_RC5 | RC_BIT_NEC;
++	rc->allowed_protocols = RC_PROTO_BIT_RC5 | RC_PROTO_BIT_NEC;
+ 	/* Neded, in order to support NEC remotes with 24 or 32 bits */
+ 	rc->scancode_mask = 0xffff;
+ 	rc->priv = ir;
+@@ -463,8 +463,8 @@ int tm6000_ir_init(struct tm6000_core *dev)
+ 	usb_make_path(dev->udev, ir->phys, sizeof(ir->phys));
+ 	strlcat(ir->phys, "/input0", sizeof(ir->phys));
+ 
+-	rc_type = RC_BIT_UNKNOWN;
+-	tm6000_ir_change_protocol(rc, &rc_type);
++	rc_proto = RC_PROTO_BIT_UNKNOWN;
++	tm6000_ir_change_protocol(rc, &rc_proto);
+ 
+ 	rc->device_name = ir->name;
+ 	rc->input_phys = ir->phys;
+
+From 4f4a5220f9178c6cdb1e7351fa6de4474c914085 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 27 Jan 2019 23:32:09 +0000
+Subject: [PATCH] BACKPORT: media: rc: Remove init_ir_raw_event and
+ DEFINE_IR_RAW_EVENT macros
+
+---
+ drivers/media/pci/cx88/cx88-input.c | 3 +--
+ drivers/media/rc/mceusb.c           | 3 +--
+ drivers/media/rc/meson-ir.c         | 2 +-
+ drivers/media/rc/nuvoton-cir.c      | 2 --
+ drivers/media/rc/redrat3.c          | 2 +-
+ drivers/media/rc/st_rc.c            | 5 ++---
+ 6 files changed, 6 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/media/pci/cx88/cx88-input.c b/drivers/media/pci/cx88/cx88-input.c
+index 3117e1dcd034..2fc7e7b964db 100644
+--- a/drivers/media/pci/cx88/cx88-input.c
++++ b/drivers/media/pci/cx88/cx88-input.c
+@@ -531,7 +531,7 @@ void cx88_ir_irq(struct cx88_core *core)
+ 	struct cx88_IR *ir = core->ir;
+ 	u32 samples;
+ 	unsigned todo, bits;
+-	struct ir_raw_event ev;
++	struct ir_raw_event ev = {};
+ 
+ 	if (!ir || !ir->sampling)
+ 		return;
+@@ -546,7 +546,6 @@ void cx88_ir_irq(struct cx88_core *core)
+ 	if (samples == 0xff && ir->dev->idle)
+ 		return;
+ 
+-	init_ir_raw_event(&ev);
+ 	for (todo = 32; todo > 0; todo -= bits) {
+ 		ev.pulse = samples & 0x80000000 ? false : true;
+ 		bits = min(todo, 32U - fls(ev.pulse ? samples : ~samples));
+diff --git a/drivers/media/rc/mceusb.c b/drivers/media/rc/mceusb.c
+index 43811a463b54..52a532d4a3eb 100644
+--- a/drivers/media/rc/mceusb.c
++++ b/drivers/media/rc/mceusb.c
+@@ -979,7 +979,7 @@ static void mceusb_handle_command(struct mceusb_dev *ir, int index)
+ 
+ static void mceusb_process_ir_data(struct mceusb_dev *ir, int buf_len)
+ {
+-	DEFINE_IR_RAW_EVENT(rawir);
++	struct ir_raw_event rawir = {};
+ 	bool event = false;
+ 	int i = 0;
+ 
+@@ -1002,7 +1002,6 @@ static void mceusb_process_ir_data(struct mceusb_dev *ir, int buf_len)
+ 			break;
+ 		case PARSE_IRDATA:
+ 			ir->rem--;
+-			init_ir_raw_event(&rawir);
+ 			rawir.pulse = ((ir->buf_in[i] & MCE_PULSE_BIT) != 0);
+ 			rawir.duration = (ir->buf_in[i] & MCE_PULSE_MASK)
+ 					 * US_TO_NS(MCE_TIME_UNIT);
+diff --git a/drivers/media/rc/meson-ir.c b/drivers/media/rc/meson-ir.c
+index b8db661c9ba7..c0fa0d7ccf28 100644
+--- a/drivers/media/rc/meson-ir.c
++++ b/drivers/media/rc/meson-ir.c
+@@ -77,7 +77,7 @@ static irqreturn_t meson_ir_irq(int irqno, void *dev_id)
+ {
+ 	struct meson_ir *ir = dev_id;
+ 	u32 duration;
+-	DEFINE_IR_RAW_EVENT(rawir);
++	struct ir_raw_event rawir = {};
+ 
+ 	spin_lock(&ir->lock);
+ 
+diff --git a/drivers/media/rc/nuvoton-cir.c b/drivers/media/rc/nuvoton-cir.c
+index 1c89e0fa9c28..ee19eab717b1 100644
+--- a/drivers/media/rc/nuvoton-cir.c
++++ b/drivers/media/rc/nuvoton-cir.c
+@@ -626,8 +626,6 @@ static void nvt_process_rx_ir_data(struct nvt_dev *nvt)
+ 
+ 	nvt_dbg_verbose("Processing buffer of len %d", nvt->pkts);
+ 
+-	init_ir_raw_event(&rawir);
+-
+ 	for (i = 0; i < nvt->pkts; i++) {
+ 		sample = nvt->buf[i];
+ 
+diff --git a/drivers/media/rc/redrat3.c b/drivers/media/rc/redrat3.c
+index b38fb8adcc90..bc680cb8d9bb 100644
+--- a/drivers/media/rc/redrat3.c
++++ b/drivers/media/rc/redrat3.c
+@@ -336,7 +336,7 @@ static void redrat3_rx_timeout(unsigned long data)
+ 
+ static void redrat3_process_ir_data(struct redrat3_dev *rr3)
+ {
+-	DEFINE_IR_RAW_EVENT(rawir);
++	struct ir_raw_event rawir = {};
+ 	struct device *dev;
+ 	unsigned i, trailer = 0;
+ 	unsigned sig_size, single_len, offset, val;
+diff --git a/drivers/media/rc/st_rc.c b/drivers/media/rc/st_rc.c
+index a8f02aeb92fd..5df79d6c0921 100644
+--- a/drivers/media/rc/st_rc.c
++++ b/drivers/media/rc/st_rc.c
+@@ -66,8 +66,7 @@ struct st_rc_device {
+ 
+ static void st_rc_send_lirc_timeout(struct rc_dev *rdev)
+ {
+-	DEFINE_IR_RAW_EVENT(ev);
+-	ev.timeout = true;
++	struct ir_raw_event ev = { .timeout = true, .duration = rdev->timeout };
+ 	ir_raw_event_store(rdev, &ev);
+ }
+ 
+@@ -99,7 +98,7 @@ static irqreturn_t st_rc_rx_interrupt(int irq, void *data)
+ 	struct st_rc_device *dev = data;
+ 	int last_symbol = 0;
+ 	u32 status;
+-	DEFINE_IR_RAW_EVENT(ev);
++	struct ir_raw_event ev = {};
+ 
+ 	if (dev->irq_wake)
+ 		pm_wakeup_event(dev->dev, 0);
+
+From d6211b874150821958e3d454736fa861e82c04eb Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 27 Jan 2019 23:35:29 +0000
+Subject: [PATCH] BACKPORT: media: rc-core: rename input_name to device_name
+
+---
+ drivers/media/rc/igorplugusb.c | 2 +-
+ drivers/media/rc/nuvoton-cir.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/rc/igorplugusb.c b/drivers/media/rc/igorplugusb.c
+index 8c8e4e567c78..2052b4e3ffdd 100644
+--- a/drivers/media/rc/igorplugusb.c
++++ b/drivers/media/rc/igorplugusb.c
+@@ -191,7 +191,7 @@ static int igorplugusb_probe(struct usb_interface *intf,
+ 	usb_make_path(udev, ir->phys, sizeof(ir->phys));
+ 
+ 	rc = rc_allocate_device(RC_DRIVER_IR_RAW);
+-	rc->input_name = DRIVER_DESC;
++	rc->device_name = DRIVER_DESC;
+ 	rc->input_phys = ir->phys;
+ 	usb_to_input_id(udev, &rc->input_id);
+ 	rc->dev.parent = &intf->dev;
+diff --git a/drivers/media/rc/nuvoton-cir.c b/drivers/media/rc/nuvoton-cir.c
+index ee19eab717b1..e23c0ab365c2 100644
+--- a/drivers/media/rc/nuvoton-cir.c
++++ b/drivers/media/rc/nuvoton-cir.c
+@@ -1045,7 +1045,7 @@ static int nvt_probe(struct pnp_dev *pdev, const struct pnp_device_id *dev_id)
+ 	rdev->close = nvt_close;
+ 	rdev->tx_ir = nvt_tx_ir;
+ 	rdev->s_tx_carrier = nvt_set_tx_carrier;
+-	rdev->input_name = "Nuvoton w836x7hg Infrared Remote Transceiver";
++	rdev->device_name = "Nuvoton w836x7hg Infrared Remote Transceiver";
+ 	rdev->input_phys = "nuvoton/cir0";
+ 	rdev->input_id.bustype = BUS_HOST;
+ 	rdev->input_id.vendor = PCI_VENDOR_ID_WINBOND2;

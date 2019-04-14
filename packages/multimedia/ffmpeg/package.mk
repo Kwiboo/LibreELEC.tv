@@ -120,7 +120,6 @@ configure_target() {
               --pkg-config="$TOOLCHAIN/bin/pkg-config" \
               --enable-optimizations \
               --disable-extra-warnings \
-              --disable-programs \
               --enable-avdevice \
               --enable-avcodec \
               --enable-avformat \
@@ -153,6 +152,9 @@ configure_target() {
               --enable-encoder=wmav2 \
               --enable-encoder=mjpeg \
               --enable-encoder=png \
+              --enable-encoder=wrapped_avframe \
+              --enable-encoder=pcm_s16le \
+              --enable-encoder=rawvideo \
               --enable-hwaccels \
               --disable-muxers \
               --enable-muxer=spdif \
@@ -160,6 +162,8 @@ configure_target() {
               --enable-muxer=asf \
               --enable-muxer=ipod \
               --enable-muxer=mpegts \
+              --enable-muxer=null \
+              --enable-muxer=rawvideo \
               --enable-demuxers \
               --enable-parsers \
               --enable-bsfs \

@@ -1,0 +1,39 @@
+################################################################################
+# setup device defaults
+################################################################################
+
+  # The TARGET_CPU variable controls which processor should be targeted for
+  # generated code.
+    case $TARGET_ARCH in
+      arm)
+        TARGET_FLOAT="hard"
+        TARGET_CPU="cortex-a17"
+        TARGET_FPU="neon-vfpv4"
+        TARGET_FEATURES="32bit"
+        KERNEL_TOOLCHAIN="arm-linux-gnueabihf"
+        ;;
+    esac
+
+  # Kernel target
+    KERNEL_TARGET="zImage"
+
+  # Additional kernel make parameters (for example to specify the u-boot loadaddress)
+    KERNEL_MAKE_EXTRACMD=""
+    KERNEL_MAKE_EXTRACMD+=" rk3288-miqi.dtb"
+
+    if [ "$LINUX" = "rockchip-4.4" ]; then
+      KERNEL_MAKE_EXTRACMD+=" rk3288-miniarm.dtb"
+    else
+      KERNEL_MAKE_EXTRACMD+=" rk3288-tinker.dtb"
+      KERNEL_MAKE_EXTRACMD+=" rk3288-tinker-s.dtb"
+    fi
+
+  # Mali GPU family
+    MALI_FAMILY="t760"
+
+  # kernel serial console
+    EXTRA_CMDLINE="console=uart8250,mmio32,0xff690000 console=tty0 coherent_pool=2M"
+
+    if [ "$LINUX" != "rockchip-4.4" ]; then
+      ADDITIONAL_DRIVERS="mali-midgard-rockchip"
+    fi

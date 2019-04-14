@@ -37,14 +37,14 @@ else
   PKG_FFMPEG_VDPAU="--disable-vdpau"
 fi
 
-if [ "$PROJECT" = "Rockchip" ]; then
+if [ "$PROJECT" = "Rockchip" -a "$LINUX" = "rockchip-4.4" ]; then
   PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET rkmpp"
   PKG_FFMPEG_RKMPP="--enable-rkmpp --enable-libdrm --enable-version3"
 else
   PKG_FFMPEG_RKMPP="--disable-rkmpp"
 fi
 
-if [ "$PROJECT" = "Allwinner" ]; then
+if [ "$PROJECT" = "Allwinner" -o "$LINUX" = "rockchip-5.x" ]; then
   PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET libdrm systemd" # systemd is needed for libudev
   PKG_FFMPEG_V4L2_REQUEST="--enable-v4l2-request --enable-libudev --enable-libdrm"
 else

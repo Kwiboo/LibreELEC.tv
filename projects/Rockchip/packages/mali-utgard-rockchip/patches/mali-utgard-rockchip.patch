@@ -1,0 +1,1174 @@
+diff --git a/driver/src/devicedrv/mali/common/mali_control_timer.c b/driver/src/devicedrv/mali/common/mali_control_timer.c
+index ab8cdf5..b00e7fd 100644
+--- a/driver/src/devicedrv/mali/common/mali_control_timer.c
++++ b/driver/src/devicedrv/mali/common/mali_control_timer.c
+@@ -28,7 +28,7 @@ void mali_control_timer_add(u32 timeout)
+ 	_mali_osk_timer_add(mali_control_timer, _mali_osk_time_mstoticks(timeout));
+ }
+ 
+-static void mali_control_timer_callback(void *arg)
++static void mali_control_timer_callback(struct timer_list *t)
+ {
+ 	if (mali_utilization_enabled()) {
+ 		struct mali_gpu_utilization_data *util_data = NULL;
+diff --git a/driver/src/devicedrv/mali/common/mali_group.c b/driver/src/devicedrv/mali/common/mali_group.c
+index 71cf1c8..bab164e 100644
+--- a/driver/src/devicedrv/mali/common/mali_group.c
++++ b/driver/src/devicedrv/mali/common/mali_group.c
+@@ -44,7 +44,7 @@ int mali_max_job_runtime = MALI_MAX_JOB_RUNTIME_DEFAULT;
+ static void mali_group_bottom_half_mmu(void *data);
+ static void mali_group_bottom_half_gp(void *data);
+ static void mali_group_bottom_half_pp(void *data);
+-static void mali_group_timeout(void *data);
++static void mali_group_timeout(struct timer_list *t);
+ static void mali_group_reset_pp(struct mali_group *group);
+ static void mali_group_reset_mmu(struct mali_group *group);
+ 
+@@ -698,7 +698,7 @@ void mali_group_add_group(struct mali_group *parent, struct mali_group *child)
+ 					      mali_pp_job_get_pid(job), mali_pp_job_get_tid(job), 0, 0, 0);
+ #if defined(CONFIG_GPU_TRACEPOINTS) && defined(CONFIG_TRACEPOINTS)
+ 		trace_gpu_sched_switch(
+-			mali_pp_core_description(group->pp_core),
++			mali_pp_core_description(child->pp_core),
+ 			sched_clock(), mali_pp_job_get_tid(job),
+ 			0, mali_pp_job_get_id(job));
+ #endif
+@@ -1761,9 +1761,11 @@ static void mali_group_bottom_half_pp(void *data)
+ 				      0xFFFFFFFF, 0);
+ }
+ 
+-static void mali_group_timeout(void *data)
++static void mali_group_timeout(struct timer_list *t)
+ {
+-	struct mali_group *group = (struct mali_group *)data;
++	_mali_osk_timer_t *tim = container_of(t, _mali_osk_timer_t, timer);
++	struct mali_group *group = container_of(&tim, struct mali_group, timeout_timer);
++
+ 	MALI_DEBUG_ASSERT_POINTER(group);
+ 
+ 	MALI_DEBUG_PRINT(2, ("Group: timeout handler for %s at %u\n",
+diff --git a/driver/src/devicedrv/mali/common/mali_osk_types.h b/driver/src/devicedrv/mali/common/mali_osk_types.h
+index 0c92382..41af9b0 100644
+--- a/driver/src/devicedrv/mali/common/mali_osk_types.h
++++ b/driver/src/devicedrv/mali/common/mali_osk_types.h
+@@ -50,6 +50,7 @@ typedef unsigned long long u64;
+ #include <linux/types.h>
+ #endif
+ 
++#include <linux/timer.h>
+ /** @brief Mali Boolean type which uses MALI_TRUE and MALI_FALSE
+   */
+ typedef unsigned long mali_bool;
+@@ -395,7 +396,12 @@ typedef struct _mali_osk_notification_t_struct {
+  * by any callers of _mali_osk_timer_del(). Otherwise, a deadlock may occur.
+  *
+  * @param arg Function-specific data */
+-typedef void (*_mali_osk_timer_callback_t)(void *arg);
++typedef void (*_mali_osk_timer_callback_t)(struct timer_list *t);
++
++
++struct _mali_osk_timer_t_struct {
++	struct timer_list timer;
++};
+ 
+ /** @brief Private type for Timer Callback Objects */
+ typedef struct _mali_osk_timer_t_struct _mali_osk_timer_t;
+diff --git a/driver/src/devicedrv/mali/linux/mali_devfreq.c b/driver/src/devicedrv/mali/linux/mali_devfreq.c
+index df7341a..ff79c0a 100644
+--- a/driver/src/devicedrv/mali/linux/mali_devfreq.c
++++ b/driver/src/devicedrv/mali/linux/mali_devfreq.c
+@@ -63,13 +63,23 @@ mali_devfreq_target(struct device *dev, unsigned long *target_freq, u32 flags)
+ 	if (mdev->current_freq == freq) {
+ 		*target_freq = freq;
+ 		mali_pm_reset_dvfs_utilisation(mdev);
++#ifdef CONFIG_REGULATOR
++		if (mdev->regulator && mdev->current_voltage != voltage) {
++			err = regulator_set_voltage(mdev->regulator, voltage, INT_MAX);
++			if (err) {
++				MALI_PRINT_ERROR(("Failed to set voltage (%d)\n", err));
++				return err;
++			}
++			mdev->current_voltage = voltage;
++		}
++#endif
+ 		return 0;
+ 	}
+ 
+ #ifdef CONFIG_REGULATOR
+ 	if (mdev->regulator && mdev->current_voltage != voltage
+ 	    && mdev->current_freq < freq) {
+-		err = regulator_set_voltage(mdev->regulator, voltage, voltage);
++		err = regulator_set_voltage(mdev->regulator, voltage, INT_MAX);
+ 		if (err) {
+ 			MALI_PRINT_ERROR(("Failed to increase voltage (%d)\n", err));
+ 			return err;
+@@ -86,7 +96,7 @@ mali_devfreq_target(struct device *dev, unsigned long *target_freq, u32 flags)
+ #ifdef CONFIG_REGULATOR
+ 	if (mdev->regulator && mdev->current_voltage != voltage
+ 	    && mdev->current_freq > freq) {
+-		err = regulator_set_voltage(mdev->regulator, voltage, voltage);
++		err = regulator_set_voltage(mdev->regulator, voltage, INT_MAX);
+ 		if (err) {
+ 			MALI_PRINT_ERROR(("Failed to decrease voltage (%d)\n", err));
+ 			return err;
+@@ -222,6 +232,10 @@ int mali_devfreq_init(struct mali_device *mdev)
+ 		return -ENODEV;
+ 
+ 	mdev->current_freq = clk_get_rate(mdev->clock);
++#ifdef CONFIG_REGULATOR
++	if (mdev->regulator)
++		mdev->current_voltage = regulator_get_voltage(mdev->regulator);
++#endif
+ 
+ 	dp = &mdev->devfreq_profile;
+ 
+diff --git a/driver/src/devicedrv/mali/linux/mali_kernel_linux.c b/driver/src/devicedrv/mali/linux/mali_kernel_linux.c
+index 5799fa6..c739648 100644
+--- a/driver/src/devicedrv/mali/linux/mali_kernel_linux.c
++++ b/driver/src/devicedrv/mali/linux/mali_kernel_linux.c
+@@ -554,16 +554,16 @@ static int mali_probe(struct platform_device *pdev)
+ 		MALI_DEBUG_PRINT(3, ("OPP table not found\n"));
+ #endif
+ 
+-	/* Need to name the gpu clock "clk_mali" in the device tree */
+-	mdev->clock = clk_get(mdev->dev, "clk_mali");
++	/* Need to name the gpu clock "core" in the device tree */
++	mdev->clock = clk_get(mdev->dev, "core");
+ 	if (IS_ERR_OR_NULL(mdev->clock)) {
+ 		MALI_DEBUG_PRINT(2, ("Continuing without Mali clock control\n"));
+ 		mdev->clock = NULL;
+ 		/* Allow probe to continue without clock. */
+ 	} else {
+-		err = clk_prepare_enable(mdev->clock);
++		err = clk_prepare(mdev->clock);
+ 		if (err) {
+-			MALI_PRINT_ERROR(("Failed to prepare and enable clock (%d)\n", err));
++			MALI_PRINT_ERROR(("Failed to prepare clock (%d)\n", err));
+ 			goto clock_prepare_failed;
+ 		}
+ 	}
+@@ -613,7 +613,7 @@ static int mali_probe(struct platform_device *pdev)
+ devfreq_init_failed:
+ 	mali_pm_metrics_term(mdev);
+ pm_metrics_init_failed:
+-	clk_disable_unprepare(mdev->clock);
++	clk_unprepare(mdev->clock);
+ clock_prepare_failed:
+ 	clk_put(mdev->clock);
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) && defined(CONFIG_OF) \
+@@ -653,7 +653,7 @@ static int mali_remove(struct platform_device *pdev)
+ 	mali_pm_metrics_term(mdev);
+ 
+ 	if (mdev->clock) {
+-		clk_disable_unprepare(mdev->clock);
++		clk_unprepare(mdev->clock);
+ 		clk_put(mdev->clock);
+ 		mdev->clock = NULL;
+ 	}
+diff --git a/driver/src/devicedrv/mali/linux/mali_memory_block_alloc.c b/driver/src/devicedrv/mali/linux/mali_memory_block_alloc.c
+index 0c5b6c3..6391b4f 100644
+--- a/driver/src/devicedrv/mali/linux/mali_memory_block_alloc.c
++++ b/driver/src/devicedrv/mali/linux/mali_memory_block_alloc.c
+@@ -309,9 +309,9 @@ int mali_mem_block_cpu_map(mali_mem_backend *mem_bkend, struct vm_area_struct *v
+ 
+ 	list_for_each_entry(m_page, &block_mem->pfns, list) {
+ 		MALI_DEBUG_ASSERT(m_page->type == MALI_PAGE_NODE_BLOCK);
+-		ret = vm_insert_pfn(vma, addr, _mali_page_node_get_pfn(m_page));
++		ret = vmf_insert_pfn(vma, addr, _mali_page_node_get_pfn(m_page));
+ 
+-		if (unlikely(0 != ret)) {
++		if (unlikely(ret & VM_FAULT_ERROR)) {
+ 			return -EFAULT;
+ 		}
+ 		addr += _MALI_OSK_MALI_PAGE_SIZE;
+diff --git a/driver/src/devicedrv/mali/linux/mali_memory_cow.c b/driver/src/devicedrv/mali/linux/mali_memory_cow.c
+index f1d44fe..b8fded6 100644
+--- a/driver/src/devicedrv/mali/linux/mali_memory_cow.c
++++ b/driver/src/devicedrv/mali/linux/mali_memory_cow.c
+@@ -532,10 +532,10 @@ int mali_mem_cow_cpu_map(mali_mem_backend *mem_bkend, struct vm_area_struct *vma
+ 		 * flush which makes it way slower than remap_pfn_range or vm_insert_pfn.
+ 		ret = vm_insert_page(vma, addr, page);
+ 		*/
+-		ret = vm_insert_pfn(vma, addr, _mali_page_node_get_pfn(m_page));
++		ret = vmf_insert_pfn(vma, addr, _mali_page_node_get_pfn(m_page));
+ 
+-		if (unlikely(0 != ret)) {
+-			return ret;
++		if (unlikely(ret & VM_FAULT_ERROR)) {
++			return -EFAULT;
+ 		}
+ 		addr += _MALI_OSK_MALI_PAGE_SIZE;
+ 	}
+@@ -569,9 +569,9 @@ _mali_osk_errcode_t mali_mem_cow_cpu_map_pages_locked(mali_mem_backend *mem_bken
+ 
+ 	list_for_each_entry(m_page, &cow->pages, list) {
+ 		if ((count >= offset) && (count < offset + num)) {
+-			ret = vm_insert_pfn(vma, vaddr, _mali_page_node_get_pfn(m_page));
++			ret = vmf_insert_pfn(vma, vaddr, _mali_page_node_get_pfn(m_page));
+ 
+-			if (unlikely(0 != ret)) {
++			if (unlikely(ret & VM_FAULT_ERROR)) {
+ 				if (count == offset) {
+ 					return _MALI_OSK_ERR_FAULT;
+ 				} else {
+diff --git a/driver/src/devicedrv/mali/linux/mali_memory_os_alloc.c b/driver/src/devicedrv/mali/linux/mali_memory_os_alloc.c
+index 7c90cfb..a3ed31e 100644
+--- a/driver/src/devicedrv/mali/linux/mali_memory_os_alloc.c
++++ b/driver/src/devicedrv/mali/linux/mali_memory_os_alloc.c
+@@ -202,7 +202,9 @@ int mali_mem_os_alloc_pages(mali_mem_os_mem *os_mem, u32 size)
+ 	/* Allocate new pages, if needed. */
+ 	for (i = 0; i < remaining; i++) {
+ 		dma_addr_t dma_addr;
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
++		gfp_t flags = __GFP_ZERO | __GFP_RETRY_MAYFAIL | __GFP_NOWARN;
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+ 		gfp_t flags = __GFP_ZERO | __GFP_RETRY_MAYFAIL | __GFP_NOWARN | __GFP_COLD;
+ #else
+ 		gfp_t flags = __GFP_ZERO | __GFP_REPEAT | __GFP_NOWARN | __GFP_COLD;
+@@ -374,9 +376,9 @@ int mali_mem_os_cpu_map(mali_mem_backend *mem_bkend, struct vm_area_struct *vma)
+ 		ret = vm_insert_page(vma, addr, page);
+ 		*/
+ 		page = m_page->page;
+-		ret = vm_insert_pfn(vma, addr, page_to_pfn(page));
++		ret = vmf_insert_pfn(vma, addr, page_to_pfn(page));
+ 
+-		if (unlikely(0 != ret)) {
++		if (unlikely(ret & VM_FAULT_ERROR)) {
+ 			return -EFAULT;
+ 		}
+ 		addr += _MALI_OSK_MALI_PAGE_SIZE;
+@@ -412,16 +414,11 @@ _mali_osk_errcode_t mali_mem_os_resize_cpu_map_locked(mali_mem_backend *mem_bken
+ 
+ 			vm_end -= _MALI_OSK_MALI_PAGE_SIZE;
+ 			if (mapping_page_num > 0) {
+-				ret = vm_insert_pfn(vma, vm_end, page_to_pfn(m_page->page));
+-
+-				if (unlikely(0 != ret)) {
+-					/*will return -EBUSY If the page has already been mapped into table, but it's OK*/
+-					if (-EBUSY == ret) {
+-						break;
+-					} else {
+-						MALI_DEBUG_PRINT(1, ("OS Mem: mali_mem_os_resize_cpu_map_locked failed, ret = %d, offset is %d,page_count is %d\n",
+-								     ret,  offset + mapping_page_num, os_mem->count));
+-					}
++				ret = vmf_insert_pfn(vma, vm_end, page_to_pfn(m_page->page));
++
++				if (unlikely(ret & VM_FAULT_ERROR)) {
++					MALI_DEBUG_PRINT(1, ("OS Mem: mali_mem_os_resize_cpu_map_locked failed, ret = %d, offset is %d,page_count is %d\n",
++							     ret,  offset + mapping_page_num, os_mem->count));
+ 					return _MALI_OSK_ERR_FAULT;
+ 				}
+ 			} else {
+@@ -435,16 +432,11 @@ _mali_osk_errcode_t mali_mem_os_resize_cpu_map_locked(mali_mem_backend *mem_bken
+ 		list_for_each_entry(m_page, &os_mem->pages, list) {
+ 			if (count >= offset) {
+ 
+-				ret = vm_insert_pfn(vma, vstart, page_to_pfn(m_page->page));
++				ret = vmf_insert_pfn(vma, vstart, page_to_pfn(m_page->page));
+ 
+-				if (unlikely(0 != ret)) {
+-					/*will return -EBUSY If the page has already been mapped into table, but it's OK*/
+-					if (-EBUSY == ret) {
+-						break;
+-					} else {
+-						MALI_DEBUG_PRINT(1, ("OS Mem: mali_mem_os_resize_cpu_map_locked failed, ret = %d, count is %d, offset is %d,page_count is %d\n",
+-								     ret, count, offset, os_mem->count));
+-					}
++				if (unlikely(ret & VM_FAULT_ERROR)) {
++					MALI_DEBUG_PRINT(1, ("OS Mem: mali_mem_os_resize_cpu_map_locked failed, ret = %d, count is %d, offset is %d,page_count is %d\n",
++							     ret, count, offset, os_mem->count));
+ 					return _MALI_OSK_ERR_FAULT;
+ 				}
+ 			}
+diff --git a/driver/src/devicedrv/mali/linux/mali_memory_secure.c b/driver/src/devicedrv/mali/linux/mali_memory_secure.c
+index 9032b96..239fc73 100644
+--- a/driver/src/devicedrv/mali/linux/mali_memory_secure.c
++++ b/driver/src/devicedrv/mali/linux/mali_memory_secure.c
+@@ -13,7 +13,11 @@
+ #include "mali_memory_secure.h"
+ #include "mali_osk.h"
+ #include <linux/mutex.h>
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
++#include <linux/dma-direct.h>
++#else
+ #include <linux/dma-mapping.h>
++#endif
+ #include <linux/dma-buf.h>
+ 
+ _mali_osk_errcode_t mali_mem_secure_attach_dma_buf(mali_mem_secure *secure_mem, u32 size, int mem_fd)
+@@ -128,9 +132,9 @@ int mali_mem_secure_cpu_map(mali_mem_backend *mem_bkend, struct vm_area_struct *
+ 		MALI_DEBUG_ASSERT(0 == size % _MALI_OSK_MALI_PAGE_SIZE);
+ 
+ 		for (j = 0; j < size / _MALI_OSK_MALI_PAGE_SIZE; j++) {
+-			ret = vm_insert_pfn(vma, addr, PFN_DOWN(phys));
++			ret = vmf_insert_pfn(vma, addr, PFN_DOWN(phys));
+ 
+-			if (unlikely(0 != ret)) {
++			if (unlikely(ret & VM_FAULT_ERROR)) {
+ 				return -EFAULT;
+ 			}
+ 			addr += _MALI_OSK_MALI_PAGE_SIZE;
+diff --git a/driver/src/devicedrv/mali/linux/mali_osk_mali.c b/driver/src/devicedrv/mali/linux/mali_osk_mali.c
+index 63f0699..63aa70a 100644
+--- a/driver/src/devicedrv/mali/linux/mali_osk_mali.c
++++ b/driver/src/devicedrv/mali/linux/mali_osk_mali.c
+@@ -72,26 +72,26 @@ int (*mali_gpu_reset_and_secure_mode_disable)(void) = NULL;
+ #define MALI_OSK_RESOURCE_DMA_LOCATION 26
+ 
+ static _mali_osk_resource_t mali_osk_resource_bank[MALI_OSK_MAX_RESOURCE_NUMBER] = {
+-	{.description = "Mali_GP", .base = MALI_OFFSET_GP, .irq_name = "IRQGP",},
+-	{.description = "Mali_GP_MMU", .base = MALI_OFFSET_GP_MMU, .irq_name = "IRQGPMMU",},
+-	{.description = "Mali_PP0", .base = MALI_OFFSET_PP0, .irq_name = "IRQPP0",},
+-	{.description = "Mali_PP0_MMU", .base = MALI_OFFSET_PP0_MMU, .irq_name = "IRQPPMMU0",},
+-	{.description = "Mali_PP1", .base = MALI_OFFSET_PP1, .irq_name = "IRQPP1",},
+-	{.description = "Mali_PP1_MMU", .base = MALI_OFFSET_PP1_MMU, .irq_name = "IRQPPMMU1",},
+-	{.description = "Mali_PP2", .base = MALI_OFFSET_PP2, .irq_name = "IRQPP2",},
+-	{.description = "Mali_PP2_MMU", .base = MALI_OFFSET_PP2_MMU, .irq_name = "IRQPPMMU2",},
+-	{.description = "Mali_PP3", .base = MALI_OFFSET_PP3, .irq_name = "IRQPP3",},
+-	{.description = "Mali_PP3_MMU", .base = MALI_OFFSET_PP3_MMU, .irq_name = "IRQPPMMU3",},
+-	{.description = "Mali_PP4", .base = MALI_OFFSET_PP4, .irq_name = "IRQPP4",},
+-	{.description = "Mali_PP4_MMU", .base = MALI_OFFSET_PP4_MMU, .irq_name = "IRQPPMMU4",},
+-	{.description = "Mali_PP5", .base = MALI_OFFSET_PP5, .irq_name = "IRQPP5",},
+-	{.description = "Mali_PP5_MMU", .base = MALI_OFFSET_PP5_MMU, .irq_name = "IRQPPMMU5",},
+-	{.description = "Mali_PP6", .base = MALI_OFFSET_PP6, .irq_name = "IRQPP6",},
+-	{.description = "Mali_PP6_MMU", .base = MALI_OFFSET_PP6_MMU, .irq_name = "IRQPPMMU6",},
+-	{.description = "Mali_PP7", .base = MALI_OFFSET_PP7, .irq_name = "IRQPP7",},
+-	{.description = "Mali_PP7_MMU", .base = MALI_OFFSET_PP7_MMU, .irq_name = "IRQPPMMU",},
+-	{.description = "Mali_PP_Broadcast", .base = MALI_OFFSET_PP_BCAST, .irq_name = "IRQPP",},
+-	{.description = "Mali_PMU", .base = MALI_OFFSET_PMU, .irq_name = "IRQPMU",},
++	{.description = "Mali_GP", .base = MALI_OFFSET_GP, .irq_name = "gp",},
++	{.description = "Mali_GP_MMU", .base = MALI_OFFSET_GP_MMU, .irq_name = "gpmmu",},
++	{.description = "Mali_PP0", .base = MALI_OFFSET_PP0, .irq_name = "pp0",},
++	{.description = "Mali_PP0_MMU", .base = MALI_OFFSET_PP0_MMU, .irq_name = "ppmmu0",},
++	{.description = "Mali_PP1", .base = MALI_OFFSET_PP1, .irq_name = "pp1",},
++	{.description = "Mali_PP1_MMU", .base = MALI_OFFSET_PP1_MMU, .irq_name = "ppmmu1",},
++	{.description = "Mali_PP2", .base = MALI_OFFSET_PP2, .irq_name = "pp2",},
++	{.description = "Mali_PP2_MMU", .base = MALI_OFFSET_PP2_MMU, .irq_name = "ppmmu2",},
++	{.description = "Mali_PP3", .base = MALI_OFFSET_PP3, .irq_name = "pp3",},
++	{.description = "Mali_PP3_MMU", .base = MALI_OFFSET_PP3_MMU, .irq_name = "ppmmu3",},
++	{.description = "Mali_PP4", .base = MALI_OFFSET_PP4, .irq_name = "pp4",},
++	{.description = "Mali_PP4_MMU", .base = MALI_OFFSET_PP4_MMU, .irq_name = "ppmmu4",},
++	{.description = "Mali_PP5", .base = MALI_OFFSET_PP5, .irq_name = "pp5",},
++	{.description = "Mali_PP5_MMU", .base = MALI_OFFSET_PP5_MMU, .irq_name = "ppmmu5",},
++	{.description = "Mali_PP6", .base = MALI_OFFSET_PP6, .irq_name = "pp6",},
++	{.description = "Mali_PP6_MMU", .base = MALI_OFFSET_PP6_MMU, .irq_name = "ppmmu6",},
++	{.description = "Mali_PP7", .base = MALI_OFFSET_PP7, .irq_name = "pp7",},
++	{.description = "Mali_PP7_MMU", .base = MALI_OFFSET_PP7_MMU, .irq_name = "ppmmu7",},
++	{.description = "Mali_PP_Broadcast", .base = MALI_OFFSET_PP_BCAST, .irq_name = "pp",},
++	{.description = "Mali_PMU", .base = MALI_OFFSET_PMU, .irq_name = "pmu",},
+ 	{.description = "Mali_L2", .base = MALI_OFFSET_L2_RESOURCE0,},
+ 	{.description = "Mali_L2", .base = MALI_OFFSET_L2_RESOURCE1,},
+ 	{.description = "Mali_L2", .base = MALI_OFFSET_L2_RESOURCE2,},
+@@ -101,13 +101,13 @@ static _mali_osk_resource_t mali_osk_resource_bank[MALI_OSK_MAX_RESOURCE_NUMBER]
+ 	{.description = "Mali_DMA", .base = MALI_OFFSET_DMA,},
+ };
+ 
+-static int _mali_osk_get_compatible_name(const char **out_string)
++static int _mali_osk_device_is_compatible(const char *name)
+ {
+ 	struct device_node *node = mali_platform_device->dev.of_node;
+ 
+ 	MALI_DEBUG_ASSERT(NULL != node);
+ 
+-	return of_property_read_string(node, "compatible", out_string);
++	return of_device_is_compatible(node, name);
+ }
+ 
+ _mali_osk_errcode_t _mali_osk_resource_initialize(void)
+@@ -115,16 +115,13 @@ _mali_osk_errcode_t _mali_osk_resource_initialize(void)
+ 	mali_bool mali_is_450 = MALI_FALSE, mali_is_470 = MALI_FALSE;
+ 	int i, pp_core_num = 0, l2_core_num = 0;
+ 	struct resource *res;
+-	const char *compatible_name = NULL;
+-
+-	if (0 == _mali_osk_get_compatible_name(&compatible_name)) {
+-		if (0 == strncmp(compatible_name, "arm,mali-450", strlen("arm,mali-450"))) {
+-			mali_is_450 = MALI_TRUE;
+-			MALI_DEBUG_PRINT(2, ("mali-450 device tree detected."));
+-		} else if (0 == strncmp(compatible_name, "arm,mali-470", strlen("arm,mali-470"))) {
+-			mali_is_470 = MALI_TRUE;
+-			MALI_DEBUG_PRINT(2, ("mali-470 device tree detected."));
+-		}
++
++	if (_mali_osk_device_is_compatible("arm,mali-450")) {
++		mali_is_450 = MALI_TRUE;
++		MALI_DEBUG_PRINT(2, ("mali-450 device tree detected."));
++	} else if (_mali_osk_device_is_compatible("arm,mali-470")) {
++		mali_is_470 = MALI_TRUE;
++		MALI_DEBUG_PRINT(2, ("mali-470 device tree detected."));
+ 	}
+ 
+ 	for (i = 0; i < MALI_OSK_RESOURCE_WITH_IRQ_NUMBER; i++) {
+diff --git a/driver/src/devicedrv/mali/linux/mali_osk_notification.c b/driver/src/devicedrv/mali/linux/mali_osk_notification.c
+index 401f45a..af79e41 100644
+--- a/driver/src/devicedrv/mali/linux/mali_osk_notification.c
++++ b/driver/src/devicedrv/mali/linux/mali_osk_notification.c
+@@ -56,7 +56,7 @@ _mali_osk_notification_t *_mali_osk_notification_create(u32 type, u32 size)
+ 	/* OPT Recycling of notification objects */
+ 	_mali_osk_notification_wrapper_t *notification;
+ 
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+ 	notification = (_mali_osk_notification_wrapper_t *)kmalloc(sizeof(_mali_osk_notification_wrapper_t) + size,
+ 			GFP_KERNEL | __GFP_HIGH | __GFP_RETRY_MAYFAIL);
+ #else
+diff --git a/driver/src/devicedrv/mali/linux/mali_osk_time.c b/driver/src/devicedrv/mali/linux/mali_osk_time.c
+index 03046a5..dc28ae2 100644
+--- a/driver/src/devicedrv/mali/linux/mali_osk_time.c
++++ b/driver/src/devicedrv/mali/linux/mali_osk_time.c
+@@ -53,7 +53,5 @@ u64 _mali_osk_time_get_ns(void)
+ 
+ u64 _mali_osk_boot_time_get_ns(void)
+ {
+-	struct timespec tsval;
+-	get_monotonic_boottime(&tsval);
+-	return (u64)timespec_to_ns(&tsval);
++	return (u64)ktime_to_ns(ktime_get_boottime());
+ }
+diff --git a/driver/src/devicedrv/mali/linux/mali_osk_timers.c b/driver/src/devicedrv/mali/linux/mali_osk_timers.c
+index 6e8bfe5..c2d07b4 100644
+--- a/driver/src/devicedrv/mali/linux/mali_osk_timers.c
++++ b/driver/src/devicedrv/mali/linux/mali_osk_timers.c
+@@ -18,16 +18,25 @@
+ #include "mali_osk.h"
+ #include "mali_kernel_common.h"
+ 
+-struct _mali_osk_timer_t_struct {
+-	struct timer_list timer;
+-};
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
++
++#define TIMER_DATA_TYPE		unsigned long
++#define TIMER_FUNC_TYPE		void (*)(TIMER_DATA_TYPE)
++
++static inline void timer_setup(struct timer_list *timer,
++			       void (*callback)(struct timer_list *),
++			       unsigned int flags)
++{
++	__setup_timer(timer, (TIMER_FUNC_TYPE)callback,
++		      (TIMER_DATA_TYPE)timer, flags);
++}
++#endif
+ 
+ typedef void (*timer_timeout_function_t)(unsigned long);
+ 
+ _mali_osk_timer_t *_mali_osk_timer_init(void)
+ {
+ 	_mali_osk_timer_t *t = (_mali_osk_timer_t *)kmalloc(sizeof(_mali_osk_timer_t), GFP_KERNEL);
+-	if (NULL != t) init_timer(&t->timer);
+ 	return t;
+ }
+ 
+@@ -65,8 +74,7 @@ mali_bool _mali_osk_timer_pending(_mali_osk_timer_t *tim)
+ void _mali_osk_timer_setcallback(_mali_osk_timer_t *tim, _mali_osk_timer_callback_t callback, void *data)
+ {
+ 	MALI_DEBUG_ASSERT_POINTER(tim);
+-	tim->timer.data = (unsigned long)data;
+-	tim->timer.function = (timer_timeout_function_t)callback;
++	timer_setup(&tim->timer, callback, 0);
+ }
+ 
+ void _mali_osk_timer_term(_mali_osk_timer_t *tim)
+diff --git a/driver/src/devicedrv/mali/linux/mali_ukk_mem.c b/driver/src/devicedrv/mali/linux/mali_ukk_mem.c
+index 4ec57dc..46258cd 100644
+--- a/driver/src/devicedrv/mali/linux/mali_ukk_mem.c
++++ b/driver/src/devicedrv/mali/linux/mali_ukk_mem.c
+@@ -207,8 +207,8 @@ int mem_write_safe_wrapper(struct mali_session_data *session_data, _mali_uk_mem_
+ 	kargs.ctx = (uintptr_t)session_data;
+ 
+ 	/* Check if we can access the buffers */
+-	if (!access_ok(VERIFY_WRITE, kargs.dest, kargs.size)
+-	    || !access_ok(VERIFY_READ, kargs.src, kargs.size)) {
++	if (!access_ok(kargs.dest, kargs.size)
++	    || !access_ok(kargs.src, kargs.size)) {
+ 		return -EINVAL;
+ 	}
+ 
+@@ -266,7 +266,7 @@ int mem_dump_mmu_page_table_wrapper(struct mali_session_data *session_data, _mal
+ 		goto err_exit;
+ 
+ 	user_buffer = (void __user *)(uintptr_t)kargs.buffer;
+-	if (!access_ok(VERIFY_WRITE, user_buffer, kargs.size))
++	if (!access_ok(user_buffer, kargs.size))
+ 		goto err_exit;
+ 
+ 	/* allocate temporary buffer (kernel side) to store mmu page table info */
+diff --git a/driver/src/devicedrv/mali/platform/arm/arm.c b/driver/src/devicedrv/mali/platform/arm/arm.c
+index cba09cd..8d1b41c 100644
+--- a/driver/src/devicedrv/mali/platform/arm/arm.c
++++ b/driver/src/devicedrv/mali/platform/arm/arm.c
+@@ -183,7 +183,8 @@ static struct resource mali_gpu_resources_m400_mp2[] = {
+ static struct thermal_zone_device *gpu_tz;
+ 
+ /* Calculate gpu static power example for reference */
+-static unsigned long arm_model_static_power(unsigned long voltage)
++static unsigned long arm_model_static_power(struct devfreq *devfreq,
++					    unsigned long voltage)
+ {
+ 	int temperature, temp;
+ 	int temp_squared, temp_cubed, temp_scaling_factor;
+@@ -223,7 +224,8 @@ static unsigned long arm_model_static_power(unsigned long voltage)
+ }
+ 
+ /* Calculate gpu dynamic power example for reference */
+-static unsigned long arm_model_dynamic_power(unsigned long freq,
++static unsigned long arm_model_dynamic_power(struct devfreq *devfreq,
++		unsigned long freq,
+ 		unsigned long voltage)
+ {
+ 	/* The inputs: freq (f) is in Hz, and voltage (v) in mV.
+diff --git a/driver/src/devicedrv/mali/platform/rk/rk.c b/driver/src/devicedrv/mali/platform/rk/rk.c
+new file mode 100644
+index 0000000..1ed8a44
+--- /dev/null
++++ b/driver/src/devicedrv/mali/platform/rk/rk.c
+@@ -0,0 +1,648 @@
++/*
++ * (C) COPYRIGHT RockChip Limited. All rights reserved.
++ *
++ * This program is free software and is provided to you under the terms of the
++ * GNU General Public License version 2 as published by the Free Software
++ * Foundation, and any use by you of this program is subject to the terms
++ * of such GNU licence.
++ */
++
++/**
++ * @file rk.c
++ * implementation of platform_specific_code on rk platforms, such as rk3328h.
++ *
++ * mali_device_driver(MDD) includes 2 parts :
++ *	.DP : platform_dependent_part :
++ *		located in <mdd_src_dir>/mali/platform/<platform_name>/
++ *	.DP : common_part :
++ *		common part implemented by ARM.
++ */
++
++#include <linux/platform_device.h>
++#include <linux/version.h>
++#include <linux/pm.h>
++#include <linux/of.h>
++#include <linux/clk.h>
++#include <linux/regulator/consumer.h>
++#ifdef CONFIG_PM
++#include <linux/pm_runtime.h>
++#endif
++#include <linux/workqueue.h>
++#include <linux/dma-mapping.h>
++#include <linux/pm_runtime.h>
++#include <linux/delay.h>
++
++#include <linux/mali/mali_utgard.h>
++#include "mali_kernel_common.h"
++#include "../../common/mali_osk_mali.h"
++
++/*---------------------------------------------------------------------------*/
++
++#define DEFAULT_UTILISATION_PERIOD_IN_MS (100)
++
++/*
++ * rk_platform_context_of_mali_device.
++ */
++struct rk_context {
++	/* mali device. */
++	struct device *dev;
++	/* is the GPU powered on?  */
++	bool is_powered;
++	/* debug only, the period in ms to count gpu_utilisation. */
++	unsigned int utilisation_period;
++};
++
++struct rk_context *s_rk_context;
++
++/*---------------------------------------------------------------------------*/
++
++#ifdef CONFIG_MALI_DEVFREQ
++static ssize_t utilisation_period_show(struct device *dev,
++				       struct device_attribute *attr,
++				       char *buf)
++{
++	struct rk_context *platform = s_rk_context;
++	ssize_t ret = 0;
++
++	ret += snprintf(buf, PAGE_SIZE, "%u\n", platform->utilisation_period);
++
++	return ret;
++}
++
++static ssize_t utilisation_period_store(struct device *dev,
++					struct device_attribute *attr,
++					const char *buf,
++					size_t count)
++{
++	struct rk_context *platform = s_rk_context;
++	int ret = 0;
++
++	ret = kstrtouint(buf, 0, &platform->utilisation_period);
++	if (ret) {
++		//E("invalid input period : %s.", buf);
++		return ret;
++	}
++	//D("set utilisation_period to '%d'.", platform->utilisation_period);
++
++	return count;
++}
++
++static ssize_t utilisation_show(struct device *dev,
++				struct device_attribute *attr,
++				char *buf)
++{
++	struct rk_context *platform = s_rk_context;
++	struct mali_device *mdev = dev_get_drvdata(dev);
++	ssize_t ret = 0;
++	unsigned long period_in_us = platform->utilisation_period * 1000;
++	unsigned long total_time;
++	unsigned long busy_time;
++	unsigned long utilisation;
++
++	mali_pm_reset_dvfs_utilisation(mdev);
++	usleep_range(period_in_us, period_in_us + 100);
++	mali_pm_get_dvfs_utilisation(mdev, &total_time, &busy_time);
++
++	/* 'devfreq_dev_profile' instance registered to devfreq
++	 * also uses mali_pm_reset_dvfs_utilisation()
++	 * and mali_pm_get_dvfs_utilisation().
++	 * So, it's better to disable GPU DVFS before reading this node.
++	 */
++	//D("total_time : %lu, busy_time : %lu.", total_time, busy_time);
++
++	utilisation = busy_time / (total_time / 100);
++	ret += snprintf(buf, PAGE_SIZE, "%lu\n", utilisation);
++
++	return ret;
++}
++
++static DEVICE_ATTR_RW(utilisation_period);
++static DEVICE_ATTR_RO(utilisation);
++#endif
++
++static int rk_context_create_sysfs_files(struct device *dev)
++{
++#ifdef CONFIG_MALI_DEVFREQ
++	int ret;
++
++	ret = device_create_file(dev, &dev_attr_utilisation_period);
++	if (ret) {
++		//E("fail to create sysfs file 'utilisation_period'.");
++		goto out;
++	}
++
++	ret = device_create_file(dev, &dev_attr_utilisation);
++	if (ret) {
++		//E("fail to create sysfs file 'utilisation'.");
++		goto remove_utilisation_period;
++	}
++
++	return 0;
++
++remove_utilisation_period:
++	device_remove_file(dev, &dev_attr_utilisation_period);
++out:
++	return ret;
++#else
++	return 0;
++#endif
++}
++
++static void rk_context_remove_sysfs_files(struct device *dev)
++{
++#ifdef CONFIG_MALI_DEVFREQ
++	device_remove_file(dev, &dev_attr_utilisation_period);
++	device_remove_file(dev, &dev_attr_utilisation);
++#endif
++}
++
++/*---------------------------------------------------------------------------*/
++
++/*
++ * Init rk_platform_context of mali_device.
++ */
++static int rk_context_init(struct platform_device *pdev)
++{
++	int ret = 0;
++	struct device *dev = &pdev->dev;
++	struct rk_context *platform; /* platform_context */
++
++	platform = kzalloc(sizeof(*platform), GFP_KERNEL);
++	if (!platform) {
++		//E("no mem.");
++		return _MALI_OSK_ERR_NOMEM;
++	}
++
++	platform->dev = dev;
++	platform->is_powered = false;
++
++	platform->utilisation_period = DEFAULT_UTILISATION_PERIOD_IN_MS;
++
++	ret = rk_context_create_sysfs_files(dev);
++	if (ret) {
++		//E("fail to create sysfs files, ret = %d", ret);
++		goto EXIT;
++	}
++
++	s_rk_context = platform;
++
++	pm_runtime_set_autosuspend_delay(dev, 1000);
++	pm_runtime_use_autosuspend(dev);
++	pm_runtime_enable(dev);
++
++EXIT:
++	return ret;
++}
++
++static void rk_context_deinit(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct rk_context *platform = s_rk_context;
++
++	pm_runtime_disable(dev);
++
++	s_rk_context = NULL;
++
++	rk_context_remove_sysfs_files(dev);
++
++	if (platform) {
++		platform->is_powered = false;
++		platform->dev = NULL;
++		kfree(platform);
++	}
++}
++
++/*---------------------------------------------------------------------------*/
++/* for devfreq cooling. */
++
++#if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_DEVFREQ_THERMAL)
++
++#define FALLBACK_STATIC_TEMPERATURE 55000
++
++static u32 dynamic_coefficient;
++static u32 static_coefficient;
++static s32 ts[4];
++static struct thermal_zone_device *gpu_tz;
++
++static int power_model_simple_init(struct platform_device *pdev)
++{
++	struct device_node *power_model_node;
++	const char *tz_name;
++	u32 static_power, dynamic_power;
++	u32 voltage, voltage_squared, voltage_cubed, frequency;
++
++	power_model_node = of_get_child_by_name(pdev->dev.of_node,
++			"power_model");
++	if (!power_model_node) {
++		dev_err(&pdev->dev, "could not find power_model node\n");
++		return -ENODEV;
++	}
++	if (!of_device_is_compatible(power_model_node,
++			"arm,mali-simple-power-model")) {
++		dev_err(&pdev->dev, "power_model incompatible with simple power model\n");
++		return -ENODEV;
++	}
++
++	if (of_property_read_string(power_model_node, "thermal-zone",
++			&tz_name)) {
++		dev_err(&pdev->dev, "ts in power_model not available\n");
++		return -EINVAL;
++	}
++
++	gpu_tz = thermal_zone_get_zone_by_name(tz_name);
++	if (IS_ERR(gpu_tz)) {
++		pr_warn_ratelimited("Error getting gpu thermal zone '%s'(%ld), not yet ready?\n",
++				tz_name,
++				PTR_ERR(gpu_tz));
++		gpu_tz = NULL;
++	}
++
++	if (of_property_read_u32(power_model_node, "static-power",
++			&static_power)) {
++		dev_err(&pdev->dev, "static-power in power_model not available\n");
++		return -EINVAL;
++	}
++	if (of_property_read_u32(power_model_node, "dynamic-power",
++			&dynamic_power)) {
++		dev_err(&pdev->dev, "dynamic-power in power_model not available\n");
++		return -EINVAL;
++	}
++	if (of_property_read_u32(power_model_node, "voltage",
++			&voltage)) {
++		dev_err(&pdev->dev, "voltage in power_model not available\n");
++		return -EINVAL;
++	}
++	if (of_property_read_u32(power_model_node, "frequency",
++			&frequency)) {
++		dev_err(&pdev->dev, "frequency in power_model not available\n");
++		return -EINVAL;
++	}
++	voltage_squared = (voltage * voltage) / 1000;
++	voltage_cubed = voltage * voltage * voltage;
++	static_coefficient = (static_power << 20) / (voltage_cubed >> 10);
++	dynamic_coefficient = (((dynamic_power * 1000) / voltage_squared)
++			* 1000) / frequency;
++
++	if (of_property_read_u32_array(power_model_node, "ts", (u32 *)ts, 4)) {
++		dev_err(&pdev->dev, "ts in power_model not available\n");
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++/* Calculate gpu static power example for reference */
++static unsigned long rk_model_static_power(struct devfreq *devfreq,
++					   unsigned long voltage)
++{
++	int temperature, temp;
++	int temp_squared, temp_cubed, temp_scaling_factor;
++	const unsigned long voltage_cubed = (voltage * voltage * voltage) >> 10;
++	unsigned long static_power;
++
++	if (gpu_tz) {
++		int ret;
++
++		ret = gpu_tz->ops->get_temp(gpu_tz, &temperature);
++		if (ret) {
++			MALI_DEBUG_PRINT(2, ("Error reading temperature for gpu thermal zone: %d\n", ret));
++			temperature = FALLBACK_STATIC_TEMPERATURE;
++		}
++	} else {
++		temperature = FALLBACK_STATIC_TEMPERATURE;
++	}
++
++	/* Calculate the temperature scaling factor. To be applied to the
++	 * voltage scaled power.
++	 */
++	temp = temperature / 1000;
++	temp_squared = temp * temp;
++	temp_cubed = temp_squared * temp;
++	temp_scaling_factor =
++			(ts[3] * temp_cubed)
++			+ (ts[2] * temp_squared)
++			+ (ts[1] * temp)
++			+ ts[0];
++
++	static_power = (((static_coefficient * voltage_cubed) >> 20)
++			* temp_scaling_factor)
++		       / 1000000;
++
++	return static_power;
++}
++
++/* Calculate gpu dynamic power example for reference */
++static unsigned long rk_model_dynamic_power(struct devfreq *devfreq,
++					    unsigned long freq,
++					    unsigned long voltage)
++{
++	/* The inputs: freq (f) is in Hz, and voltage (v) in mV.
++	 * The coefficient (c) is in mW/(MHz mV mV).
++	 *
++	 * This function calculates the dynamic power after this formula:
++	 * Pdyn (mW) = c (mW/(MHz*mV*mV)) * v (mV) * v (mV) * f (MHz)
++	 */
++	const unsigned long v2 = (voltage * voltage) / 1000; /* m*(V*V) */
++	const unsigned long f_mhz = freq / 1000000; /* MHz */
++	unsigned long dynamic_power;
++
++	dynamic_power = (dynamic_coefficient * v2 * f_mhz) / 1000000; /* mW */
++
++	return dynamic_power;
++}
++
++struct devfreq_cooling_power rk_cooling_ops = {
++	.get_static_power = rk_model_static_power,
++	.get_dynamic_power = rk_model_dynamic_power,
++};
++#endif
++
++/*---------------------------------------------------------------------------*/
++
++#ifdef CONFIG_PM
++
++static int rk_platform_enable_clk_gpu(struct device *dev)
++{
++	int ret = 0;
++#if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_HAVE_CLK)
++	struct mali_device *mdev = dev_get_drvdata(dev);
++
++	if (mdev->clock)
++		ret = clk_enable(mdev->clock);
++#endif
++	return ret;
++}
++
++static void rk_platform_disable_clk_gpu(struct device *dev)
++{
++#if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_HAVE_CLK)
++	struct mali_device *mdev = dev_get_drvdata(dev);
++
++	if (mdev->clock)
++		clk_disable(mdev->clock);
++#endif
++}
++
++static int rk_platform_enable_gpu_regulator(struct device *dev)
++{
++	int ret = 0;
++#if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_REGULATOR)
++	struct mali_device *mdev = dev_get_drvdata(dev);
++
++	if (mdev->regulator)
++		ret = regulator_enable(mdev->regulator);
++#endif
++	return ret;
++}
++
++static void rk_platform_disable_gpu_regulator(struct device *dev)
++{
++#if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_REGULATOR)
++	struct mali_device *mdev = dev_get_drvdata(dev);
++
++	if (mdev->regulator)
++		regulator_disable(mdev->regulator);
++#endif
++}
++
++static int rk_platform_power_on_gpu(struct device *dev)
++{
++	int ret = 0;
++
++	ret = rk_platform_enable_clk_gpu(dev);
++	if (ret) {
++		//E("fail to enable clk_gpu, ret : %d.", ret);
++		goto fail_to_enable_clk;
++	}
++
++	ret = rk_platform_enable_gpu_regulator(dev);
++	if (ret) {
++		//E("fail to enable vdd_gpu, ret : %d.", ret);
++		goto fail_to_enable_regulator;
++	}
++
++	return 0;
++
++fail_to_enable_regulator:
++	rk_platform_disable_clk_gpu(dev);
++
++fail_to_enable_clk:
++	return ret;
++}
++
++static void rk_platform_power_off_gpu(struct device *dev)
++{
++	rk_platform_disable_clk_gpu(dev);
++	rk_platform_disable_gpu_regulator(dev);
++}
++
++static int mali_runtime_suspend(struct device *device)
++{
++	int ret = 0;
++
++	MALI_DEBUG_PRINT(4, ("mali_runtime_suspend() called\n"));
++
++	if (device->driver &&
++	    device->driver->pm &&
++	    device->driver->pm->runtime_suspend) {
++		/* Need to notify Mali driver about this event */
++		ret = device->driver->pm->runtime_suspend(device);
++	}
++
++	if (!ret)
++		rk_platform_power_off_gpu(device);
++
++	return ret;
++}
++
++static int mali_runtime_resume(struct device *device)
++{
++	int ret = 0;
++
++	MALI_DEBUG_PRINT(4, ("mali_runtime_resume() called\n"));
++
++	rk_platform_power_on_gpu(device);
++
++	if (device->driver &&
++	    device->driver->pm &&
++	    device->driver->pm->runtime_resume) {
++		/* Need to notify Mali driver about this event */
++		ret = device->driver->pm->runtime_resume(device);
++	}
++
++	return ret;
++}
++
++static int mali_runtime_idle(struct device *device)
++{
++	int ret = 0;
++
++	MALI_DEBUG_PRINT(4, ("mali_runtime_idle() called\n"));
++
++	if (device->driver &&
++	    device->driver->pm &&
++	    device->driver->pm->runtime_idle) {
++		/* Need to notify Mali driver about this event */
++		ret = device->driver->pm->runtime_idle(device);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++#endif
++
++static int mali_os_suspend(struct device *device)
++{
++	int ret = 0;
++
++	MALI_DEBUG_PRINT(4, ("mali_os_suspend() called\n"));
++
++	if (device->driver &&
++	    device->driver->pm &&
++	    device->driver->pm->suspend) {
++		/* Need to notify Mali driver about this event */
++		ret = device->driver->pm->suspend(device);
++	}
++
++	if (!ret)
++		rk_platform_power_off_gpu(device);
++
++	return ret;
++}
++
++static int mali_os_resume(struct device *device)
++{
++	int ret = 0;
++
++	MALI_DEBUG_PRINT(4, ("mali_os_resume() called\n"));
++
++	rk_platform_power_on_gpu(device);
++
++	if (device->driver &&
++	    device->driver->pm &&
++	    device->driver->pm->resume) {
++		/* Need to notify Mali driver about this event */
++		ret = device->driver->pm->resume(device);
++	}
++
++	return ret;
++}
++
++static int mali_os_freeze(struct device *device)
++{
++	int ret = 0;
++
++	MALI_DEBUG_PRINT(4, ("mali_os_freeze() called\n"));
++
++	if (device->driver &&
++	    device->driver->pm &&
++	    device->driver->pm->freeze) {
++		/* Need to notify Mali driver about this event */
++		ret = device->driver->pm->freeze(device);
++	}
++
++	return ret;
++}
++
++static int mali_os_thaw(struct device *device)
++{
++	int ret = 0;
++
++	MALI_DEBUG_PRINT(4, ("mali_os_thaw() called\n"));
++
++	if (device->driver &&
++	    device->driver->pm &&
++	    device->driver->pm->thaw) {
++		/* Need to notify Mali driver about this event */
++		ret = device->driver->pm->thaw(device);
++	}
++
++	return ret;
++}
++
++static const struct dev_pm_ops mali_gpu_device_type_pm_ops = {
++	.suspend = mali_os_suspend,
++	.resume = mali_os_resume,
++	.freeze = mali_os_freeze,
++	.thaw = mali_os_thaw,
++#ifdef CONFIG_PM
++	.runtime_suspend = mali_runtime_suspend,
++	.runtime_resume = mali_runtime_resume,
++	.runtime_idle = mali_runtime_idle,
++#endif
++};
++
++static const struct device_type mali_gpu_device_device_type = {
++	.pm = &mali_gpu_device_type_pm_ops,
++};
++
++/*
++ * platform_specific_data of platform_device of mali_gpu.
++ */
++static const struct mali_gpu_device_data mali_gpu_data = {
++	.shared_mem_size = 256 * 1024 * 1024, /* 256MB */
++	.max_job_runtime = 60000, /* 60 seconds */
++#if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_DEVFREQ_THERMAL)
++	.gpu_cooling_ops = &rk_cooling_ops,
++#endif
++};
++
++static void mali_platform_device_add_config(struct platform_device *pdev)
++{
++	pdev->name = MALI_GPU_NAME_UTGARD;
++	pdev->id = 0;
++	pdev->dev.type = &mali_gpu_device_device_type;
++	pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
++	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
++}
++
++/*---------------------------------------------------------------------------*/
++/* platform_device_functions called by common_part. */
++
++int mali_platform_device_init(struct platform_device *pdev)
++{
++	int err = 0;
++
++	mali_platform_device_add_config(pdev);
++
++	//D("to add platform_specific_data to platform_device_of_mali.");
++	err = platform_device_add_data(pdev,
++				       &mali_gpu_data,
++				       sizeof(mali_gpu_data));
++	if (err) {
++		//E("fail to add platform_specific_data. err : %d.", err);
++		goto add_data_failed;
++	}
++
++	err = rk_context_init(pdev);
++	if (err) {
++		//E("fail to init rk_context. err : %d.", err);
++		goto init_rk_context_failed;
++	}
++
++#if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_DEVFREQ_THERMAL)
++	err = power_model_simple_init(pdev);
++	if (err) {
++		//E("fail to init simple_power_model, err : %d.", err);
++		goto init_power_model_failed;
++	}
++#endif
++
++	return 0;
++
++#if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_DEVFREQ_THERMAL)
++init_power_model_failed:
++	rk_context_deinit(pdev);
++#endif
++init_rk_context_failed:
++add_data_failed:
++	return err;
++}
++
++void mali_platform_device_deinit(struct platform_device *pdev)
++{
++	MALI_DEBUG_PRINT(4, ("mali_platform_device_unregister() called\n"));
++
++	rk_context_deinit(pdev);
++}

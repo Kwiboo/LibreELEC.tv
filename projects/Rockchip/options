@@ -8,6 +8,9 @@
   # Kernel extra targets to build
     KERNEL_UBOOT_EXTRA_TARGET=""
 
+  # Additional kernel dependencies
+    KERNEL_EXTRA_DEPENDS_TARGET="lz4:host"
+
   # Kernel to use. values can be:
   # default:  default mainline kernel
     LINUX="${LINUX:-rockchip-4.4}"
@@ -50,7 +53,9 @@
     GRAPHIC_DRIVERS=""
 
   # Use a vendor specific KODI repo
-    KODI_VENDOR="rockchip"
+    if [ "$LINUX" = "rockchip-4.4" ]; then
+      KODI_VENDOR="rockchip"
+    fi
 
   # KODI Player implementation to use (default / bcm2835-driver / libfslvpuwrap)
     KODIPLAYER_DRIVER="$OPENGLES"
@@ -84,7 +89,9 @@
   # driver addons to install:
   # for a list of additinoal drivers see packages/linux-driver-addons
   # Space separated list is supported,
-    DRIVER_ADDONS="crazycat dvb-latest"
+    if [ "$LINUX" = "rockchip-4.4" ]; then
+      DRIVER_ADDONS="crazycat dvb-latest"
+    fi
 
   # debug tty path
     DEBUG_TTY="/dev/ttyS2"

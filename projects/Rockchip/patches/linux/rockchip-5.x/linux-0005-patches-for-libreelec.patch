@@ -1,0 +1,492 @@
+From cd4bb25283dad1be00c8b11090279ef6387344b5 Mon Sep 17 00:00:00 2001
+From: William Wu <william.wu@rock-chips.com>
+Date: Mon, 4 Dec 2017 10:40:38 +0100
+Subject: [PATCH] dt-bindings: usb: add DT binding for RK3328 dwc3 controller
+
+Adds the device tree bindings description for RK3328 and
+compatible USB DWC3 controller.
+
+Signed-off-by: William Wu <william.wu@rock-chips.com>
+Acked-by: Rob Herring <robh@kernel.org>
+Acked-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+---
+ Documentation/devicetree/bindings/usb/rockchip,dwc3.txt | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/usb/rockchip,dwc3.txt b/Documentation/devicetree/bindings/usb/rockchip,dwc3.txt
+index c8c4b00ecb94..4ca357835a48 100644
+--- a/Documentation/devicetree/bindings/usb/rockchip,dwc3.txt
++++ b/Documentation/devicetree/bindings/usb/rockchip,dwc3.txt
+@@ -1,7 +1,9 @@
+ Rockchip SuperSpeed DWC3 USB SoC controller
+ 
+ Required properties:
+-- compatible:	should contain "rockchip,rk3399-dwc3" for rk3399 SoC
++- compatible:	should be one of the following:
++  - "rockchip,rk3399-dwc3": for rk3399 SoC
++  - "rockchip,rk3328-dwc3", "rockchip,rk3399-dwc3": for rk3328 SoC
+ - clocks:	A list of phandle + clock-specifier pairs for the
+ 		clocks listed in clock-names
+ - clock-names:	Should contain the following:
+
+From d133a76f24c3a2976ee67dc68a6129392741d9ec Mon Sep 17 00:00:00 2001
+From: William Wu <william.wu@rock-chips.com>
+Date: Mon, 4 Dec 2017 10:40:39 +0100
+Subject: [PATCH] arm64: dts: rockchip: add usb3 controller node for RK3328
+ SoCs
+
+RK3328 has one USB 3.0 OTG controller which uses DWC_USB3
+core's general architecture. It can act as static xHCI host
+controller, static device controller, USB 3.0/2.0 OTG basing
+on ID of USB3.0 PHY.
+
+Signed-off-by: William Wu <william.wu@rock-chips.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+---
+ arch/arm64/boot/dts/rockchip/rk3328.dtsi | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328.dtsi b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+index f82e43ec247a..31440c022d75 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+@@ -927,6 +927,33 @@
+ 		status = "disabled";
+ 	};
+ 
++	usbdrd3: usb@ff600000 {
++		compatible = "rockchip,rk3328-dwc3", "rockchip,rk3399-dwc3";
++		clocks = <&cru SCLK_USB3OTG_REF>, <&cru SCLK_USB3OTG_SUSPEND>,
++			 <&cru ACLK_USB3OTG>;
++		clock-names = "ref_clk", "suspend_clk",
++			      "bus_clk";
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++		status = "disabled";
++
++		usbdrd_dwc3: dwc3@ff600000 {
++			compatible = "snps,dwc3";
++			reg = <0x0 0xff600000 0x0 0x100000>;
++			interrupts = <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
++			dr_mode = "otg";
++			phy_type = "utmi_wide";
++			snps,dis_enblslpm_quirk;
++			snps,dis-u2-freeclk-exists-quirk;
++			snps,dis_u2_susphy_quirk;
++			snps,dis_u3_susphy_quirk;
++			snps,dis-del-phy-power-chg-quirk;
++			snps,dis-tx-ipgap-linecheck-quirk;
++			status = "disabled";
++		};
++	};
++
+ 	gic: interrupt-controller@ff811000 {
+ 		compatible = "arm,gic-400";
+ 		#interrupt-cells = <3>;
+
+From 81da93143f835171482cdd22158640856a1d255b Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko@sntech.de>
+Date: Mon, 4 Dec 2017 10:40:41 +0100
+Subject: [PATCH] arm64: dts: rockchip: enable usb3 nodes on rk3328-rock64
+
+Enable the nodes to make the usb3 port usable on that board.
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index 23ab61d59c0d..6310e185f3c7 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -399,6 +399,15 @@
+ 	status = "okay";
+ };
+ 
++&usbdrd3 {
++	status = "okay";
++};
++
++&usbdrd_dwc3 {
++	dr_mode = "host";
++	status = "okay";
++};
++
+ &vop {
+ 	status = "okay";
+ };
+
+From 6e38fdbe80a7be8462d9cb0cd54d24461c948ac6 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Tue, 12 Mar 2019 19:42:03 +0000
+Subject: [PATCH] arm64: dts: rockchip: enable usb3 nodes on rk3328-roc-cc
+
+Enable the nodes to make the usb3 port usable on that board.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index e4f22964e735..59e76164f6a5 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -414,6 +414,15 @@
+ 	status = "okay";
+ };
+ 
++&usbdrd3 {
++	status = "okay";
++};
++
++&usbdrd_dwc3 {
++	dr_mode = "host";
++	status = "okay";
++};
++
+ &vop {
+ 	status = "okay";
+ };
+
+From 3c2bfc9cde07d9679f5c815bdf38a992002dcb92 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Thu, 7 Feb 2019 22:03:15 +0000
+Subject: [PATCH] HACK: ARM: dts: rockchip: disable vopl node on rk3288
+
+---
+ arch/arm/boot/dts/rk3288-miqi.dts    | 8 --------
+ arch/arm/boot/dts/rk3288-tinker.dtsi | 8 --------
+ 2 files changed, 16 deletions(-)
+
+diff --git a/arch/arm/boot/dts/rk3288-miqi.dts b/arch/arm/boot/dts/rk3288-miqi.dts
+index c41d012c8850..f57d3b2dbe15 100644
+--- a/arch/arm/boot/dts/rk3288-miqi.dts
++++ b/arch/arm/boot/dts/rk3288-miqi.dts
+@@ -411,14 +411,6 @@
+ 	status = "okay";
+ };
+ 
+-&vopl {
+-	status = "okay";
+-};
+-
+-&vopl_mmu {
+-	status = "okay";
+-};
+-
+ &wdt {
+ 	status = "okay";
+ };
+diff --git a/arch/arm/boot/dts/rk3288-tinker.dtsi b/arch/arm/boot/dts/rk3288-tinker.dtsi
+index f22eb8a49da5..eb7a73cc7245 100644
+--- a/arch/arm/boot/dts/rk3288-tinker.dtsi
++++ b/arch/arm/boot/dts/rk3288-tinker.dtsi
+@@ -531,14 +531,6 @@
+ 	status = "okay";
+ };
+ 
+-&vopl {
+-	status = "okay";
+-};
+-
+-&vopl_mmu {
+-	status = "okay";
+-};
+-
+ &wdt {
+ 	status = "okay";
+ };
+
+From f95232aa0ac1b621ddcdbba17562736f2805616b Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 15 Apr 2019 05:06:50 +0000
+Subject: [PATCH] HACK: arm64: dts: rockchip: disable vopl node on rk3399
+
+---
+ arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi  | 8 --------
+ arch/arm64/boot/dts/rockchip/rk3399-orangepi.dts  | 8 --------
+ arch/arm64/boot/dts/rockchip/rk3399-roc-pc.dts    | 8 --------
+ arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts | 8 --------
+ arch/arm64/boot/dts/rockchip/rk3399-rock960.dtsi  | 8 --------
+ arch/arm64/boot/dts/rockchip/rk3399-rockpro64.dts | 8 --------
+ arch/arm64/boot/dts/rockchip/rk3399-sapphire.dtsi | 8 --------
+ 7 files changed, 56 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi b/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi
+index 5faff43d2d57..2d443ef87895 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi
+@@ -724,11 +724,3 @@
+ &vopb_mmu {
+ 	status = "okay";
+ };
+-
+-&vopl {
+-	status = "okay";
+-};
+-
+-&vopl_mmu {
+-	status = "okay";
+-};
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-orangepi.dts b/arch/arm64/boot/dts/rockchip/rk3399-orangepi.dts
+index 6b0034b72300..0aec59ba9d77 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-orangepi.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3399-orangepi.dts
+@@ -784,11 +784,3 @@
+ &vopb_mmu {
+ 	status = "okay";
+ };
+-
+-&vopl {
+-	status = "okay";
+-};
+-
+-&vopl_mmu {
+-	status = "okay";
+-};
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-roc-pc.dts b/arch/arm64/boot/dts/rockchip/rk3399-roc-pc.dts
+index 8af27b36737d..1e6bc9e57118 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-roc-pc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3399-roc-pc.dts
+@@ -679,11 +679,3 @@
+ &vopb_mmu {
+ 	status = "okay";
+ };
+-
+-&vopl {
+-	status = "okay";
+-};
+-
+-&vopl_mmu {
+-	status = "okay";
+-};
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts b/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts
+index 83bafd7fb9d2..3595c456d416 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts
+@@ -611,11 +611,3 @@
+ &vopb_mmu {
+ 	status = "okay";
+ };
+-
+-&vopl {
+-	status = "okay";
+-};
+-
+-&vopl_mmu {
+-	status = "okay";
+-};
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-rock960.dtsi b/arch/arm64/boot/dts/rockchip/rk3399-rock960.dtsi
+index c7d48d41e184..638421471133 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-rock960.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3399-rock960.dtsi
+@@ -643,11 +643,3 @@
+ &vopb_mmu {
+ 	status = "okay";
+ };
+-
+-&vopl {
+-	status = "okay";
+-};
+-
+-&vopl_mmu {
+-	status = "okay";
+-};
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-rockpro64.dts b/arch/arm64/boot/dts/rockchip/rk3399-rockpro64.dts
+index 20ec7d1c25d7..e5991d7de440 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-rockpro64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3399-rockpro64.dts
+@@ -706,11 +706,3 @@
+ &vopb_mmu {
+ 	status = "okay";
+ };
+-
+-&vopl {
+-	status = "okay";
+-};
+-
+-&vopl_mmu {
+-	status = "okay";
+-};
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-sapphire.dtsi b/arch/arm64/boot/dts/rockchip/rk3399-sapphire.dtsi
+index 04623e52ac5d..227571b36277 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-sapphire.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3399-sapphire.dtsi
+@@ -639,11 +639,3 @@
+ &vopb_mmu {
+ 	status = "okay";
+ };
+-
+-&vopl {
+-	status = "okay";
+-};
+-
+-&vopl_mmu {
+-	status = "okay";
+-};
+
+From d6d9adce67699d26ad2b7672bf2cd0f9496fa733 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Thu, 7 Feb 2019 22:03:38 +0000
+Subject: [PATCH] HACK: ARM: dts: rockchip: rename hdmi sound card on
+ rk3288-tinker
+
+---
+ arch/arm/boot/dts/rk3288-tinker.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/rk3288-tinker.dtsi b/arch/arm/boot/dts/rk3288-tinker.dtsi
+index eb7a73cc7245..60c19b23c576 100644
+--- a/arch/arm/boot/dts/rk3288-tinker.dtsi
++++ b/arch/arm/boot/dts/rk3288-tinker.dtsi
+@@ -75,7 +75,7 @@
+ 	sound {
+ 		compatible = "simple-audio-card";
+ 		simple-audio-card,format = "i2s";
+-		simple-audio-card,name = "rockchip,tinker-codec";
++		simple-audio-card,name = "HDMI";
+ 		simple-audio-card,mclk-fs = <512>;
+ 
+ 		simple-audio-card,codec {
+
+From c18f8d8d7e33c938a4823dcbe1e2b077b1a08c4f Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 14 Apr 2019 21:16:31 +0000
+Subject: [PATCH] HACK: arm64: dts: rockchip: rename hdmi sound card on rk3399
+
+---
+ arch/arm64/boot/dts/rockchip/rk3399.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399.dtsi b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
+index 39591c755f72..bcaf42732bd7 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
+@@ -1729,7 +1729,7 @@
+ 		compatible = "simple-audio-card";
+ 		simple-audio-card,format = "i2s";
+ 		simple-audio-card,mclk-fs = <256>;
+-		simple-audio-card,name = "hdmi-sound";
++		simple-audio-card,name = "HDMI";
+ 		status = "disabled";
+ 
+ 		simple-audio-card,cpu {
+
+From 7663aeb31fd2865f89682f8155562816160474ce Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 21 Apr 2019 09:26:23 +0000
+Subject: [PATCH] HACK: arm64: dts: rockchip: split sound node on rk3328-rock64
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index 6310e185f3c7..273edf4e44b3 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -73,12 +73,22 @@
+ 		};
+ 	};
+ 
++	hdmi-sound {
++		compatible = "audio-graph-card";
++		label = "HDMI";
++		dais = <&i2s0_p0>;
++	};
++
+ 	sound {
+ 		compatible = "audio-graph-card";
+-		label = "rockchip,rk3328";
+-		dais = <&i2s0_p0
+-			&i2s1_p0
+-			&spdif_p0>;
++		label = "I2S";
++		dais = <&i2s1_p0>;
++	};
++
++	spdif-sound {
++		compatible = "audio-graph-card";
++		label = "SPDIF";
++		dais = <&spdif_p0>;
+ 	};
+ 
+ 	spdif-dit {
+
+From 75802be6f92ec1bf032d43e68d600bf43e9c2516 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 21 Apr 2019 10:38:26 +0000
+Subject: [PATCH] HACK: arm64: dts: rockchip: split sound node on rk3328-roc-cc
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+index 59e76164f6a5..9d6986ae5fce 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-roc-cc.dts
+@@ -99,12 +99,22 @@
+ 		};
+ 	};
+ 
++	hdmi-sound {
++		compatible = "audio-graph-card";
++		label = "HDMI";
++		dais = <&i2s0_p0>;
++	};
++
+ 	sound {
+ 		compatible = "audio-graph-card";
+-		label = "rockchip,rk3328";
+-		dais = <&i2s0_p0
+-			&i2s1_p0
+-			&spdif_p0>;
++		label = "I2S";
++		dais = <&i2s1_p0>;
++	};
++
++	spdif-sound {
++		compatible = "audio-graph-card";
++		label = "SPDIF";
++		dais = <&spdif_p0>;
+ 	};
+ 
+ 	spdif-dit {
+
+From c14f795c6dafd6de33e53b073fca3780ff79d5ca Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Mar 2018 17:47:26 +0200
+Subject: [PATCH] HACK: drm/bridge/synopsys: dw-hdmi: use underscan and full
+ range
+
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index f4de27238aa7..17e7b6bb1f1b 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -1497,7 +1497,7 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
+ 		break;
+ 	}
+ 
+-	frame.scan_mode = HDMI_SCAN_MODE_NONE;
++	frame.scan_mode = HDMI_SCAN_MODE_UNDERSCAN;
+ 
+ 	/*
+ 	 * The Designware IP uses a different byte format from standard
+@@ -1525,6 +1525,8 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
+ 	      (frame.active_aspect & 0xf);
+ 	hdmi_writeb(hdmi, val, HDMI_FC_AVICONF1);
+ 
++	frame.quantization_range = HDMI_QUANTIZATION_RANGE_FULL;
++
+ 	/* AVI data byte 3 differences: none */
+ 	val = ((frame.extended_colorimetry & 0x7) << 4) |
+ 	      ((frame.quantization_range & 0x3) << 2) |

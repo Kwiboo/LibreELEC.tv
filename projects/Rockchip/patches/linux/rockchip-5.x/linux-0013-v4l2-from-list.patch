@@ -1,0 +1,5555 @@
+diff --git a/Documentation/media/uapi/v4l/biblio.rst b/Documentation/media/uapi/v4l/biblio.rst
+index ec33768c055e..8f4eb8823d82 100644
+--- a/Documentation/media/uapi/v4l/biblio.rst
++++ b/Documentation/media/uapi/v4l/biblio.rst
+@@ -122,6 +122,15 @@ ITU BT.1119
+ 
+ :author:    International Telecommunication Union (http://www.itu.ch)
+ 
++.. _h264:
++
++ITU-T Rec. H.264 Specification (04/2017 Edition)
++================================================
++
++:title:     ITU-T Recommendation H.264 "Advanced Video Coding for Generic Audiovisual Services"
++
++:author:    International Telecommunication Union (http://www.itu.ch)
++
+ .. _jfif:
+ 
+ JFIF
+diff --git a/Documentation/media/uapi/v4l/ext-ctrls-codec.rst b/Documentation/media/uapi/v4l/ext-ctrls-codec.rst
+index 4a8446203085..945bf3b6118a 100644
+--- a/Documentation/media/uapi/v4l/ext-ctrls-codec.rst
++++ b/Documentation/media/uapi/v4l/ext-ctrls-codec.rst
+@@ -1395,6 +1395,575 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type -
+       - Layer number
+ 
+ 
++.. _v4l2-mpeg-h264:
++
++``V4L2_CID_MPEG_VIDEO_H264_SPS (struct)``
++    Specifies the sequence parameter set (as extracted from the
++    bitstream) for the associated H264 slice data. This includes the
++    necessary parameters for configuring a stateless hardware decoding
++    pipeline for H264. The bitstream parameters are defined according
++    to :ref:`h264`, section 7.4.2.1.1 "Sequence Parameter Set Data
++    Semantics". For further documentation, refer to the above
++    specification, unless there is an explicit comment stating
++    otherwise.
++
++    .. note::
++
++       This compound control is not yet part of the public kernel API and
++       it is expected to change.
++
++.. c:type:: v4l2_ctrl_h264_sps
++
++.. cssclass:: longtable
++
++.. flat-table:: struct v4l2_ctrl_h264_sps
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - __u8
++      - ``profile_idc``
++      -
++    * - __u8
++      - ``constraint_set_flags``
++      - See :ref:`Sequence Parameter Set Constraints Set Flags <h264_sps_constraints_set_flags>`
++    * - __u8
++      - ``level_idc``
++      -
++    * - __u8
++      - ``seq_parameter_set_id``
++      -
++    * - __u8
++      - ``chroma_format_idc``
++      -
++    * - __u8
++      - ``bit_depth_luma_minus8``
++      -
++    * - __u8
++      - ``bit_depth_chroma_minus8``
++      -
++    * - __u8
++      - ``log2_max_frame_num_minus4``
++      -
++    * - __u8
++      - ``pic_order_cnt_type``
++      -
++    * - __u8
++      - ``log2_max_pic_order_cnt_lsb_minus4``
++      -
++    * - __u8
++      - ``max_num_ref_frames``
++      -
++    * - __u8
++      - ``num_ref_frames_in_pic_order_cnt_cycle``
++      -
++    * - __s32
++      - ``offset_for_ref_frame[255]``
++      -
++    * - __s32
++      - ``offset_for_non_ref_pic``
++      -
++    * - __s32
++      - ``offset_for_top_to_bottom_field``
++      -
++    * - __u16
++      - ``pic_width_in_mbs_minus1``
++      -
++    * - __u16
++      - ``pic_height_in_map_units_minus1``
++      -
++    * - __u32
++      - ``flags``
++      - See :ref:`Sequence Parameter Set Flags <h264_sps_flags>`
++
++.. _h264_sps_constraints_set_flags:
++
++``Sequence Parameter Set Constraints Set Flags``
++
++.. cssclass:: longtable
++
++.. flat-table::
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - ``V4L2_H264_SPS_CONSTRAINT_SET0_FLAG``
++      - 0x00000001
++      -
++    * - ``V4L2_H264_SPS_CONSTRAINT_SET1_FLAG``
++      - 0x00000002
++      -
++    * - ``V4L2_H264_SPS_CONSTRAINT_SET2_FLAG``
++      - 0x00000004
++      -
++    * - ``V4L2_H264_SPS_CONSTRAINT_SET3_FLAG``
++      - 0x00000008
++      -
++    * - ``V4L2_H264_SPS_CONSTRAINT_SET4_FLAG``
++      - 0x00000010
++      -
++    * - ``V4L2_H264_SPS_CONSTRAINT_SET5_FLAG``
++      - 0x00000020
++      -
++
++.. _h264_sps_flags:
++
++``Sequence Parameter Set Flags``
++
++.. cssclass:: longtable
++
++.. flat-table::
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - ``V4L2_H264_SPS_FLAG_SEPARATE_COLOUR_PLANE``
++      - 0x00000001
++      -
++    * - ``V4L2_H264_SPS_FLAG_QPPRIME_Y_ZERO_TRANSFORM_BYPASS``
++      - 0x00000002
++      -
++    * - ``V4L2_H264_SPS_FLAG_DELTA_PIC_ORDER_ALWAYS_ZERO``
++      - 0x00000004
++      -
++    * - ``V4L2_H264_SPS_FLAG_GAPS_IN_FRAME_NUM_VALUE_ALLOWED``
++      - 0x00000008
++      -
++    * - ``V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY``
++      - 0x00000010
++      -
++    * - ``V4L2_H264_SPS_FLAG_MB_ADAPTIVE_FRAME_FIELD``
++      - 0x00000020
++      -
++    * - ``V4L2_H264_SPS_FLAG_DIRECT_8X8_INFERENCE``
++      - 0x00000040
++      -
++
++``V4L2_CID_MPEG_VIDEO_H264_PPS (struct)``
++    Specifies the picture parameter set (as extracted from the
++    bitstream) for the associated H264 slice data. This includes the
++    necessary parameters for configuring a stateless hardware decoding
++    pipeline for H264.  The bitstream parameters are defined according
++    to :ref:`h264`, section 7.4.2.2 "Picture Parameter Set RBSP
++    Semantics". For further documentation, refer to the above
++    specification, unless there is an explicit comment stating
++    otherwise.
++
++    .. note::
++
++       This compound control is not yet part of the public kernel API and
++       it is expected to change.
++
++.. c:type:: v4l2_ctrl_h264_pps
++
++.. cssclass:: longtable
++
++.. flat-table:: struct v4l2_ctrl_h264_pps
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - __u8
++      - ``pic_parameter_set_id``
++      -
++    * - __u8
++      - ``seq_parameter_set_id``
++      -
++    * - __u8
++      - ``num_slice_groups_minus1``
++      -
++    * - __u8
++      - ``num_ref_idx_l0_default_active_minus1``
++      -
++    * - __u8
++      - ``num_ref_idx_l1_default_active_minus1``
++      -
++    * - __u8
++      - ``weighted_bipred_idc``
++      -
++    * - __s8
++      - ``pic_init_qp_minus26``
++      -
++    * - __s8
++      - ``pic_init_qs_minus26``
++      -
++    * - __s8
++      - ``chroma_qp_index_offset``
++      -
++    * - __s8
++      - ``second_chroma_qp_index_offset``
++      -
++    * - __u16
++      - ``flags``
++      - See :ref:`Picture Parameter Set Flags <h264_pps_flags>`
++
++.. _h264_pps_flags:
++
++``Picture Parameter Set Flags``
++
++.. cssclass:: longtable
++
++.. flat-table::
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - ``V4L2_H264_PPS_FLAG_ENTROPY_CODING_MODE``
++      - 0x00000001
++      -
++    * - ``V4L2_H264_PPS_FLAG_BOTTOM_FIELD_PIC_ORDER_IN_FRAME_PRESENT``
++      - 0x00000002
++      -
++    * - ``V4L2_H264_PPS_FLAG_WEIGHTED_PRED``
++      - 0x00000004
++      -
++    * - ``V4L2_H264_PPS_FLAG_DEBLOCKING_FILTER_CONTROL_PRESENT``
++      - 0x00000008
++      -
++    * - ``V4L2_H264_PPS_FLAG_CONSTRAINED_INTRA_PRED``
++      - 0x00000010
++      -
++    * - ``V4L2_H264_PPS_FLAG_REDUNDANT_PIC_CNT_PRESENT``
++      - 0x00000020
++      -
++    * - ``V4L2_H264_PPS_FLAG_TRANSFORM_8X8_MODE``
++      - 0x00000040
++      -
++    * - ``V4L2_H264_PPS_FLAG_PIC_SCALING_MATRIX_PRESENT``
++      - 0x00000080
++      -
++
++``V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX (struct)``
++    Specifies the scaling matrix (as extracted from the bitstream) for
++    the associated H264 slice data. The bitstream parameters are
++    defined according to :ref:`h264`, section 7.4.2.1.1.1 "Scaling
++    List Semantics".For further documentation, refer to the above
++    specification, unless there is an explicit comment stating
++    otherwise.
++
++    .. note::
++
++       This compound control is not yet part of the public kernel API and
++       it is expected to change.
++
++.. c:type:: v4l2_ctrl_h264_scaling_matrix
++
++.. cssclass:: longtable
++
++.. flat-table:: struct v4l2_ctrl_h264_scaling_matrix
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - __u8
++      - ``scaling_list_4x4[6][16]``
++      -
++    * - __u8
++      - ``scaling_list_8x8[6][64]``
++      -
++
++``V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS (struct)``
++    Specifies the slice parameters (as extracted from the bitstream)
++    for the associated H264 slice data. This includes the necessary
++    parameters for configuring a stateless hardware decoding pipeline
++    for H264.  The bitstream parameters are defined according to
++    :ref:`h264`, section 7.4.3 "Slice Header Semantics". For further
++    documentation, refer to the above specification, unless there is
++    an explicit comment stating otherwise.
++
++    .. note::
++
++       This compound control is not yet part of the public kernel API
++       and it is expected to change.
++
++       This structure is expected to be passed as an array, with one
++       entry for each slice included in the bitstream buffer.
++
++.. c:type:: v4l2_ctrl_h264_slice_params
++
++.. cssclass:: longtable
++
++.. flat-table:: struct v4l2_ctrl_h264_slice_params
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - __u32
++      - ``size``
++      -
++    * - __u32
++      - ``header_bit_size``
++      -
++    * - __u16
++      - ``first_mb_in_slice``
++      -
++    * - __u8
++      - ``slice_type``
++      -
++    * - __u8
++      - ``pic_parameter_set_id``
++      -
++    * - __u8
++      - ``colour_plane_id``
++      -
++    * - __u8
++      - ``redundant_pic_cnt``
++      -
++    * - __u16
++      - ``frame_num``
++      -
++    * - __u16
++      - ``idr_pic_id``
++      -
++    * - __u16
++      - ``pic_order_cnt_lsb``
++      -
++    * - __s32
++      - ``delta_pic_order_cnt_bottom``
++      -
++    * - __s32
++      - ``delta_pic_order_cnt0``
++      -
++    * - __s32
++      - ``delta_pic_order_cnt1``
++      -
++    * - struct :c:type:`v4l2_h264_pred_weight_table`
++      - ``pred_weight_table``
++      -
++    * - __u32
++      - ``dec_ref_pic_marking_bit_size``
++      -
++    * - __u32
++      - ``pic_order_cnt_bit_size``
++      -
++    * - __u8
++      - ``cabac_init_idc``
++      -
++    * - __s8
++      - ``slice_qp_delta``
++      -
++    * - __s8
++      - ``slice_qs_delta``
++      -
++    * - __u8
++      - ``disable_deblocking_filter_idc``
++      -
++    * - __s8
++      - ``slice_alpha_c0_offset_div2``
++      -
++    * - __s8
++      - ``slice_beta_offset_div2``
++      -
++    * - __u8
++      - ``num_ref_idx_l0_active_minus1``
++      -
++    * - __u8
++      - ``num_ref_idx_l1_active_minus1``
++      -
++    * - __u32
++      - ``slice_group_change_cycle``
++      -
++    * - __u8
++      - ``ref_pic_list0[32]``
++      - Reference picture list after applying the per-slice modifications
++    * - __u8
++      - ``ref_pic_list1[32]``
++      - Reference picture list after applying the per-slice modifications
++    * - __u32
++      - ``flags``
++      - See :ref:`Slice Parameter Flags <h264_slice_flags>`
++
++.. _h264_slice_flags:
++
++``Slice Parameter Set Flags``
++
++.. cssclass:: longtable
++
++.. flat-table::
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - ``V4L2_H264_SLICE_FLAG_FIELD_PIC``
++      - 0x00000001
++      -
++    * - ``V4L2_H264_SLICE_FLAG_BOTTOM_FIELD``
++      - 0x00000002
++      -
++    * - ``V4L2_H264_SLICE_FLAG_DIRECT_SPATIAL_MV_PRED``
++      - 0x00000004
++      -
++    * - ``V4L2_H264_SLICE_FLAG_SP_FOR_SWITCH``
++      - 0x00000008
++      -
++
++``Prediction Weight Table``
++
++    The bitstream parameters are defined according to :ref:`h264`,
++    section 7.4.3.2 "Prediction Weight Table Semantics". For further
++    documentation, refer to the above specification, unless there is
++    an explicit comment stating otherwise.
++
++.. c:type:: v4l2_h264_pred_weight_table
++
++.. cssclass:: longtable
++
++.. flat-table:: struct v4l2_h264_pred_weight_table
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - __u16
++      - ``luma_log2_weight_denom``
++      -
++    * - __u16
++      - ``chroma_log2_weight_denom``
++      -
++    * - struct :c:type:`v4l2_h264_weight_factors`
++      - ``weight_factors[2]``
++      - The weight factors at index 0 are the weight factors for the reference
++        list 0, the one at index 1 for the reference list 1.
++
++.. c:type:: v4l2_h264_weight_factors
++
++.. cssclass:: longtable
++
++.. flat-table:: struct v4l2_h264_weight_factors
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - __s16
++      - ``luma_weight[32]``
++      -
++    * - __s16
++      - ``luma_offset[32]``
++      -
++    * - __s16
++      - ``chroma_weight[32][2]``
++      -
++    * - __s16
++      - ``chroma_offset[32][2]``
++      -
++
++``V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS (struct)``
++    Specifies the decode parameters (as extracted from the bitstream)
++    for the associated H264 slice data. This includes the necessary
++    parameters for configuring a stateless hardware decoding pipeline
++    for H264. The bitstream parameters are defined according to
++    :ref:`h264`. For further documentation, refer to the above
++    specification, unless there is an explicit comment stating
++    otherwise.
++
++    .. note::
++
++       This compound control is not yet part of the public kernel API and
++       it is expected to change.
++
++.. c:type:: v4l2_ctrl_h264_decode_params
++
++.. cssclass:: longtable
++
++.. flat-table:: struct v4l2_ctrl_h264_decode_params
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - __u32
++      - ``num_slices``
++      - Number of slices needed to decode the current frame
++    * - __u32
++      - ``nal_ref_idc``
++      - NAL reference ID value coming from the NAL Unit header
++    * - __u8
++      - ``ref_pic_list_p0[32]``
++      - Backward reference list used by P-frames in the original bitstream order
++    * - __u8
++      - ``ref_pic_list_b0[32]``
++      - Backward reference list used by B-frames in the original bitstream order
++    * - __u8
++      - ``ref_pic_list_b1[32]``
++      - Forward reference list used by B-frames in the original bitstream order
++    * - __s32
++      - ``top_field_order_cnt``
++      - Picture Order Count for the coded top field
++    * - __s32
++      - ``bottom_field_order_cnt``
++      - Picture Order Count for the coded bottom field
++    * - __u32
++      - ``flags``
++      - See :ref:`Decode Parameters Flags <h264_decode_params_flags>`
++    * - struct :c:type:`v4l2_h264_dpb_entry`
++      - ``dpb[16]``
++      -
++
++.. _h264_decode_params_flags:
++
++``Decode Parameters Flags``
++
++.. cssclass:: longtable
++
++.. flat-table::
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - ``V4L2_H264_DECODE_PARAM_FLAG_IDR_PIC``
++      - 0x00000001
++      - That picture is an IDR picture
++
++.. c:type:: v4l2_h264_dpb_entry
++
++.. cssclass:: longtable
++
++.. flat-table:: struct v4l2_h264_dpb_entry
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - __u64
++      - ``reference_ts``
++      - Timestamp of the V4L2 capture buffer to use as reference, used
++        with B-coded and P-coded frames. The timestamp refers to the
++	``timestamp`` field in struct :c:type:`v4l2_buffer`. Use the
++	:c:func:`v4l2_timeval_to_ns()` function to convert the struct
++	:c:type:`timeval` in struct :c:type:`v4l2_buffer` to a __u64.
++    * - __u16
++      - ``frame_num``
++      -
++    * - __u16
++      - ``pic_num``
++      -
++    * - __s32
++      - ``top_field_order_cnt``
++      -
++    * - __s32
++      - ``bottom_field_order_cnt``
++      -
++    * - __u32
++      - ``flags``
++      - See :ref:`DPB Entry Flags <h264_dpb_flags>`
++
++.. _h264_dpb_flags:
++
++``DPB Entries Flags``
++
++.. cssclass:: longtable
++
++.. flat-table::
++    :header-rows:  0
++    :stub-columns: 0
++    :widths:       1 1 2
++
++    * - ``V4L2_H264_DPB_ENTRY_FLAG_VALID``
++      - 0x00000001
++      - The DPB entry is valid and should be considered
++    * - ``V4L2_H264_DPB_ENTRY_FLAG_ACTIVE``
++      - 0x00000002
++      - The DPB entry is currently being used as a reference frame
++    * - ``V4L2_H264_DPB_ENTRY_FLAG_LONG_TERM``
++      - 0x00000004
++      - The DPB entry is a long term reference frame
+ 
+ .. _v4l2-mpeg-mpeg2:
+ 
+diff --git a/Documentation/media/uapi/v4l/pixfmt-compressed.rst b/Documentation/media/uapi/v4l/pixfmt-compressed.rst
+index 6c961cfb74da..4b701fc7653e 100644
+--- a/Documentation/media/uapi/v4l/pixfmt-compressed.rst
++++ b/Documentation/media/uapi/v4l/pixfmt-compressed.rst
+@@ -52,6 +52,31 @@ Compressed Formats
+       - ``V4L2_PIX_FMT_H264_MVC``
+       - 'M264'
+       - H264 MVC video elementary stream.
++    * .. _V4L2-PIX-FMT-H264-SLICE-RAW:
++
++      - ``V4L2_PIX_FMT_H264_SLICE_RAW``
++      - 'S264'
++      - H264 parsed slice data, without the start code and as
++	extracted from the H264 bitstream.  This format is adapted for
++	stateless video decoders that implement an H264 pipeline
++	(using the :ref:`mem2mem` and :ref:`media-request-api`).
++	Metadata associated with the frame to decode are required to
++	be passed through the ``V4L2_CID_MPEG_VIDEO_H264_SPS``,
++	``V4L2_CID_MPEG_VIDEO_H264_PPS``,
++	``V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX``,
++	``V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS`` and
++	``V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS`` controls.  See the
++	:ref:`associated Codec Control IDs <v4l2-mpeg-h264>`.  Exactly
++	one output and one capture buffer must be provided for use
++	with this pixel format. The output buffer must contain the
++	appropriate number of macroblocks to decode a full
++	corresponding frame to the matching capture buffer.
++
++	.. note::
++
++	   This format is not yet part of the public kernel API and it
++	   is expected to change.
++
+     * .. _V4L2-PIX-FMT-H263:
+ 
+       - ``V4L2_PIX_FMT_H263``
+diff --git a/Documentation/media/uapi/v4l/vidioc-queryctrl.rst b/Documentation/media/uapi/v4l/vidioc-queryctrl.rst
+index f824162d0ea9..dc500632095d 100644
+--- a/Documentation/media/uapi/v4l/vidioc-queryctrl.rst
++++ b/Documentation/media/uapi/v4l/vidioc-queryctrl.rst
+@@ -443,6 +443,36 @@ See also the examples in :ref:`control`.
+       - n/a
+       - A struct :c:type:`v4l2_ctrl_mpeg2_quantization`, containing MPEG-2
+ 	quantization matrices for stateless video decoders.
++    * - ``V4L2_CTRL_TYPE_H264_SPS``
++      - n/a
++      - n/a
++      - n/a
++      - A struct :c:type:`v4l2_ctrl_h264_sps`, containing H264
++	sequence parameters for stateless video decoders.
++    * - ``V4L2_CTRL_TYPE_H264_PPS``
++      - n/a
++      - n/a
++      - n/a
++      - A struct :c:type:`v4l2_ctrl_h264_pps`, containing H264
++	picture parameters for stateless video decoders.
++    * - ``V4L2_CTRL_TYPE_H264_SCALING_MATRIX``
++      - n/a
++      - n/a
++      - n/a
++      - A struct :c:type:`v4l2_ctrl_h264_scaling_matrix`, containing H264
++	scaling matrices for stateless video decoders.
++    * - ``V4L2_CTRL_TYPE_H264_SLICE_PARAMS``
++      - n/a
++      - n/a
++      - n/a
++      - A struct :c:type:`v4l2_ctrl_h264_slice_params`, containing H264
++	slice parameters for stateless video decoders.
++    * - ``V4L2_CTRL_TYPE_H264_DECODE_PARAMS``
++      - n/a
++      - n/a
++      - n/a
++      - A struct :c:type:`v4l2_ctrl_h264_decode_params`, containing H264
++	decode parameters for stateless video decoders.
+ 
+ .. tabularcolumns:: |p{6.6cm}|p{2.2cm}|p{8.7cm}|
+ 
+diff --git a/Documentation/media/videodev2.h.rst.exceptions b/Documentation/media/videodev2.h.rst.exceptions
+index 64d348e67df9..55cbe324b9fc 100644
+--- a/Documentation/media/videodev2.h.rst.exceptions
++++ b/Documentation/media/videodev2.h.rst.exceptions
+@@ -136,6 +136,11 @@ replace symbol V4L2_CTRL_TYPE_U32 :c:type:`v4l2_ctrl_type`
+ replace symbol V4L2_CTRL_TYPE_U8 :c:type:`v4l2_ctrl_type`
+ replace symbol V4L2_CTRL_TYPE_MPEG2_SLICE_PARAMS :c:type:`v4l2_ctrl_type`
+ replace symbol V4L2_CTRL_TYPE_MPEG2_QUANTIZATION :c:type:`v4l2_ctrl_type`
++replace symbol V4L2_CTRL_TYPE_H264_SPS :c:type:`v4l2_ctrl_type`
++replace symbol V4L2_CTRL_TYPE_H264_PPS :c:type:`v4l2_ctrl_type`
++replace symbol V4L2_CTRL_TYPE_H264_SCALING_MATRIX :c:type:`v4l2_ctrl_type`
++replace symbol V4L2_CTRL_TYPE_H264_SLICE_PARAMS :c:type:`v4l2_ctrl_type`
++replace symbol V4L2_CTRL_TYPE_H264_DECODE_PARAMS :c:type:`v4l2_ctrl_type`
+ 
+ # V4L2 capability defines
+ replace define V4L2_CAP_VIDEO_CAPTURE device-capabilities
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328.dtsi b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+index 97aa65455b4a..3c663ba5edeb 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
+@@ -274,6 +274,8 @@
+ 			};
+ 			pd_vpu@RK3328_PD_VPU {
+ 				reg = <RK3328_PD_VPU>;
++				clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
++				pm_qos = <&qos_vpu>;
+ 			};
+ 		};
+ 
+@@ -580,17 +582,39 @@
+ 		status = "disabled";
+ 	};
+ 
++	vepu: video-codec@ff340000 {
++		compatible = "rockchip,rk3328-vepu";
++		reg = <0x0 0xff340000 0x0 0x400>;
++		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "vepu";
++		clocks = <&cru ACLK_H264>, <&cru HCLK_H264>;
++		clock-names = "aclk", "hclk";
++		iommus = <&vepu_mmu>;
++		status = "disabled";
++	};
++
+ 	vepu_mmu: iommu@ff340800 {
+ 		compatible = "rockchip,iommu";
+ 		reg = <0x0 0xff340800 0x0 0x40>;
+ 		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+ 		interrupt-names = "vepu_mmu";
+-		clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
++		clocks = <&cru ACLK_H264>, <&cru HCLK_H264>;
+ 		clock-names = "aclk", "iface";
+ 		#iommu-cells = <0>;
+ 		status = "disabled";
+ 	};
+ 
++	vpu: video-codec@ff350000 {
++		compatible = "rockchip,rk3328-vpu";
++		reg = <0x0 0xff350000 0x0 0x800>;
++		interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "vdpu";
++		clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
++		clock-names = "aclk", "hclk";
++		iommus = <&vpu_mmu>;
++		power-domains = <&power RK3328_PD_VPU>;
++	};
++
+ 	vpu_mmu: iommu@ff350800 {
+ 		compatible = "rockchip,iommu";
+ 		reg = <0x0 0xff350800 0x0 0x40>;
+@@ -599,7 +623,7 @@
+ 		clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
+ 		clock-names = "aclk", "iface";
+ 		#iommu-cells = <0>;
+-		status = "disabled";
++		power-domains = <&power RK3328_PD_VPU>;
+ 	};
+ 
+ 	rkvdec_mmu: iommu@ff360480 {
+@@ -903,6 +927,11 @@
+ 		};
+ 	};
+ 
++	qos_vpu: qos@ff778000 {
++		compatible = "syscon";
++		reg = <0x0 0xff778000 0x0 0x20>;
++	};
++
+ 	gic: interrupt-controller@ff811000 {
+ 		compatible = "arm,gic-400";
+ 		#interrupt-cells = <3>;
+diff --git a/drivers/media/v4l2-core/v4l2-common.c b/drivers/media/v4l2-core/v4l2-common.c
+index b5778b2ffa27..d4db78ccf40f 100644
+--- a/drivers/media/v4l2-core/v4l2-common.c
++++ b/drivers/media/v4l2-core/v4l2-common.c
+@@ -331,6 +331,16 @@ static unsigned int clamp_align(unsigned int x, unsigned int min,
+ 	return x;
+ }
+ 
++static unsigned int clamp_roundup(unsigned int x, unsigned int min,
++				   unsigned int max, unsigned int alignment)
++{
++	x = clamp(x, min, max);
++	if (alignment)
++		x = round_up(x, alignment);
++
++	return x;
++}
++
+ void v4l_bound_align_image(u32 *w, unsigned int wmin, unsigned int wmax,
+ 			   unsigned int walign,
+ 			   u32 *h, unsigned int hmin, unsigned int hmax,
+@@ -541,8 +551,25 @@ static inline unsigned int v4l2_format_block_height(const struct v4l2_format_inf
+ 	return info->block_h[plane];
+ }
+ 
++void v4l2_apply_frmsize_constraints(u32 *width, u32 *height,
++				    const struct v4l2_frmsize_stepwise *frmsize)
++{
++	if (!frmsize)
++		return;
++
++	/*
++	 * Clamp width/height to meet min/max constraints and round it up to
++	 * macroblock alignment.
++	 */
++	*width = clamp_roundup(*width, frmsize->min_width, frmsize->max_width,
++			       frmsize->step_width);
++        *height = clamp_roundup(*height, frmsize->min_height, frmsize->max_height,
++				frmsize->step_height);
++}
++EXPORT_SYMBOL_GPL(v4l2_apply_frmsize_constraints);
++
+ int v4l2_fill_pixfmt_mp(struct v4l2_pix_format_mplane *pixfmt,
+-			 int pixelformat, int width, int height)
++			u32 pixelformat, u32 width, u32 height)
+ {
+ 	const struct v4l2_format_info *info;
+ 	struct v4l2_plane_pix_format *plane;
+@@ -558,9 +585,10 @@ int v4l2_fill_pixfmt_mp(struct v4l2_pix_format_mplane *pixfmt,
+ 	pixfmt->num_planes = info->mem_planes;
+ 
+ 	if (info->mem_planes == 1) {
++		u32 bytesperline, sizeimage = 0;
++
+ 		plane = &pixfmt->plane_fmt[0];
+-		plane->bytesperline = ALIGN(width, v4l2_format_block_width(info, 0)) * info->bpp[0];
+-		plane->sizeimage = 0;
++		bytesperline = ALIGN(width, v4l2_format_block_width(info, 0)) * info->bpp[0];
+ 
+ 		for (i = 0; i < info->comp_planes; i++) {
+ 			unsigned int hdiv = (i == 0) ? 1 : info->hdiv;
+@@ -571,10 +599,17 @@ int v4l2_fill_pixfmt_mp(struct v4l2_pix_format_mplane *pixfmt,
+ 			aligned_width = ALIGN(width, v4l2_format_block_width(info, i));
+ 			aligned_height = ALIGN(height, v4l2_format_block_height(info, i));
+ 
+-			plane->sizeimage += info->bpp[i] *
+-				DIV_ROUND_UP(aligned_width, hdiv) *
+-				DIV_ROUND_UP(aligned_height, vdiv);
++			sizeimage += info->bpp[i] *
++				     DIV_ROUND_UP(aligned_width, hdiv) *
++				     DIV_ROUND_UP(aligned_height, vdiv);
+ 		}
++
++		/*
++		 * The user might have specified custom sizeimage/bytesperline,
++		 * only override them if they're not big enough.
++		 */
++		plane->sizeimage = max(sizeimage, plane->sizeimage);
++		plane->bytesperline = max(bytesperline, plane->bytesperline);
+ 	} else {
+ 		for (i = 0; i < info->comp_planes; i++) {
+ 			unsigned int hdiv = (i == 0) ? 1 : info->hdiv;
+@@ -586,19 +621,31 @@ int v4l2_fill_pixfmt_mp(struct v4l2_pix_format_mplane *pixfmt,
+ 			aligned_height = ALIGN(height, v4l2_format_block_height(info, i));
+ 
+ 			plane = &pixfmt->plane_fmt[i];
+-			plane->bytesperline =
+-				info->bpp[i] * DIV_ROUND_UP(aligned_width, hdiv);
+-			plane->sizeimage =
+-				plane->bytesperline * DIV_ROUND_UP(aligned_height, vdiv);
++
++			/*
++			 * The user might have specified custom
++			 * sizeimage/bytesperline, only override them if
++			 * they're not big enough.
++			 */
++			plane->bytesperline = max_t(u32,
++						    info->bpp[i] *
++						    DIV_ROUND_UP(aligned_width, hdiv),
++						    plane->bytesperline);
++			plane->sizeimage = max_t(u32,
++						 plane->bytesperline *
++						 DIV_ROUND_UP(aligned_height, vdiv),
++						 plane->sizeimage);
+ 		}
+ 	}
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(v4l2_fill_pixfmt_mp);
+ 
+-int v4l2_fill_pixfmt(struct v4l2_pix_format *pixfmt, int pixelformat, int width, int height)
++int v4l2_fill_pixfmt(struct v4l2_pix_format *pixfmt, u32 pixelformat,
++		     u32 width, u32 height)
+ {
+ 	const struct v4l2_format_info *info;
++	u32 bytesperline, sizeimage = 0;
+ 	int i;
+ 
+ 	info = v4l2_format_info(pixelformat);
+@@ -612,8 +659,7 @@ int v4l2_fill_pixfmt(struct v4l2_pix_format *pixfmt, int pixelformat, int width,
+ 	pixfmt->width = width;
+ 	pixfmt->height = height;
+ 	pixfmt->pixelformat = pixelformat;
+-	pixfmt->bytesperline = ALIGN(width, v4l2_format_block_width(info, 0)) * info->bpp[0];
+-	pixfmt->sizeimage = 0;
++	bytesperline = ALIGN(width, v4l2_format_block_width(info, 0)) * info->bpp[0];
+ 
+ 	for (i = 0; i < info->comp_planes; i++) {
+ 		unsigned int hdiv = (i == 0) ? 1 : info->hdiv;
+@@ -623,11 +669,17 @@ int v4l2_fill_pixfmt(struct v4l2_pix_format *pixfmt, int pixelformat, int width,
+ 
+ 		aligned_width = ALIGN(width, v4l2_format_block_width(info, i));
+ 		aligned_height = ALIGN(height, v4l2_format_block_height(info, i));
+-
+-		pixfmt->sizeimage += info->bpp[i] *
+-			DIV_ROUND_UP(aligned_width, hdiv) *
+-			DIV_ROUND_UP(aligned_height, vdiv);
++		sizeimage += info->bpp[i] * DIV_ROUND_UP(aligned_width, hdiv) *
++			     DIV_ROUND_UP(aligned_height, vdiv);
+ 	}
++
++	/*
++	 * The user might have specified its own sizeimage/bytesperline values,
++	 * only override them if they're not big enough.
++	 */
++	pixfmt->sizeimage = max(sizeimage, pixfmt->sizeimage);
++	pixfmt->bytesperline = max(bytesperline, pixfmt->bytesperline);
++
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(v4l2_fill_pixfmt);
+diff --git a/drivers/media/v4l2-core/v4l2-ctrls.c b/drivers/media/v4l2-core/v4l2-ctrls.c
+index 89a1fe564675..0592faccf02f 100644
+--- a/drivers/media/v4l2-core/v4l2-ctrls.c
++++ b/drivers/media/v4l2-core/v4l2-ctrls.c
+@@ -832,6 +832,11 @@ const char *v4l2_ctrl_get_name(u32 id)
+ 	case V4L2_CID_MPEG_VIDEO_H264_I_FRAME_MAX_QP:		return "H264 I-Frame Maximum QP Value";
+ 	case V4L2_CID_MPEG_VIDEO_H264_P_FRAME_MIN_QP:		return "H264 P-Frame Minimum QP Value";
+ 	case V4L2_CID_MPEG_VIDEO_H264_P_FRAME_MAX_QP:		return "H264 P-Frame Maximum QP Value";
++	case V4L2_CID_MPEG_VIDEO_H264_SPS:			return "H264 Sequence Parameter Set";
++	case V4L2_CID_MPEG_VIDEO_H264_PPS:			return "H264 Picture Parameter Set";
++	case V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX:		return "H264 Scaling Matrix";
++	case V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS:		return "H264 Slice Parameters";
++	case V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS:		return "H264 Decode Parameters";
+ 	case V4L2_CID_MPEG_VIDEO_MPEG4_I_FRAME_QP:		return "MPEG4 I-Frame QP Value";
+ 	case V4L2_CID_MPEG_VIDEO_MPEG4_P_FRAME_QP:		return "MPEG4 P-Frame QP Value";
+ 	case V4L2_CID_MPEG_VIDEO_MPEG4_B_FRAME_QP:		return "MPEG4 B-Frame QP Value";
+@@ -1313,6 +1318,21 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
+ 	case V4L2_CID_MPEG_VIDEO_FWHT_PARAMS:
+ 		*type = V4L2_CTRL_TYPE_FWHT_PARAMS;
+ 		break;
++	case V4L2_CID_MPEG_VIDEO_H264_SPS:
++		*type = V4L2_CTRL_TYPE_H264_SPS;
++		break;
++	case V4L2_CID_MPEG_VIDEO_H264_PPS:
++		*type = V4L2_CTRL_TYPE_H264_PPS;
++		break;
++	case V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX:
++		*type = V4L2_CTRL_TYPE_H264_SCALING_MATRIX;
++		break;
++	case V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS:
++		*type = V4L2_CTRL_TYPE_H264_SLICE_PARAMS;
++		break;
++	case V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS:
++		*type = V4L2_CTRL_TYPE_H264_DECODE_PARAMS;
++		break;
+ 	default:
+ 		*type = V4L2_CTRL_TYPE_INTEGER;
+ 		break;
+@@ -1682,6 +1702,13 @@ static int std_validate(const struct v4l2_ctrl *ctrl, u32 idx,
+ 	case V4L2_CTRL_TYPE_FWHT_PARAMS:
+ 		return 0;
+ 
++	case V4L2_CTRL_TYPE_H264_SPS:
++	case V4L2_CTRL_TYPE_H264_PPS:
++	case V4L2_CTRL_TYPE_H264_SCALING_MATRIX:
++	case V4L2_CTRL_TYPE_H264_SLICE_PARAMS:
++	case V4L2_CTRL_TYPE_H264_DECODE_PARAMS:
++		return 0;
++
+ 	default:
+ 		return -EINVAL;
+ 	}
+@@ -2265,6 +2292,21 @@ static struct v4l2_ctrl *v4l2_ctrl_new(struct v4l2_ctrl_handler *hdl,
+ 	case V4L2_CTRL_TYPE_FWHT_PARAMS:
+ 		elem_size = sizeof(struct v4l2_ctrl_fwht_params);
+ 		break;
++	case V4L2_CTRL_TYPE_H264_SPS:
++		elem_size = sizeof(struct v4l2_ctrl_h264_sps);
++		break;
++	case V4L2_CTRL_TYPE_H264_PPS:
++		elem_size = sizeof(struct v4l2_ctrl_h264_pps);
++		break;
++	case V4L2_CTRL_TYPE_H264_SCALING_MATRIX:
++		elem_size = sizeof(struct v4l2_ctrl_h264_scaling_matrix);
++		break;
++	case V4L2_CTRL_TYPE_H264_SLICE_PARAMS:
++		elem_size = sizeof(struct v4l2_ctrl_h264_slice_params);
++		break;
++	case V4L2_CTRL_TYPE_H264_DECODE_PARAMS:
++		elem_size = sizeof(struct v4l2_ctrl_h264_decode_params);
++		break;
+ 	default:
+ 		if (type < V4L2_CTRL_COMPOUND_TYPES)
+ 			elem_size = sizeof(s32);
+diff --git a/drivers/media/v4l2-core/v4l2-ioctl.c b/drivers/media/v4l2-core/v4l2-ioctl.c
+index ac87c3e37280..f6e1254064d2 100644
+--- a/drivers/media/v4l2-core/v4l2-ioctl.c
++++ b/drivers/media/v4l2-core/v4l2-ioctl.c
+@@ -1325,6 +1325,7 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
+ 		case V4L2_PIX_FMT_H264:		descr = "H.264"; break;
+ 		case V4L2_PIX_FMT_H264_NO_SC:	descr = "H.264 (No Start Codes)"; break;
+ 		case V4L2_PIX_FMT_H264_MVC:	descr = "H.264 MVC"; break;
++		case V4L2_PIX_FMT_H264_SLICE_RAW:	descr = "H.264 Parsed Slice Data"; break;
+ 		case V4L2_PIX_FMT_H263:		descr = "H.263"; break;
+ 		case V4L2_PIX_FMT_MPEG1:	descr = "MPEG-1 ES"; break;
+ 		case V4L2_PIX_FMT_MPEG2:	descr = "MPEG-2 ES"; break;
+diff --git a/drivers/staging/media/rockchip/vpu/Kconfig b/drivers/staging/media/rockchip/vpu/Kconfig
+index 9a6fc1378242..f645c19f10d1 100644
+--- a/drivers/staging/media/rockchip/vpu/Kconfig
++++ b/drivers/staging/media/rockchip/vpu/Kconfig
+@@ -2,6 +2,7 @@ config VIDEO_ROCKCHIP_VPU
+ 	tristate "Rockchip VPU driver"
+ 	depends on ARCH_ROCKCHIP || COMPILE_TEST
+ 	depends on VIDEO_DEV && VIDEO_V4L2 && MEDIA_CONTROLLER
++	depends on MEDIA_CONTROLLER_REQUEST_API
+ 	select VIDEOBUF2_DMA_CONTIG
+ 	select VIDEOBUF2_VMALLOC
+ 	select V4L2_MEM2MEM_DEV
+diff --git a/drivers/staging/media/rockchip/vpu/Makefile b/drivers/staging/media/rockchip/vpu/Makefile
+index e9d733bb7632..d5b833a15653 100644
+--- a/drivers/staging/media/rockchip/vpu/Makefile
++++ b/drivers/staging/media/rockchip/vpu/Makefile
+@@ -2,9 +2,12 @@ obj-$(CONFIG_VIDEO_ROCKCHIP_VPU) += rockchip-vpu.o
+ 
+ rockchip-vpu-y += \
+ 		rockchip_vpu_drv.o \
+-		rockchip_vpu_enc.o \
++		rockchip_vpu_v4l2.o \
+ 		rk3288_vpu_hw.o \
+ 		rk3288_vpu_hw_jpeg_enc.o \
++		rk3288_vpu_hw_mpeg2_dec.o \
+ 		rk3399_vpu_hw.o \
+ 		rk3399_vpu_hw_jpeg_enc.o \
+-		rockchip_vpu_jpeg.o
++		rk3399_vpu_hw_mpeg2_dec.o \
++		rockchip_vpu_jpeg.o \
++		rockchip_vpu_mpeg2.o
+diff --git a/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw.c b/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw.c
+index a5e9d183fffd..003143c77d37 100644
+--- a/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw.c
++++ b/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw.c
+@@ -55,6 +55,26 @@ static const struct rockchip_vpu_fmt rk3288_vpu_enc_fmts[] = {
+ 	},
+ };
+ 
++static const struct rockchip_vpu_fmt rk3288_vpu_dec_fmts[] = {
++	{
++		.fourcc = V4L2_PIX_FMT_NV12,
++		.codec_mode = RK_VPU_MODE_NONE,
++	},
++	{
++		.fourcc = V4L2_PIX_FMT_MPEG2_SLICE,
++		.codec_mode = RK_VPU_MODE_MPEG2_DEC,
++		.max_depth = 2,
++		.frmsize = {
++			.min_width = 48,
++			.max_width = 1920,
++			.step_width = MPEG2_MB_DIM,
++			.min_height = 48,
++			.max_height = 1088,
++			.step_height = MPEG2_MB_DIM,
++		},
++	},
++};
++
+ static irqreturn_t rk3288_vepu_irq(int irq, void *dev_id)
+ {
+ 	struct rockchip_vpu_dev *vpu = dev_id;
+@@ -74,6 +94,24 @@ static irqreturn_t rk3288_vepu_irq(int irq, void *dev_id)
+ 	return IRQ_HANDLED;
+ }
+ 
++static irqreturn_t rk3288_vdpu_irq(int irq, void *dev_id)
++{
++	struct rockchip_vpu_dev *vpu = dev_id;
++	enum vb2_buffer_state state;
++	u32 status;
++
++	status = vdpu_read(vpu, VDPU_REG_INTERRUPT);
++	state = (status & VDPU_REG_INTERRUPT_DEC_RDY_INT) ?
++		VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR;
++
++	vdpu_write(vpu, 0, VDPU_REG_INTERRUPT);
++	vdpu_write(vpu, VDPU_REG_CONFIG_DEC_CLK_GATE_E, VDPU_REG_CONFIG);
++
++	rockchip_vpu_irq_done(vpu, 0, state);
++
++	return IRQ_HANDLED;
++}
++
+ static int rk3288_vpu_hw_init(struct rockchip_vpu_dev *vpu)
+ {
+ 	/* Bump ACLK to max. possible freq. to improve performance. */
+@@ -90,6 +128,15 @@ static void rk3288_vpu_enc_reset(struct rockchip_vpu_ctx *ctx)
+ 	vepu_write(vpu, 0, VEPU_REG_AXI_CTRL);
+ }
+ 
++static void rk3288_vpu_dec_reset(struct rockchip_vpu_ctx *ctx)
++{
++	struct rockchip_vpu_dev *vpu = ctx->dev;
++
++	vdpu_write(vpu, VDPU_REG_INTERRUPT_DEC_IRQ_DIS, VDPU_REG_INTERRUPT);
++	vdpu_write(vpu, VDPU_REG_CONFIG_DEC_CLK_GATE_E, VDPU_REG_CONFIG);
++	vdpu_write(vpu, 1, VDPU_REG_SOFT_RESET);
++}
++
+ /*
+  * Supported codec ops.
+  */
+@@ -98,6 +145,14 @@ static const struct rockchip_vpu_codec_ops rk3288_vpu_codec_ops[] = {
+ 	[RK_VPU_MODE_JPEG_ENC] = {
+ 		.run = rk3288_vpu_jpeg_enc_run,
+ 		.reset = rk3288_vpu_enc_reset,
++		.init = rockchip_vpu_jpeg_enc_init,
++		.exit = rockchip_vpu_jpeg_enc_exit,
++	},
++	[RK_VPU_MODE_MPEG2_DEC] = {
++		.run = rk3288_vpu_mpeg2_dec_run,
++		.reset = rk3288_vpu_dec_reset,
++		.init = rockchip_vpu_mpeg2_dec_init,
++		.exit = rockchip_vpu_mpeg2_dec_exit,
+ 	},
+ };
+ 
+@@ -109,9 +164,13 @@ const struct rockchip_vpu_variant rk3288_vpu_variant = {
+ 	.enc_offset = 0x0,
+ 	.enc_fmts = rk3288_vpu_enc_fmts,
+ 	.num_enc_fmts = ARRAY_SIZE(rk3288_vpu_enc_fmts),
++	.dec_offset = 0x400,
++	.dec_fmts = rk3288_vpu_dec_fmts,
++	.num_dec_fmts = ARRAY_SIZE(rk3288_vpu_dec_fmts),
++	.codec = RK_VPU_JPEG_ENCODER | RK_VPU_MPEG2_DECODER,
+ 	.codec_ops = rk3288_vpu_codec_ops,
+-	.codec = RK_VPU_CODEC_JPEG,
+ 	.vepu_irq = rk3288_vepu_irq,
++	.vdpu_irq = rk3288_vdpu_irq,
+ 	.init = rk3288_vpu_hw_init,
+ 	.clk_names = {"aclk", "hclk"},
+ 	.num_clocks = 2
+diff --git a/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw_jpeg_enc.c b/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw_jpeg_enc.c
+index 06daea66fb49..68176e91330a 100644
+--- a/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw_jpeg_enc.c
++++ b/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw_jpeg_enc.c
+@@ -9,7 +9,7 @@
+ #include <media/v4l2-mem2mem.h>
+ #include "rockchip_vpu_jpeg.h"
+ #include "rockchip_vpu.h"
+-#include "rockchip_vpu_common.h"
++#include "rockchip_vpu_v4l2.h"
+ #include "rockchip_vpu_hw.h"
+ #include "rk3288_vpu_regs.h"
+ 
+@@ -37,9 +37,9 @@ static void rk3288_vpu_jpeg_enc_set_buffers(struct rockchip_vpu_dev *vpu,
+ 
+ 	WARN_ON(pix_fmt->num_planes > 3);
+ 
+-	vepu_write_relaxed(vpu, ctx->bounce_dma_addr,
++	vepu_write_relaxed(vpu, ctx->jpeg_enc.bounce_buffer.dma,
+ 			   VEPU_REG_ADDR_OUTPUT_STREAM);
+-	vepu_write_relaxed(vpu, ctx->bounce_size,
++	vepu_write_relaxed(vpu, ctx->jpeg_enc.bounce_buffer.size,
+ 			   VEPU_REG_STR_BUF_LIMIT);
+ 
+ 	if (pix_fmt->num_planes == 1) {
+diff --git a/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw_mpeg2_dec.c b/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw_mpeg2_dec.c
+new file mode 100644
+index 000000000000..e9eee47fcea1
+--- /dev/null
++++ b/drivers/staging/media/rockchip/vpu/rk3288_vpu_hw_mpeg2_dec.c
+@@ -0,0 +1,261 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Rockchip VPU codec driver
++ *
++ * Copyright (C) 2018 Rockchip Electronics Co., Ltd.
++ */
++
++#include <asm/unaligned.h>
++#include <linux/bitfield.h>
++#include <media/v4l2-mem2mem.h>
++#include "rockchip_vpu.h"
++#include "rockchip_vpu_hw.h"
++
++#define VDPU_SWREG(nr)			((nr) * 4)
++
++#define VDPU_REG_RLC_VLC_BASE		VDPU_SWREG(12)
++#define VDPU_REG_DEC_OUT_BASE		VDPU_SWREG(13)
++#define VDPU_REG_REFER0_BASE		VDPU_SWREG(14)
++#define VDPU_REG_REFER1_BASE		VDPU_SWREG(15)
++#define VDPU_REG_REFER2_BASE		VDPU_SWREG(16)
++#define VDPU_REG_REFER3_BASE		VDPU_SWREG(17)
++#define VDPU_REG_QTABLE_BASE		VDPU_SWREG(40)
++#define VDPU_REG_DEC_E(v)		((v) ? BIT(0) : 0)
++
++#define VDPU_REG_DEC_AXI_RD_ID(v)	(((v) << 24) & GENMASK(31, 24))
++#define VDPU_REG_DEC_TIMEOUT_E(v)	((v) ? BIT(23) : 0)
++#define VDPU_REG_DEC_STRSWAP32_E(v)	((v) ? BIT(22) : 0)
++#define VDPU_REG_DEC_STRENDIAN_E(v)	((v) ? BIT(21) : 0)
++#define VDPU_REG_DEC_INSWAP32_E(v)	((v) ? BIT(20) : 0)
++#define VDPU_REG_DEC_OUTSWAP32_E(v)	((v) ? BIT(19) : 0)
++#define VDPU_REG_DEC_DATA_DISC_E(v)	((v) ? BIT(18) : 0)
++#define VDPU_REG_DEC_LATENCY(v)		(((v) << 11) & GENMASK(16, 11))
++#define VDPU_REG_DEC_CLK_GATE_E(v)	((v) ? BIT(10) : 0)
++#define VDPU_REG_DEC_IN_ENDIAN(v)	((v) ? BIT(9) : 0)
++#define VDPU_REG_DEC_OUT_ENDIAN(v)	((v) ? BIT(8) : 0)
++#define VDPU_REG_DEC_ADV_PRE_DIS(v)	((v) ? BIT(6) : 0)
++#define VDPU_REG_DEC_SCMD_DIS(v)	((v) ? BIT(5) : 0)
++#define VDPU_REG_DEC_MAX_BURST(v)	(((v) << 0) & GENMASK(4, 0))
++
++#define VDPU_REG_DEC_MODE(v)		(((v) << 28) & GENMASK(31, 28))
++#define VDPU_REG_RLC_MODE_E(v)		((v) ? BIT(27) : 0)
++#define VDPU_REG_PIC_INTERLACE_E(v)	((v) ? BIT(23) : 0)
++#define VDPU_REG_PIC_FIELDMODE_E(v)	((v) ? BIT(22) : 0)
++#define VDPU_REG_PIC_B_E(v)		((v) ? BIT(21) : 0)
++#define VDPU_REG_PIC_INTER_E(v)		((v) ? BIT(20) : 0)
++#define VDPU_REG_PIC_TOPFIELD_E(v)	((v) ? BIT(19) : 0)
++#define VDPU_REG_FWD_INTERLACE_E(v)	((v) ? BIT(18) : 0)
++#define VDPU_REG_FILTERING_DIS(v)	((v) ? BIT(14) : 0)
++#define VDPU_REG_WRITE_MVS_E(v)		((v) ? BIT(12) : 0)
++#define VDPU_REG_DEC_AXI_WR_ID(v)	(((v) << 0) & GENMASK(7, 0))
++
++#define VDPU_REG_PIC_MB_WIDTH(v)	(((v) << 23) & GENMASK(31, 23))
++#define VDPU_REG_PIC_MB_HEIGHT_P(v)	(((v) << 11) & GENMASK(18, 11))
++#define VDPU_REG_ALT_SCAN_E(v)		((v) ? BIT(6) : 0)
++#define VDPU_REG_TOPFIELDFIRST_E(v)	((v) ? BIT(5) : 0)
++
++#define VDPU_REG_STRM_START_BIT(v)	(((v) << 26) & GENMASK(31, 26))
++#define VDPU_REG_QSCALE_TYPE(v)		((v) ? BIT(24) : 0)
++#define VDPU_REG_CON_MV_E(v)		((v) ? BIT(4) : 0)
++#define VDPU_REG_INTRA_DC_PREC(v)	(((v) << 2) & GENMASK(3, 2))
++#define VDPU_REG_INTRA_VLC_TAB(v)	((v) ? BIT(1) : 0)
++#define VDPU_REG_FRAME_PRED_DCT(v)	((v) ? BIT(0) : 0)
++
++#define VDPU_REG_INIT_QP(v)		(((v) << 25) & GENMASK(30, 25))
++#define VDPU_REG_STREAM_LEN(v)		(((v) << 0) & GENMASK(23, 0))
++
++#define VDPU_REG_ALT_SCAN_FLAG_E(v)	((v) ? BIT(19) : 0)
++#define VDPU_REG_FCODE_FWD_HOR(v)	(((v) << 15) & GENMASK(18, 15))
++#define VDPU_REG_FCODE_FWD_VER(v)	(((v) << 11) & GENMASK(14, 11))
++#define VDPU_REG_FCODE_BWD_HOR(v)	(((v) << 7) & GENMASK(10, 7))
++#define VDPU_REG_FCODE_BWD_VER(v)	(((v) << 3) & GENMASK(6, 3))
++#define VDPU_REG_MV_ACCURACY_FWD(v)	((v) ? BIT(2) : 0)
++#define VDPU_REG_MV_ACCURACY_BWD(v)	((v) ? BIT(1) : 0)
++
++#define VDPU_REG_STARTMB_X(v)		(((v) << 23) & GENMASK(31, 23))
++#define VDPU_REG_STARTMB_Y(v)		(((v) << 15) & GENMASK(22, 15))
++
++#define VDPU_REG_APF_THRESHOLD(v)	(((v) << 0) & GENMASK(13, 0))
++
++#define PICT_TOP_FIELD     1
++#define PICT_BOTTOM_FIELD  2
++#define PICT_FRAME         3
++
++static void
++rk3288_vpu_mpeg2_dec_set_quantization(struct rockchip_vpu_dev *vpu,
++				      struct rockchip_vpu_ctx *ctx)
++{
++	struct v4l2_ctrl_mpeg2_quantization *quantization;
++
++	quantization = rockchip_vpu_get_ctrl(ctx,
++				V4L2_CID_MPEG_VIDEO_MPEG2_QUANTIZATION);
++	rockchip_vpu_mpeg2_dec_copy_qtable(ctx->mpeg2_dec.qtable.cpu,
++					   quantization);
++	vdpu_write_relaxed(vpu, ctx->mpeg2_dec.qtable.dma,
++			   VDPU_REG_QTABLE_BASE);
++}
++
++static void
++rk3288_vpu_mpeg2_dec_set_buffers(struct rockchip_vpu_dev *vpu,
++				 struct rockchip_vpu_ctx *ctx,
++				 struct vb2_buffer *src_buf,
++				 struct vb2_buffer *dst_buf,
++				 const struct v4l2_mpeg2_sequence *sequence,
++				 const struct v4l2_mpeg2_picture *picture,
++				 const struct v4l2_ctrl_mpeg2_slice_params *slice_params)
++{
++	dma_addr_t forward_addr = 0, backward_addr = 0;
++	dma_addr_t current_addr, addr;
++	struct vb2_queue *vq;
++
++	vq = v4l2_m2m_get_dst_vq(ctx->fh.m2m_ctx);
++
++	switch (picture->picture_coding_type) {
++	case V4L2_MPEG2_PICTURE_CODING_TYPE_B:
++		backward_addr = rockchip_vpu_get_ref(vq,
++						slice_params->backward_ref_ts);
++		/* fall-through */
++	case V4L2_MPEG2_PICTURE_CODING_TYPE_P:
++		forward_addr = rockchip_vpu_get_ref(vq,
++						slice_params->forward_ref_ts);
++	}
++
++	/* Source bitstream buffer */
++	addr = vb2_dma_contig_plane_dma_addr(src_buf, 0);
++	vdpu_write_relaxed(vpu, addr, VDPU_REG_RLC_VLC_BASE);
++
++	/* Destination frame buffer */
++	addr = vb2_dma_contig_plane_dma_addr(dst_buf, 0);
++	current_addr = addr;
++
++	if (picture->picture_structure == PICT_BOTTOM_FIELD)
++		addr += ALIGN(ctx->dst_fmt.width, 16);
++	vdpu_write_relaxed(vpu, addr, VDPU_REG_DEC_OUT_BASE);
++
++	if (!forward_addr)
++		forward_addr = current_addr;
++	if (!backward_addr)
++		backward_addr = current_addr;
++
++	/* Set forward ref frame (top/bottom field) */
++	if (picture->picture_structure == PICT_FRAME ||
++	    picture->picture_coding_type == V4L2_MPEG2_PICTURE_CODING_TYPE_B ||
++	    (picture->picture_structure == PICT_TOP_FIELD &&
++	     picture->top_field_first) ||
++	    (picture->picture_structure == PICT_BOTTOM_FIELD &&
++	     !picture->top_field_first)) {
++		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER0_BASE);
++		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER1_BASE);
++	} else if (picture->picture_structure == PICT_TOP_FIELD) {
++		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER0_BASE);
++		vdpu_write_relaxed(vpu, current_addr, VDPU_REG_REFER1_BASE);
++	} else if (picture->picture_structure == PICT_BOTTOM_FIELD) {
++		vdpu_write_relaxed(vpu, current_addr, VDPU_REG_REFER0_BASE);
++		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER1_BASE);
++	}
++
++	/* Set backward ref frame (top/bottom field) */
++	vdpu_write_relaxed(vpu, backward_addr, VDPU_REG_REFER2_BASE);
++	vdpu_write_relaxed(vpu, backward_addr, VDPU_REG_REFER3_BASE);
++}
++
++void rk3288_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
++{
++	struct rockchip_vpu_dev *vpu = ctx->dev;
++	struct vb2_v4l2_buffer *src_buf, *dst_buf;
++	const struct v4l2_ctrl_mpeg2_slice_params *slice_params;
++	const struct v4l2_mpeg2_sequence *sequence;
++	const struct v4l2_mpeg2_picture *picture;
++	u32 reg;
++
++	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
++	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
++
++	/* Apply request controls if any */
++	v4l2_ctrl_request_setup(src_buf->vb2_buf.req_obj.req,
++				&ctx->ctrl_handler);
++
++	slice_params = rockchip_vpu_get_ctrl(ctx,
++				V4L2_CID_MPEG_VIDEO_MPEG2_SLICE_PARAMS);
++	sequence = &slice_params->sequence;
++	picture = &slice_params->picture;
++
++	reg = VDPU_REG_DEC_AXI_RD_ID(0) |
++	      VDPU_REG_DEC_TIMEOUT_E(1) |
++	      VDPU_REG_DEC_STRSWAP32_E(1) |
++	      VDPU_REG_DEC_STRENDIAN_E(1) |
++	      VDPU_REG_DEC_INSWAP32_E(1) |
++	      VDPU_REG_DEC_OUTSWAP32_E(1) |
++	      VDPU_REG_DEC_DATA_DISC_E(0) |
++	      VDPU_REG_DEC_LATENCY(0) |
++	      VDPU_REG_DEC_CLK_GATE_E(1) |
++	      VDPU_REG_DEC_IN_ENDIAN(1) |
++	      VDPU_REG_DEC_OUT_ENDIAN(1) |
++	      VDPU_REG_DEC_ADV_PRE_DIS(0) |
++	      VDPU_REG_DEC_SCMD_DIS(0) |
++	      VDPU_REG_DEC_MAX_BURST(16);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(2));
++
++	reg = VDPU_REG_DEC_MODE(5) |
++	      VDPU_REG_RLC_MODE_E(0) |
++	      VDPU_REG_PIC_INTERLACE_E(!sequence->progressive_sequence) |
++	      VDPU_REG_PIC_FIELDMODE_E(picture->picture_structure != PICT_FRAME) |
++	      VDPU_REG_PIC_B_E(picture->picture_coding_type == V4L2_MPEG2_PICTURE_CODING_TYPE_B) |
++	      VDPU_REG_PIC_INTER_E(picture->picture_coding_type != V4L2_MPEG2_PICTURE_CODING_TYPE_I) |
++	      VDPU_REG_PIC_TOPFIELD_E(picture->picture_structure == PICT_TOP_FIELD) |
++	      VDPU_REG_FWD_INTERLACE_E(0) |
++	      VDPU_REG_FILTERING_DIS(1) |
++	      VDPU_REG_WRITE_MVS_E(0) |
++	      VDPU_REG_DEC_AXI_WR_ID(0);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(3));
++
++	reg = VDPU_REG_PIC_MB_WIDTH(MPEG2_MB_WIDTH(ctx->dst_fmt.width)) |
++	      VDPU_REG_PIC_MB_HEIGHT_P(MPEG2_MB_HEIGHT(ctx->dst_fmt.height)) |
++	      VDPU_REG_ALT_SCAN_E(picture->alternate_scan) |
++	      VDPU_REG_TOPFIELDFIRST_E(picture->top_field_first);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(4));
++
++	reg = VDPU_REG_STRM_START_BIT(slice_params->data_bit_offset) |
++	      VDPU_REG_QSCALE_TYPE(picture->q_scale_type) |
++	      VDPU_REG_CON_MV_E(picture->concealment_motion_vectors) |
++	      VDPU_REG_INTRA_DC_PREC(picture->intra_dc_precision) |
++	      VDPU_REG_INTRA_VLC_TAB(picture->intra_vlc_format) |
++	      VDPU_REG_FRAME_PRED_DCT(picture->frame_pred_frame_dct);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(5));
++
++	reg = VDPU_REG_INIT_QP(1) |
++	      VDPU_REG_STREAM_LEN(slice_params->bit_size >> 3);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(6));
++
++	reg = VDPU_REG_ALT_SCAN_FLAG_E(picture->alternate_scan) |
++	      VDPU_REG_FCODE_FWD_HOR(picture->f_code[0][0]) |
++	      VDPU_REG_FCODE_FWD_VER(picture->f_code[0][1]) |
++	      VDPU_REG_FCODE_BWD_HOR(picture->f_code[1][0]) |
++	      VDPU_REG_FCODE_BWD_VER(picture->f_code[1][1]) |
++	      VDPU_REG_MV_ACCURACY_FWD(1) |
++	      VDPU_REG_MV_ACCURACY_BWD(1);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(18));
++
++	reg = VDPU_REG_STARTMB_X(0) |
++	      VDPU_REG_STARTMB_Y(0);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(48));
++
++	reg = VDPU_REG_APF_THRESHOLD(8);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(55));
++
++	rk3288_vpu_mpeg2_dec_set_quantization(vpu, ctx);
++
++	rk3288_vpu_mpeg2_dec_set_buffers(vpu, ctx, &src_buf->vb2_buf,
++					 &dst_buf->vb2_buf,
++					 sequence, picture, slice_params);
++
++	/* Controls no longer in-use, we can complete them */
++	v4l2_ctrl_request_complete(src_buf->vb2_buf.req_obj.req,
++				   &ctx->ctrl_handler);
++
++	/* Kick the watchdog and start decoding */
++	schedule_delayed_work(&vpu->watchdog_work, msecs_to_jiffies(2000));
++
++	reg = VDPU_REG_DEC_E(1);
++	vdpu_write(vpu, reg, VDPU_SWREG(1));
++}
+diff --git a/drivers/staging/media/rockchip/vpu/rk3288_vpu_regs.h b/drivers/staging/media/rockchip/vpu/rk3288_vpu_regs.h
+index 9d0b9bdf3297..c9631b713804 100644
+--- a/drivers/staging/media/rockchip/vpu/rk3288_vpu_regs.h
++++ b/drivers/staging/media/rockchip/vpu/rk3288_vpu_regs.h
+@@ -438,5 +438,6 @@
+ #define     VDPU_REG_REF_BUF_CTRL2_REFBU2_THR(x)	(((x) & 0xfff) << 19)
+ #define     VDPU_REG_REF_BUF_CTRL2_REFBU2_PICID(x)	(((x) & 0x1f) << 14)
+ #define     VDPU_REG_REF_BUF_CTRL2_APF_THRESHOLD(x)	(((x) & 0x3fff) << 0)
++#define VDPU_REG_SOFT_RESET			0x194
+ 
+ #endif /* RK3288_VPU_REGS_H_ */
+diff --git a/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw.c b/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw.c
+index 6fdef61e2127..341f8d69c33d 100644
+--- a/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw.c
++++ b/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw.c
+@@ -55,6 +55,26 @@ static const struct rockchip_vpu_fmt rk3399_vpu_enc_fmts[] = {
+ 	},
+ };
+ 
++static const struct rockchip_vpu_fmt rk3399_vpu_dec_fmts[] = {
++	{
++		.fourcc = V4L2_PIX_FMT_NV12,
++		.codec_mode = RK_VPU_MODE_NONE,
++	},
++	{
++		.fourcc = V4L2_PIX_FMT_MPEG2_SLICE,
++		.codec_mode = RK_VPU_MODE_MPEG2_DEC,
++		.max_depth = 2,
++		.frmsize = {
++			.min_width = 48,
++			.max_width = 1920,
++			.step_width = MPEG2_MB_DIM,
++			.min_height = 48,
++			.max_height = 1088,
++			.step_height = MPEG2_MB_DIM,
++		},
++	},
++};
++
+ static irqreturn_t rk3399_vepu_irq(int irq, void *dev_id)
+ {
+ 	struct rockchip_vpu_dev *vpu = dev_id;
+@@ -74,6 +94,24 @@ static irqreturn_t rk3399_vepu_irq(int irq, void *dev_id)
+ 	return IRQ_HANDLED;
+ }
+ 
++static irqreturn_t rk3399_vdpu_irq(int irq, void *dev_id)
++{
++	struct rockchip_vpu_dev *vpu = dev_id;
++	enum vb2_buffer_state state;
++	u32 status;
++
++	status = vdpu_read(vpu, VDPU_REG_INTERRUPT);
++	state = (status & VDPU_REG_INTERRUPT_DEC_IRQ) ?
++		VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR;
++
++	vdpu_write(vpu, 0, VDPU_REG_INTERRUPT);
++	vdpu_write(vpu, 0, VDPU_REG_AXI_CTRL);
++
++	rockchip_vpu_irq_done(vpu, 0, state);
++
++	return IRQ_HANDLED;
++}
++
+ static int rk3399_vpu_hw_init(struct rockchip_vpu_dev *vpu)
+ {
+ 	/* Bump ACLK to max. possible freq. to improve performance. */
+@@ -90,6 +128,15 @@ static void rk3399_vpu_enc_reset(struct rockchip_vpu_ctx *ctx)
+ 	vepu_write(vpu, 0, VEPU_REG_AXI_CTRL);
+ }
+ 
++static void rk3399_vpu_dec_reset(struct rockchip_vpu_ctx *ctx)
++{
++	struct rockchip_vpu_dev *vpu = ctx->dev;
++
++	vdpu_write(vpu, VDPU_REG_INTERRUPT_DEC_IRQ_DIS, VDPU_REG_INTERRUPT);
++	vdpu_write(vpu, 0, VDPU_REG_EN_FLAGS);
++	vdpu_write(vpu, 1, VDPU_REG_SOFT_RESET);
++}
++
+ /*
+  * Supported codec ops.
+  */
+@@ -98,6 +145,14 @@ static const struct rockchip_vpu_codec_ops rk3399_vpu_codec_ops[] = {
+ 	[RK_VPU_MODE_JPEG_ENC] = {
+ 		.run = rk3399_vpu_jpeg_enc_run,
+ 		.reset = rk3399_vpu_enc_reset,
++		.init = rockchip_vpu_jpeg_enc_init,
++		.exit = rockchip_vpu_jpeg_enc_exit,
++	},
++	[RK_VPU_MODE_MPEG2_DEC] = {
++		.run = rk3399_vpu_mpeg2_dec_run,
++		.reset = rk3399_vpu_dec_reset,
++		.init = rockchip_vpu_mpeg2_dec_init,
++		.exit = rockchip_vpu_mpeg2_dec_exit,
+ 	},
+ };
+ 
+@@ -109,9 +164,25 @@ const struct rockchip_vpu_variant rk3399_vpu_variant = {
+ 	.enc_offset = 0x0,
+ 	.enc_fmts = rk3399_vpu_enc_fmts,
+ 	.num_enc_fmts = ARRAY_SIZE(rk3399_vpu_enc_fmts),
+-	.codec = RK_VPU_CODEC_JPEG,
++	.dec_offset = 0x400,
++	.dec_fmts = rk3399_vpu_dec_fmts,
++	.num_dec_fmts = ARRAY_SIZE(rk3399_vpu_dec_fmts),
++	.codec = RK_VPU_JPEG_ENCODER | RK_VPU_MPEG2_DECODER,
+ 	.codec_ops = rk3399_vpu_codec_ops,
+ 	.vepu_irq = rk3399_vepu_irq,
++	.vdpu_irq = rk3399_vdpu_irq,
++	.init = rk3399_vpu_hw_init,
++	.clk_names = {"aclk", "hclk"},
++	.num_clocks = 2
++};
++
++const struct rockchip_vpu_variant rk3328_vpu_variant = {
++	.dec_offset = 0x400,
++	.dec_fmts = rk3399_vpu_dec_fmts,
++	.num_dec_fmts = ARRAY_SIZE(rk3399_vpu_dec_fmts),
++	.codec = RK_VPU_MPEG2_DECODER,
++	.codec_ops = rk3399_vpu_codec_ops,
++	.vdpu_irq = rk3399_vdpu_irq,
+ 	.init = rk3399_vpu_hw_init,
+ 	.clk_names = {"aclk", "hclk"},
+ 	.num_clocks = 2
+diff --git a/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw_jpeg_enc.c b/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw_jpeg_enc.c
+index 3d438797692e..460edc5ebe4d 100644
+--- a/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw_jpeg_enc.c
++++ b/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw_jpeg_enc.c
+@@ -27,7 +27,7 @@
+ #include <media/v4l2-mem2mem.h>
+ #include "rockchip_vpu_jpeg.h"
+ #include "rockchip_vpu.h"
+-#include "rockchip_vpu_common.h"
++#include "rockchip_vpu_v4l2.h"
+ #include "rockchip_vpu_hw.h"
+ #include "rk3399_vpu_regs.h"
+ 
+@@ -69,9 +69,9 @@ static void rk3399_vpu_jpeg_enc_set_buffers(struct rockchip_vpu_dev *vpu,
+ 
+ 	WARN_ON(pix_fmt->num_planes > 3);
+ 
+-	vepu_write_relaxed(vpu, ctx->bounce_dma_addr,
++	vepu_write_relaxed(vpu, ctx->jpeg_enc.bounce_buffer.dma,
+ 			   VEPU_REG_ADDR_OUTPUT_STREAM);
+-	vepu_write_relaxed(vpu, ctx->bounce_size,
++	vepu_write_relaxed(vpu, ctx->jpeg_enc.bounce_buffer.size,
+ 			   VEPU_REG_STR_BUF_LIMIT);
+ 
+ 	if (pix_fmt->num_planes == 1) {
+@@ -113,11 +113,15 @@ void rk3399_vpu_jpeg_enc_run(struct rockchip_vpu_ctx *ctx)
+ 	struct rockchip_vpu_dev *vpu = ctx->dev;
+ 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
+ 	struct rockchip_vpu_jpeg_ctx jpeg_ctx;
++	struct media_request *src_req;
+ 	u32 reg;
+ 
+ 	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
+ 	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
+ 
++	src_req = src_buf->vb2_buf.req_obj.req;
++	v4l2_ctrl_request_setup(src_req, &ctx->ctrl_handler);
++
+ 	memset(&jpeg_ctx, 0, sizeof(jpeg_ctx));
+ 	jpeg_ctx.buffer = vb2_plane_vaddr(&dst_buf->vb2_buf, 0);
+ 	jpeg_ctx.width = ctx->dst_fmt.width;
+@@ -153,6 +157,8 @@ void rk3399_vpu_jpeg_enc_run(struct rockchip_vpu_ctx *ctx)
+ 		| VEPU_REG_ENCODE_FORMAT_JPEG
+ 		| VEPU_REG_ENCODE_ENABLE;
+ 
++	v4l2_ctrl_request_complete(src_req, &ctx->ctrl_handler);
++
+ 	/* Kick the watchdog and start encoding */
+ 	schedule_delayed_work(&vpu->watchdog_work, msecs_to_jiffies(2000));
+ 	vepu_write(vpu, reg, VEPU_REG_ENCODE_START);
+diff --git a/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw_mpeg2_dec.c b/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw_mpeg2_dec.c
+new file mode 100644
+index 000000000000..c4c092c2004a
+--- /dev/null
++++ b/drivers/staging/media/rockchip/vpu/rk3399_vpu_hw_mpeg2_dec.c
+@@ -0,0 +1,267 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Rockchip VPU codec driver
++ *
++ * Copyright (C) 2018 Rockchip Electronics Co., Ltd.
++ */
++
++#include <asm/unaligned.h>
++#include <linux/bitfield.h>
++#include <media/v4l2-mem2mem.h>
++#include "rockchip_vpu.h"
++#include "rockchip_vpu_hw.h"
++
++#define VDPU_SWREG(nr)			((nr) * 4)
++
++#define VDPU_REG_DEC_OUT_BASE		VDPU_SWREG(63)
++#define VDPU_REG_RLC_VLC_BASE		VDPU_SWREG(64)
++#define VDPU_REG_QTABLE_BASE		VDPU_SWREG(61)
++#define VDPU_REG_REFER0_BASE		VDPU_SWREG(131)
++#define VDPU_REG_REFER2_BASE		VDPU_SWREG(134)
++#define VDPU_REG_REFER3_BASE		VDPU_SWREG(135)
++#define VDPU_REG_REFER1_BASE		VDPU_SWREG(148)
++#define VDPU_REG_DEC_E(v)		((v) ? BIT(0) : 0)
++
++#define VDPU_REG_DEC_ADV_PRE_DIS(v)	((v) ? BIT(11) : 0)
++#define VDPU_REG_DEC_SCMD_DIS(v)	((v) ? BIT(10) : 0)
++#define VDPU_REG_FILTERING_DIS(v)	((v) ? BIT(8) : 0)
++#define VDPU_REG_DEC_LATENCY(v)		(((v) << 1) & GENMASK(6, 1))
++
++#define VDPU_REG_INIT_QP(v)		(((v) << 25) & GENMASK(30, 25))
++#define VDPU_REG_STREAM_LEN(v)		(((v) << 0) & GENMASK(23, 0))
++
++#define VDPU_REG_APF_THRESHOLD(v)	(((v) << 17) & GENMASK(30, 17))
++#define VDPU_REG_STARTMB_X(v)		(((v) << 8) & GENMASK(16, 8))
++#define VDPU_REG_STARTMB_Y(v)		(((v) << 0) & GENMASK(7, 0))
++
++#define VDPU_REG_DEC_MODE(v)		(((v) << 0) & GENMASK(3, 0))
++
++#define VDPU_REG_DEC_STRENDIAN_E(v)	((v) ? BIT(5) : 0)
++#define VDPU_REG_DEC_STRSWAP32_E(v)	((v) ? BIT(4) : 0)
++#define VDPU_REG_DEC_OUTSWAP32_E(v)	((v) ? BIT(3) : 0)
++#define VDPU_REG_DEC_INSWAP32_E(v)	((v) ? BIT(2) : 0)
++#define VDPU_REG_DEC_OUT_ENDIAN(v)	((v) ? BIT(1) : 0)
++#define VDPU_REG_DEC_IN_ENDIAN(v)	((v) ? BIT(0) : 0)
++
++#define VDPU_REG_DEC_DATA_DISC_E(v)	((v) ? BIT(22) : 0)
++#define VDPU_REG_DEC_MAX_BURST(v)	(((v) << 16) & GENMASK(20, 16))
++#define VDPU_REG_DEC_AXI_WR_ID(v)	(((v) << 8) & GENMASK(15, 8))
++#define VDPU_REG_DEC_AXI_RD_ID(v)	(((v) << 0) & GENMASK(7, 0))
++
++#define VDPU_REG_RLC_MODE_E(v)		((v) ? BIT(20) : 0)
++#define VDPU_REG_PIC_INTERLACE_E(v)	((v) ? BIT(17) : 0)
++#define VDPU_REG_PIC_FIELDMODE_E(v)	((v) ? BIT(16) : 0)
++#define VDPU_REG_PIC_B_E(v)		((v) ? BIT(15) : 0)
++#define VDPU_REG_PIC_INTER_E(v)		((v) ? BIT(14) : 0)
++#define VDPU_REG_PIC_TOPFIELD_E(v)	((v) ? BIT(13) : 0)
++#define VDPU_REG_FWD_INTERLACE_E(v)	((v) ? BIT(12) : 0)
++#define VDPU_REG_WRITE_MVS_E(v)		((v) ? BIT(10) : 0)
++#define VDPU_REG_DEC_TIMEOUT_E(v)	((v) ? BIT(5) : 0)
++#define VDPU_REG_DEC_CLK_GATE_E(v)	((v) ? BIT(4) : 0)
++
++#define VDPU_REG_PIC_MB_WIDTH(v)	(((v) << 23) & GENMASK(31, 23))
++#define VDPU_REG_PIC_MB_HEIGHT_P(v)	(((v) << 11) & GENMASK(18, 11))
++#define VDPU_REG_ALT_SCAN_E(v)		((v) ? BIT(6) : 0)
++#define VDPU_REG_TOPFIELDFIRST_E(v)	((v) ? BIT(5) : 0)
++
++#define VDPU_REG_STRM_START_BIT(v)	(((v) << 26) & GENMASK(31, 26))
++#define VDPU_REG_QSCALE_TYPE(v)		((v) ? BIT(24) : 0)
++#define VDPU_REG_CON_MV_E(v)		((v) ? BIT(4) : 0)
++#define VDPU_REG_INTRA_DC_PREC(v)	(((v) << 2) & GENMASK(3, 2))
++#define VDPU_REG_INTRA_VLC_TAB(v)	((v) ? BIT(1) : 0)
++#define VDPU_REG_FRAME_PRED_DCT(v)	((v) ? BIT(0) : 0)
++
++#define VDPU_REG_ALT_SCAN_FLAG_E(v)	((v) ? BIT(19) : 0)
++#define VDPU_REG_FCODE_FWD_HOR(v)	(((v) << 15) & GENMASK(18, 15))
++#define VDPU_REG_FCODE_FWD_VER(v)	(((v) << 11) & GENMASK(14, 11))
++#define VDPU_REG_FCODE_BWD_HOR(v)	(((v) << 7) & GENMASK(10, 7))
++#define VDPU_REG_FCODE_BWD_VER(v)	(((v) << 3) & GENMASK(6, 3))
++#define VDPU_REG_MV_ACCURACY_FWD(v)	((v) ? BIT(2) : 0)
++#define VDPU_REG_MV_ACCURACY_BWD(v)	((v) ? BIT(1) : 0)
++
++#define PICT_TOP_FIELD     1
++#define PICT_BOTTOM_FIELD  2
++#define PICT_FRAME         3
++
++static void
++rk3399_vpu_mpeg2_dec_set_quantization(struct rockchip_vpu_dev *vpu,
++				      struct rockchip_vpu_ctx *ctx)
++{
++	struct v4l2_ctrl_mpeg2_quantization *quantization;
++
++	quantization = rockchip_vpu_get_ctrl(ctx,
++				V4L2_CID_MPEG_VIDEO_MPEG2_QUANTIZATION);
++	rockchip_vpu_mpeg2_dec_copy_qtable(ctx->mpeg2_dec.qtable.cpu,
++					   quantization);
++	vdpu_write_relaxed(vpu, ctx->mpeg2_dec.qtable.dma,
++			   VDPU_REG_QTABLE_BASE);
++}
++
++static void
++rk3399_vpu_mpeg2_dec_set_buffers(struct rockchip_vpu_dev *vpu,
++				 struct rockchip_vpu_ctx *ctx,
++				 struct vb2_buffer *src_buf,
++				 struct vb2_buffer *dst_buf,
++				 const struct v4l2_mpeg2_sequence *sequence,
++				 const struct v4l2_mpeg2_picture *picture,
++				 const struct v4l2_ctrl_mpeg2_slice_params *slice_params)
++{
++	dma_addr_t forward_addr = 0, backward_addr = 0;
++	dma_addr_t current_addr, addr;
++	struct vb2_queue *vq;
++
++	vq = v4l2_m2m_get_dst_vq(ctx->fh.m2m_ctx);
++
++	switch (picture->picture_coding_type) {
++	case V4L2_MPEG2_PICTURE_CODING_TYPE_B:
++		backward_addr = rockchip_vpu_get_ref(vq,
++						slice_params->backward_ref_ts);
++		/* fall-through */
++	case V4L2_MPEG2_PICTURE_CODING_TYPE_P:
++		forward_addr = rockchip_vpu_get_ref(vq,
++						slice_params->forward_ref_ts);
++	}
++
++	/* Source bitstream buffer */
++	addr = vb2_dma_contig_plane_dma_addr(src_buf, 0);
++	vdpu_write_relaxed(vpu, addr, VDPU_REG_RLC_VLC_BASE);
++
++	/* Destination frame buffer */
++	addr = vb2_dma_contig_plane_dma_addr(dst_buf, 0);
++	current_addr = addr;
++
++	if (picture->picture_structure == PICT_BOTTOM_FIELD)
++		addr += ALIGN(ctx->dst_fmt.width, 16);
++	vdpu_write_relaxed(vpu, addr, VDPU_REG_DEC_OUT_BASE);
++
++	if (!forward_addr)
++		forward_addr = current_addr;
++	if (!backward_addr)
++		backward_addr = current_addr;
++
++	/* Set forward ref frame (top/bottom field) */
++	if (picture->picture_structure == PICT_FRAME ||
++	    picture->picture_coding_type == V4L2_MPEG2_PICTURE_CODING_TYPE_B ||
++	    (picture->picture_structure == PICT_TOP_FIELD &&
++	     picture->top_field_first) ||
++	    (picture->picture_structure == PICT_BOTTOM_FIELD &&
++	     !picture->top_field_first)) {
++		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER0_BASE);
++		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER1_BASE);
++	} else if (picture->picture_structure == PICT_TOP_FIELD) {
++		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER0_BASE);
++		vdpu_write_relaxed(vpu, current_addr, VDPU_REG_REFER1_BASE);
++	} else if (picture->picture_structure == PICT_BOTTOM_FIELD) {
++		vdpu_write_relaxed(vpu, current_addr, VDPU_REG_REFER0_BASE);
++		vdpu_write_relaxed(vpu, forward_addr, VDPU_REG_REFER1_BASE);
++	}
++
++	/* Set backward ref frame (top/bottom field) */
++	vdpu_write_relaxed(vpu, backward_addr, VDPU_REG_REFER2_BASE);
++	vdpu_write_relaxed(vpu, backward_addr, VDPU_REG_REFER3_BASE);
++}
++
++void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx)
++{
++	struct rockchip_vpu_dev *vpu = ctx->dev;
++	struct vb2_v4l2_buffer *src_buf, *dst_buf;
++	const struct v4l2_ctrl_mpeg2_slice_params *slice_params;
++	const struct v4l2_mpeg2_sequence *sequence;
++	const struct v4l2_mpeg2_picture *picture;
++	u32 reg;
++
++	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
++	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
++
++	/* Apply request controls if any */
++	v4l2_ctrl_request_setup(src_buf->vb2_buf.req_obj.req,
++				&ctx->ctrl_handler);
++
++	slice_params = rockchip_vpu_get_ctrl(ctx,
++				V4L2_CID_MPEG_VIDEO_MPEG2_SLICE_PARAMS);
++	sequence = &slice_params->sequence;
++	picture = &slice_params->picture;
++
++	reg = VDPU_REG_DEC_ADV_PRE_DIS(0) |
++	      VDPU_REG_DEC_SCMD_DIS(0) |
++	      VDPU_REG_FILTERING_DIS(1) |
++	      VDPU_REG_DEC_LATENCY(0);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(50));
++
++	reg = VDPU_REG_INIT_QP(1) |
++	      VDPU_REG_STREAM_LEN(slice_params->bit_size >> 3);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(51));
++
++	reg = VDPU_REG_APF_THRESHOLD(8) |
++	      VDPU_REG_STARTMB_X(0) |
++	      VDPU_REG_STARTMB_Y(0);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(52));
++
++	reg = VDPU_REG_DEC_MODE(5);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(53));
++
++	reg = VDPU_REG_DEC_STRENDIAN_E(1) |
++	      VDPU_REG_DEC_STRSWAP32_E(1) |
++	      VDPU_REG_DEC_OUTSWAP32_E(1) |
++	      VDPU_REG_DEC_INSWAP32_E(1) |
++	      VDPU_REG_DEC_OUT_ENDIAN(1) |
++	      VDPU_REG_DEC_IN_ENDIAN(1);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(54));
++
++	reg = VDPU_REG_DEC_DATA_DISC_E(0) |
++	      VDPU_REG_DEC_MAX_BURST(16) |
++	      VDPU_REG_DEC_AXI_WR_ID(0) |
++	      VDPU_REG_DEC_AXI_RD_ID(0);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(56));
++
++	reg = VDPU_REG_RLC_MODE_E(0) |
++	      VDPU_REG_PIC_INTERLACE_E(!sequence->progressive_sequence) |
++	      VDPU_REG_PIC_FIELDMODE_E(picture->picture_structure != PICT_FRAME) |
++	      VDPU_REG_PIC_B_E(picture->picture_coding_type == V4L2_MPEG2_PICTURE_CODING_TYPE_B) |
++	      VDPU_REG_PIC_INTER_E(picture->picture_coding_type != V4L2_MPEG2_PICTURE_CODING_TYPE_I) |
++	      VDPU_REG_PIC_TOPFIELD_E(picture->picture_structure == PICT_TOP_FIELD) |
++	      VDPU_REG_FWD_INTERLACE_E(0) |
++	      VDPU_REG_WRITE_MVS_E(0) |
++	      VDPU_REG_DEC_TIMEOUT_E(1) |
++	      VDPU_REG_DEC_CLK_GATE_E(1);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(57));
++
++	reg = VDPU_REG_PIC_MB_WIDTH(MPEG2_MB_WIDTH(ctx->dst_fmt.width)) |
++	      VDPU_REG_PIC_MB_HEIGHT_P(MPEG2_MB_HEIGHT(ctx->dst_fmt.height)) |
++	      VDPU_REG_ALT_SCAN_E(picture->alternate_scan) |
++	      VDPU_REG_TOPFIELDFIRST_E(picture->top_field_first);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(120));
++
++	reg = VDPU_REG_STRM_START_BIT(slice_params->data_bit_offset) |
++	      VDPU_REG_QSCALE_TYPE(picture->q_scale_type) |
++	      VDPU_REG_CON_MV_E(picture->concealment_motion_vectors) |
++	      VDPU_REG_INTRA_DC_PREC(picture->intra_dc_precision) |
++	      VDPU_REG_INTRA_VLC_TAB(picture->intra_vlc_format) |
++	      VDPU_REG_FRAME_PRED_DCT(picture->frame_pred_frame_dct);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(122));
++
++	reg = VDPU_REG_ALT_SCAN_FLAG_E(picture->alternate_scan) |
++	      VDPU_REG_FCODE_FWD_HOR(picture->f_code[0][0]) |
++	      VDPU_REG_FCODE_FWD_VER(picture->f_code[0][1]) |
++	      VDPU_REG_FCODE_BWD_HOR(picture->f_code[1][0]) |
++	      VDPU_REG_FCODE_BWD_VER(picture->f_code[1][1]) |
++	      VDPU_REG_MV_ACCURACY_FWD(1) |
++	      VDPU_REG_MV_ACCURACY_BWD(1);
++	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(136));
++
++	rk3399_vpu_mpeg2_dec_set_quantization(vpu, ctx);
++
++	rk3399_vpu_mpeg2_dec_set_buffers(vpu, ctx, &src_buf->vb2_buf,
++					 &dst_buf->vb2_buf,
++					 sequence, picture, slice_params);
++
++	/* Controls no longer in-use, we can complete them */
++	v4l2_ctrl_request_complete(src_buf->vb2_buf.req_obj.req,
++				   &ctx->ctrl_handler);
++
++	/* Kick the watchdog and start decoding */
++	schedule_delayed_work(&vpu->watchdog_work, msecs_to_jiffies(2000));
++
++	reg = vdpu_read(vpu, VDPU_SWREG(57)) | VDPU_REG_DEC_E(1);
++	vdpu_write(vpu, reg, VDPU_SWREG(57));
++}
+diff --git a/drivers/staging/media/rockchip/vpu/rockchip_vpu.h b/drivers/staging/media/rockchip/vpu/rockchip_vpu.h
+index 1ec2be483e27..3093821440c0 100644
+--- a/drivers/staging/media/rockchip/vpu/rockchip_vpu.h
++++ b/drivers/staging/media/rockchip/vpu/rockchip_vpu.h
+@@ -27,6 +27,10 @@
+ 
+ #define ROCKCHIP_VPU_MAX_CLOCKS		4
+ 
++#define MPEG2_MB_DIM			16
++#define MPEG2_MB_WIDTH(w)		DIV_ROUND_UP(w, MPEG2_MB_DIM)
++#define MPEG2_MB_HEIGHT(h)		DIV_ROUND_UP(h, MPEG2_MB_DIM)
++
+ #define JPEG_MB_DIM			16
+ #define JPEG_MB_WIDTH(w)		DIV_ROUND_UP(w, JPEG_MB_DIM)
+ #define JPEG_MB_HEIGHT(h)		DIV_ROUND_UP(h, JPEG_MB_DIM)
+@@ -34,29 +38,41 @@
+ struct rockchip_vpu_ctx;
+ struct rockchip_vpu_codec_ops;
+ 
+-#define RK_VPU_CODEC_JPEG BIT(0)
++#define RK_VPU_JPEG_ENCODER	BIT(0)
++#define RK_VPU_ENCODERS		0x0000ffff
++
++#define RK_VPU_MPEG2_DECODER	BIT(16)
++#define RK_VPU_DECODERS		0xffff0000
+ 
+ /**
+  * struct rockchip_vpu_variant - information about VPU hardware variant
+  *
+  * @enc_offset:			Offset from VPU base to encoder registers.
++ * @dec_offset:			Offset from VPU base to decoder registers.
+  * @enc_fmts:			Encoder formats.
+  * @num_enc_fmts:		Number of encoder formats.
++ * @dec_fmts:			Decoder formats.
++ * @num_dec_fmts:		Number of decoder formats.
+  * @codec:			Supported codecs
+  * @codec_ops:			Codec ops.
+  * @init:			Initialize hardware.
+  * @vepu_irq:			encoder interrupt handler
++ * @vdpu_irq:			decoder interrupt handler
+  * @clk_names:			array of clock names
+  * @num_clocks:			number of clocks in the array
+  */
+ struct rockchip_vpu_variant {
+ 	unsigned int enc_offset;
++	unsigned int dec_offset;
+ 	const struct rockchip_vpu_fmt *enc_fmts;
+ 	unsigned int num_enc_fmts;
++	const struct rockchip_vpu_fmt *dec_fmts;
++	unsigned int num_dec_fmts;
+ 	unsigned int codec;
+ 	const struct rockchip_vpu_codec_ops *codec_ops;
+ 	int (*init)(struct rockchip_vpu_dev *vpu);
+ 	irqreturn_t (*vepu_irq)(int irq, void *priv);
++	irqreturn_t (*vdpu_irq)(int irq, void *priv);
+ 	const char *clk_names[ROCKCHIP_VPU_MAX_CLOCKS];
+ 	int num_clocks;
+ };
+@@ -65,24 +81,75 @@ struct rockchip_vpu_variant {
+  * enum rockchip_vpu_codec_mode - codec operating mode.
+  * @RK_VPU_MODE_NONE:  No operating mode. Used for RAW video formats.
+  * @RK_VPU_MODE_JPEG_ENC: JPEG encoder.
++ * @RK_VPU_MODE_MPEG2_DEC: MPEG-2 decoder.
+  */
+ enum rockchip_vpu_codec_mode {
+ 	RK_VPU_MODE_NONE = -1,
+ 	RK_VPU_MODE_JPEG_ENC,
++	RK_VPU_MODE_MPEG2_DEC,
++};
++
++/*
++ * struct rockchip_vpu_ctrl - helper type to declare supported controls
++ * @id:		V4L2 control ID (V4L2_CID_xxx)
++ * @codec:	codec id this control belong to (RK_VPU_JPEG_ENCODER, etc.)
++ * @cfg:	control configuration
++ */
++struct rockchip_vpu_ctrl {
++	unsigned int id;
++	unsigned int codec;
++	struct v4l2_ctrl_config cfg;
++};
++
++/*
++ * struct rockchip_vpu_func - rockchip VPU functionality
++ *
++ * @id:			processing functionality ID (can be
++ *			%MEDIA_ENT_F_PROC_VIDEO_ENCODER or
++ *			%MEDIA_ENT_F_PROC_VIDEO_DECODER)
++ * @vdev:		&struct video_device that exposes the encoder or
++ *			decoder functionality
++ * @source_pad:		&struct media_pad with the source pad.
++ * @sink:		&struct media_entity pointer with the sink entity
++ * @sink_pad:		&struct media_pad with the sink pad.
++ * @proc:		&struct media_entity pointer with the M2M device itself.
++ * @proc_pads:		&struct media_pad with the @proc pads.
++ * @intf_devnode:	&struct media_intf devnode pointer with the interface
++ *			with controls the M2M device.
++ *
++ * Contains everything needed to attach the video device to the media device.
++ */
++struct rockchip_vpu_func {
++	unsigned int id;
++	struct video_device vdev;
++	struct media_pad source_pad;
++	struct media_entity sink;
++	struct media_pad sink_pad;
++	struct media_entity proc;
++	struct media_pad proc_pads[2];
++	struct media_intf_devnode *intf_devnode;
+ };
+ 
++static inline struct rockchip_vpu_func *
++rockchip_vpu_vdev_to_func(struct video_device *vdev)
++{
++	return container_of(vdev, struct rockchip_vpu_func, vdev);
++}
++
+ /**
+  * struct rockchip_vpu_dev - driver data
+  * @v4l2_dev:		V4L2 device to register video devices for.
+  * @m2m_dev:		mem2mem device associated to this device.
+  * @mdev:		media device associated to this device.
+- * @vfd_enc:		Video device for encoder.
++ * @encoder:		encoder functionality.
++ * @decoder:		decoder functionality.
+  * @pdev:		Pointer to VPU platform device.
+  * @dev:		Pointer to device for convenient logging using
+  *			dev_ macros.
+  * @clocks:		Array of clock handles.
+  * @base:		Mapped address of VPU registers.
+  * @enc_base:		Mapped address of VPU encoder register for convenience.
++ * @dec_base:		Mapped address of VPU decoder register for convenience.
+  * @vpu_mutex:		Mutex to synchronize V4L2 calls.
+  * @irqlock:		Spinlock to synchronize access to data structures
+  *			shared with interrupt handlers.
+@@ -93,12 +160,14 @@ struct rockchip_vpu_dev {
+ 	struct v4l2_device v4l2_dev;
+ 	struct v4l2_m2m_dev *m2m_dev;
+ 	struct media_device mdev;
+-	struct video_device *vfd_enc;
++	struct rockchip_vpu_func *encoder;
++	struct rockchip_vpu_func *decoder;
+ 	struct platform_device *pdev;
+ 	struct device *dev;
+ 	struct clk_bulk_data clocks[ROCKCHIP_VPU_MAX_CLOCKS];
+ 	void __iomem *base;
+ 	void __iomem *enc_base;
++	void __iomem *dec_base;
+ 
+ 	struct mutex vpu_mutex;	/* video_device lock */
+ 	spinlock_t irqlock;
+@@ -123,11 +192,12 @@ struct rockchip_vpu_dev {
+  * @ctrl_handler:	Control handler used to register controls.
+  * @jpeg_quality:	User-specified JPEG compression quality.
+  *
++ * @buf_finish:		Buffer finish. This depends on encoder or decoder
++ *			context, and it's called right before
++ *			calling v4l2_m2m_job_finish.
+  * @codec_ops:		Set of operations related to codec mode.
+- *
+- * @bounce_dma_addr:	Bounce buffer bus address.
+- * @bounce_buf:		Bounce buffer pointer.
+- * @bounce_size:	Bounce buffer size.
++ * @jpeg_enc:		JPEG-encoding context.
++ * @mpeg2_dec:		MPEG-2-decoding context.
+  */
+ struct rockchip_vpu_ctx {
+ 	struct rockchip_vpu_dev *dev;
+@@ -144,11 +214,17 @@ struct rockchip_vpu_ctx {
+ 	struct v4l2_ctrl_handler ctrl_handler;
+ 	int jpeg_quality;
+ 
++	int (*buf_finish)(struct rockchip_vpu_ctx *ctx,
++			  struct vb2_buffer *buf,
++			  unsigned int bytesused);
++
+ 	const struct rockchip_vpu_codec_ops *codec_ops;
+ 
+-	dma_addr_t bounce_dma_addr;
+-	void *bounce_buf;
+-	size_t bounce_size;
++	/* Specific for particular codec modes. */
++	union {
++		struct rockchip_vpu_jpeg_enc_hw_ctx jpeg_enc;
++		struct rockchip_vpu_mpeg2_dec_hw_ctx mpeg2_dec;
++	};
+ };
+ 
+ /**
+@@ -229,4 +305,30 @@ static inline u32 vepu_read(struct rockchip_vpu_dev *vpu, u32 reg)
+ 	return val;
+ }
+ 
++static inline void vdpu_write_relaxed(struct rockchip_vpu_dev *vpu,
++				      u32 val, u32 reg)
++{
++	vpu_debug(6, "0x%04x = 0x%08x\n", reg / 4, val);
++	writel_relaxed(val, vpu->dec_base + reg);
++}
++
++static inline void vdpu_write(struct rockchip_vpu_dev *vpu, u32 val, u32 reg)
++{
++	vpu_debug(6, "0x%04x = 0x%08x\n", reg / 4, val);
++	writel(val, vpu->dec_base + reg);
++}
++
++static inline u32 vdpu_read(struct rockchip_vpu_dev *vpu, u32 reg)
++{
++	u32 val = readl(vpu->dec_base + reg);
++
++	vpu_debug(6, "0x%04x = 0x%08x\n", reg / 4, val);
++	return val;
++}
++
++bool rockchip_vpu_is_encoder_ctx(const struct rockchip_vpu_ctx *ctx);
++
++void *rockchip_vpu_get_ctrl(struct rockchip_vpu_ctx *ctx, u32 id);
++dma_addr_t rockchip_vpu_get_ref(struct vb2_queue *q, u64 ts);
++
+ #endif /* ROCKCHIP_VPU_H_ */
+diff --git a/drivers/staging/media/rockchip/vpu/rockchip_vpu_drv.c b/drivers/staging/media/rockchip/vpu/rockchip_vpu_drv.c
+index 57611464ad07..2e22009b6583 100644
+--- a/drivers/staging/media/rockchip/vpu/rockchip_vpu_drv.c
++++ b/drivers/staging/media/rockchip/vpu/rockchip_vpu_drv.c
+@@ -24,7 +24,7 @@
+ #include <media/videobuf2-core.h>
+ #include <media/videobuf2-vmalloc.h>
+ 
+-#include "rockchip_vpu_common.h"
++#include "rockchip_vpu_v4l2.h"
+ #include "rockchip_vpu.h"
+ #include "rockchip_vpu_hw.h"
+ 
+@@ -35,13 +35,66 @@ module_param_named(debug, rockchip_vpu_debug, int, 0644);
+ MODULE_PARM_DESC(debug,
+ 		 "Debug level - higher value produces more verbose messages");
+ 
++void *rockchip_vpu_get_ctrl(struct rockchip_vpu_ctx *ctx, u32 id)
++{
++	struct v4l2_ctrl *ctrl;
++
++	ctrl = v4l2_ctrl_find(&ctx->ctrl_handler, id);
++	return ctrl ? ctrl->p_cur.p : NULL;
++}
++
++dma_addr_t rockchip_vpu_get_ref(struct vb2_queue *q, u64 ts)
++{
++	int index;
++
++	index = vb2_find_timestamp(q, ts, 0);
++	if (index >= 0)
++		return vb2_dma_contig_plane_dma_addr(q->bufs[index], 0);
++	return 0;
++}
++
++static int
++rockchip_vpu_enc_buf_finish(struct rockchip_vpu_ctx *ctx,
++			    struct vb2_buffer *buf,
++			    unsigned int bytesused)
++{
++	size_t avail_size;
++
++	avail_size = vb2_plane_size(buf, 0) - ctx->vpu_dst_fmt->header_size;
++	if (bytesused > avail_size)
++		return -EINVAL;
++	/*
++	 * The bounce buffer is only for the JPEG encoder.
++	 * TODO: Rework the JPEG encoder to eliminate the need
++	 * for a bounce buffer.
++	 */
++	if (ctx->jpeg_enc.bounce_buffer.cpu) {
++		memcpy(vb2_plane_vaddr(buf, 0) +
++		       ctx->vpu_dst_fmt->header_size,
++		       ctx->jpeg_enc.bounce_buffer.cpu, bytesused);
++	}
++	buf->planes[0].bytesused =
++		ctx->vpu_dst_fmt->header_size + bytesused;
++	return 0;
++}
++
++static int
++rockchip_vpu_dec_buf_finish(struct rockchip_vpu_ctx *ctx,
++			    struct vb2_buffer *buf,
++			    unsigned int bytesused)
++{
++	/* For decoders set bytesused as per the output picture. */
++	buf->planes[0].bytesused = ctx->dst_fmt.plane_fmt[0].sizeimage;
++	return 0;
++}
++
+ static void rockchip_vpu_job_finish(struct rockchip_vpu_dev *vpu,
+ 				    struct rockchip_vpu_ctx *ctx,
+ 				    unsigned int bytesused,
+ 				    enum vb2_buffer_state result)
+ {
+ 	struct vb2_v4l2_buffer *src, *dst;
+-	size_t avail_size;
++	int ret;
+ 
+ 	pm_runtime_mark_last_busy(vpu->dev);
+ 	pm_runtime_put_autosuspend(vpu->dev);
+@@ -58,28 +111,11 @@ static void rockchip_vpu_job_finish(struct rockchip_vpu_dev *vpu,
+ 	src->sequence = ctx->sequence_out++;
+ 	dst->sequence = ctx->sequence_cap++;
+ 
+-	dst->field = src->field;
+-	if (src->flags & V4L2_BUF_FLAG_TIMECODE)
+-		dst->timecode = src->timecode;
+-	dst->vb2_buf.timestamp = src->vb2_buf.timestamp;
+-	dst->flags &= ~(V4L2_BUF_FLAG_TSTAMP_SRC_MASK |
+-			V4L2_BUF_FLAG_TIMECODE);
+-	dst->flags |= src->flags & (V4L2_BUF_FLAG_TSTAMP_SRC_MASK |
+-				    V4L2_BUF_FLAG_TIMECODE);
+-
+-	avail_size = vb2_plane_size(&dst->vb2_buf, 0) -
+-		     ctx->vpu_dst_fmt->header_size;
+-	if (bytesused <= avail_size) {
+-		if (ctx->bounce_buf) {
+-			memcpy(vb2_plane_vaddr(&dst->vb2_buf, 0) +
+-			       ctx->vpu_dst_fmt->header_size,
+-			       ctx->bounce_buf, bytesused);
+-		}
+-		dst->vb2_buf.planes[0].bytesused =
+-			ctx->vpu_dst_fmt->header_size + bytesused;
+-	} else {
++	v4l2_m2m_buf_copy_metadata(src, dst, true);
++
++	ret = ctx->buf_finish(ctx, &dst->vb2_buf, bytesused);
++	if (ret)
+ 		result = VB2_BUF_STATE_ERROR;
+-	}
+ 
+ 	v4l2_m2m_buf_done(src, result);
+ 	v4l2_m2m_buf_done(dst, result);
+@@ -137,12 +173,17 @@ static void device_run(void *priv)
+ 	rockchip_vpu_job_finish(ctx->dev, ctx, 0, VB2_BUF_STATE_ERROR);
+ }
+ 
++bool rockchip_vpu_is_encoder_ctx(const struct rockchip_vpu_ctx *ctx)
++{
++	return ctx->buf_finish == rockchip_vpu_enc_buf_finish;
++}
++
+ static struct v4l2_m2m_ops vpu_m2m_ops = {
+ 	.device_run = device_run,
+ };
+ 
+ static int
+-enc_queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *dst_vq)
++queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *dst_vq)
+ {
+ 	struct rockchip_vpu_ctx *ctx = priv;
+ 	int ret;
+@@ -150,7 +191,7 @@ enc_queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *dst_vq)
+ 	src_vq->type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+ 	src_vq->io_modes = VB2_MMAP | VB2_DMABUF;
+ 	src_vq->drv_priv = ctx;
+-	src_vq->ops = &rockchip_vpu_enc_queue_ops;
++	src_vq->ops = &rockchip_vpu_queue_ops;
+ 	src_vq->mem_ops = &vb2_dma_contig_memops;
+ 
+ 	/*
+@@ -164,24 +205,32 @@ enc_queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *dst_vq)
+ 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+ 	src_vq->lock = &ctx->dev->vpu_mutex;
+ 	src_vq->dev = ctx->dev->v4l2_dev.dev;
++	src_vq->supports_requests = true;
+ 
+ 	ret = vb2_queue_init(src_vq);
+ 	if (ret)
+ 		return ret;
+ 
+ 	/*
+-	 * The CAPTURE queue doesn't need dma memory,
+-	 * as the CPU needs to create the JPEG frames,
+-	 * from the hardware-produced JPEG payload.
++	 * When encoding, the CAPTURE queue doesn't need dma memory,
++	 * as the CPU needs to create the JPEG frames, from the
++	 * hardware-produced JPEG payload.
+ 	 *
+-	 * For the DMA destination buffer, we use
+-	 * a bounce buffer.
++	 * For the DMA destination buffer, we use a bounce buffer.
+ 	 */
++	if (rockchip_vpu_is_encoder_ctx(ctx)) {
++		dst_vq->mem_ops = &vb2_vmalloc_memops;
++	} else {
++		dst_vq->bidirectional = true;
++		dst_vq->mem_ops = &vb2_dma_contig_memops;
++		dst_vq->dma_attrs = DMA_ATTR_ALLOC_SINGLE_PAGES |
++				    DMA_ATTR_NO_KERNEL_MAPPING;
++	}
++
+ 	dst_vq->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+ 	dst_vq->io_modes = VB2_MMAP | VB2_DMABUF;
+ 	dst_vq->drv_priv = ctx;
+-	dst_vq->ops = &rockchip_vpu_enc_queue_ops;
+-	dst_vq->mem_ops = &vb2_vmalloc_memops;
++	dst_vq->ops = &rockchip_vpu_queue_ops;
+ 	dst_vq->buf_struct_size = sizeof(struct v4l2_m2m_buffer);
+ 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+ 	dst_vq->lock = &ctx->dev->vpu_mutex;
+@@ -214,22 +263,63 @@ static const struct v4l2_ctrl_ops rockchip_vpu_ctrl_ops = {
+ 	.s_ctrl = rockchip_vpu_s_ctrl,
+ };
+ 
++static struct rockchip_vpu_ctrl controls[] = {
++	{
++		.id = V4L2_CID_JPEG_COMPRESSION_QUALITY,
++		.codec = RK_VPU_JPEG_ENCODER,
++		.cfg = {
++			.min = 5,
++			.max = 100,
++			.step = 1,
++			.def = 50,
++		},
++	}, {
++		.id = V4L2_CID_MPEG_VIDEO_MPEG2_SLICE_PARAMS,
++		.codec = RK_VPU_MPEG2_DECODER,
++		.cfg = {
++			.elem_size = sizeof(struct v4l2_ctrl_mpeg2_slice_params),
++		},
++	}, {
++		.id = V4L2_CID_MPEG_VIDEO_MPEG2_QUANTIZATION,
++		.codec = RK_VPU_MPEG2_DECODER,
++		.cfg = {
++			.elem_size = sizeof(struct v4l2_ctrl_mpeg2_quantization),
++		},
++	},
++};
++
+ static int rockchip_vpu_ctrls_setup(struct rockchip_vpu_dev *vpu,
+-				    struct rockchip_vpu_ctx *ctx)
++				    struct rockchip_vpu_ctx *ctx,
++				    int allowed_codecs)
+ {
+-	v4l2_ctrl_handler_init(&ctx->ctrl_handler, 1);
+-	if (vpu->variant->codec & RK_VPU_CODEC_JPEG) {
+-		v4l2_ctrl_new_std(&ctx->ctrl_handler, &rockchip_vpu_ctrl_ops,
+-				  V4L2_CID_JPEG_COMPRESSION_QUALITY,
+-				  5, 100, 1, 50);
++	int i, num_ctrls = ARRAY_SIZE(controls);
++
++	v4l2_ctrl_handler_init(&ctx->ctrl_handler, num_ctrls);
++
++	for (i = 0; i < num_ctrls; i++) {
++		if (!(allowed_codecs & controls[i].codec))
++			continue;
++		if (!controls[i].cfg.elem_size) {
++			v4l2_ctrl_new_std(&ctx->ctrl_handler,
++					  &rockchip_vpu_ctrl_ops,
++					  controls[i].id, controls[i].cfg.min,
++					  controls[i].cfg.max,
++					  controls[i].cfg.step,
++					  controls[i].cfg.def);
++		} else {
++			controls[i].cfg.id = controls[i].id;
++			v4l2_ctrl_new_custom(&ctx->ctrl_handler,
++					     &controls[i].cfg, NULL);
++		}
++
+ 		if (ctx->ctrl_handler.error) {
+-			vpu_err("Adding JPEG control failed %d\n",
++			vpu_err("Adding control (%d) failed %d\n",
++				controls[i].id,
+ 				ctx->ctrl_handler.error);
+ 			v4l2_ctrl_handler_free(&ctx->ctrl_handler);
+ 			return ctx->ctrl_handler.error;
+ 		}
+ 	}
+-
+ 	return v4l2_ctrl_handler_setup(&ctx->ctrl_handler);
+ }
+ 
+@@ -241,8 +331,9 @@ static int rockchip_vpu_open(struct file *filp)
+ {
+ 	struct rockchip_vpu_dev *vpu = video_drvdata(filp);
+ 	struct video_device *vdev = video_devdata(filp);
++	struct rockchip_vpu_func *func = rockchip_vpu_vdev_to_func(vdev);
+ 	struct rockchip_vpu_ctx *ctx;
+-	int ret;
++	int allowed_codecs, ret;
+ 
+ 	/*
+ 	 * We do not need any extra locking here, because we operate only
+@@ -258,11 +349,19 @@ static int rockchip_vpu_open(struct file *filp)
+ 		return -ENOMEM;
+ 
+ 	ctx->dev = vpu;
+-	if (vdev == vpu->vfd_enc)
++	if (func->id == MEDIA_ENT_F_PROC_VIDEO_ENCODER) {
++		allowed_codecs = vpu->variant->codec & RK_VPU_ENCODERS;
++		ctx->buf_finish = rockchip_vpu_enc_buf_finish;
+ 		ctx->fh.m2m_ctx = v4l2_m2m_ctx_init(vpu->m2m_dev, ctx,
+-						    &enc_queue_init);
+-	else
++						    queue_init);
++	} else if (func->id == MEDIA_ENT_F_PROC_VIDEO_DECODER) {
++		allowed_codecs = vpu->variant->codec & RK_VPU_DECODERS;
++		ctx->buf_finish = rockchip_vpu_dec_buf_finish;
++		ctx->fh.m2m_ctx = v4l2_m2m_ctx_init(vpu->m2m_dev, ctx,
++						    queue_init);
++	} else {
+ 		ctx->fh.m2m_ctx = ERR_PTR(-ENODEV);
++	}
+ 	if (IS_ERR(ctx->fh.m2m_ctx)) {
+ 		ret = PTR_ERR(ctx->fh.m2m_ctx);
+ 		kfree(ctx);
+@@ -273,12 +372,9 @@ static int rockchip_vpu_open(struct file *filp)
+ 	filp->private_data = &ctx->fh;
+ 	v4l2_fh_add(&ctx->fh);
+ 
+-	if (vdev == vpu->vfd_enc) {
+-		rockchip_vpu_enc_reset_dst_fmt(vpu, ctx);
+-		rockchip_vpu_enc_reset_src_fmt(vpu, ctx);
+-	}
++	rockchip_vpu_reset_fmts(ctx);
+ 
+-	ret = rockchip_vpu_ctrls_setup(vpu, ctx);
++	ret = rockchip_vpu_ctrls_setup(vpu, ctx, allowed_codecs);
+ 	if (ret) {
+ 		vpu_err("Failed to set up controls\n");
+ 		goto err_fh_free;
+@@ -323,57 +419,255 @@ static const struct v4l2_file_operations rockchip_vpu_fops = {
+ 
+ static const struct of_device_id of_rockchip_vpu_match[] = {
+ 	{ .compatible = "rockchip,rk3399-vpu", .data = &rk3399_vpu_variant, },
++	{ .compatible = "rockchip,rk3328-vpu", .data = &rk3328_vpu_variant, },
+ 	{ .compatible = "rockchip,rk3288-vpu", .data = &rk3288_vpu_variant, },
+ 	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, of_rockchip_vpu_match);
+ 
+-static int rockchip_vpu_video_device_register(struct rockchip_vpu_dev *vpu)
++static int rockchip_vpu_register_entity(struct media_device *mdev,
++					struct media_entity *entity,
++					const char *entity_name,
++					struct media_pad *pads, int num_pads,
++					int function,
++					struct video_device *vdev)
++{
++	char *name;
++	int ret;
++
++	entity->obj_type = MEDIA_ENTITY_TYPE_BASE;
++	if (function == MEDIA_ENT_F_IO_V4L) {
++		entity->info.dev.major = VIDEO_MAJOR;
++		entity->info.dev.minor = vdev->minor;
++	}
++
++	name = devm_kasprintf(mdev->dev, GFP_KERNEL, "%s-%s", vdev->name,
++			      entity_name);
++	if (!name)
++		return -ENOMEM;
++
++	entity->name = name;
++	entity->function = function;
++
++	ret = media_entity_pads_init(entity, num_pads, pads);
++	if (ret)
++		return ret;
++
++	ret = media_device_register_entity(mdev, entity);
++	if (ret)
++		return ret;
++
++	return 0;
++}
++
++static int rockchip_attach_func(struct rockchip_vpu_dev *vpu,
++				struct rockchip_vpu_func *func)
++{
++	struct media_device *mdev = &vpu->mdev;
++	struct media_link *link;
++	int ret;
++
++	/* Create the three encoder entities with their pads */
++	func->source_pad.flags = MEDIA_PAD_FL_SOURCE;
++	ret = rockchip_vpu_register_entity(mdev, &func->vdev.entity,
++					   "source", &func->source_pad, 1,
++					   MEDIA_ENT_F_IO_V4L, &func->vdev);
++	if (ret)
++		return ret;
++
++	func->proc_pads[0].flags = MEDIA_PAD_FL_SINK;
++	func->proc_pads[1].flags = MEDIA_PAD_FL_SOURCE;
++	ret = rockchip_vpu_register_entity(mdev, &func->proc, "proc",
++					   func->proc_pads, 2, func->id,
++					   &func->vdev);
++	if (ret)
++		goto err_rel_entity0;
++
++	func->sink_pad.flags = MEDIA_PAD_FL_SINK;
++	ret = rockchip_vpu_register_entity(mdev, &func->sink, "sink",
++					   &func->sink_pad, 1,
++					   MEDIA_ENT_F_IO_V4L, &func->vdev);
++	if (ret)
++		goto err_rel_entity1;
++
++	/* Connect the three entities */
++	ret = media_create_pad_link(&func->vdev.entity, 0, &func->proc, 1,
++				    MEDIA_LNK_FL_IMMUTABLE |
++				    MEDIA_LNK_FL_ENABLED);
++	if (ret)
++		goto err_rel_entity2;
++
++	ret = media_create_pad_link(&func->proc, 0, &func->sink, 0,
++				    MEDIA_LNK_FL_IMMUTABLE |
++				    MEDIA_LNK_FL_ENABLED);
++	if (ret)
++		goto err_rm_links0;
++
++	/* Create video interface */
++	func->intf_devnode = media_devnode_create(mdev, MEDIA_INTF_T_V4L_VIDEO,
++						  0, VIDEO_MAJOR,
++						  func->vdev.minor);
++	if (!func->intf_devnode) {
++		ret = -ENOMEM;
++		goto err_rm_links1;
++	}
++
++	/* Connect the two DMA engines to the interface */
++	link = media_create_intf_link(&func->vdev.entity,
++				      &func->intf_devnode->intf,
++				      MEDIA_LNK_FL_IMMUTABLE |
++				      MEDIA_LNK_FL_ENABLED);
++	if (!link) {
++		ret = -ENOMEM;
++		goto err_rm_devnode;
++	}
++
++	link = media_create_intf_link(&func->sink, &func->intf_devnode->intf,
++				      MEDIA_LNK_FL_IMMUTABLE |
++				      MEDIA_LNK_FL_ENABLED);
++	if (!link) {
++		ret = -ENOMEM;
++		goto err_rm_devnode;
++	}
++	return 0;
++
++err_rm_devnode:
++	media_devnode_remove(func->intf_devnode);
++
++err_rm_links1:
++	media_entity_remove_links(&func->sink);
++
++err_rm_links0:
++	media_entity_remove_links(&func->proc);
++	media_entity_remove_links(&func->vdev.entity);
++
++err_rel_entity2:
++	media_device_unregister_entity(&func->sink);
++
++err_rel_entity1:
++	media_device_unregister_entity(&func->proc);
++
++err_rel_entity0:
++	media_device_unregister_entity(&func->vdev.entity);
++	return ret;
++}
++
++static void rockchip_detach_func(struct rockchip_vpu_func *func)
++{
++	media_devnode_remove(func->intf_devnode);
++	media_entity_remove_links(&func->sink);
++	media_entity_remove_links(&func->proc);
++	media_entity_remove_links(&func->vdev.entity);
++	media_device_unregister_entity(&func->sink);
++	media_device_unregister_entity(&func->proc);
++	media_device_unregister_entity(&func->vdev.entity);
++}
++
++static int rockchip_vpu_add_func(struct rockchip_vpu_dev *vpu,
++				 unsigned int funcid)
+ {
+ 	const struct of_device_id *match;
++	struct rockchip_vpu_func *func;
+ 	struct video_device *vfd;
+-	int function, ret;
++	int ret;
+ 
+ 	match = of_match_node(of_rockchip_vpu_match, vpu->dev->of_node);
+-	vfd = video_device_alloc();
+-	if (!vfd) {
++	func = devm_kzalloc(vpu->dev, sizeof(*func), GFP_KERNEL);
++	if (!func) {
+ 		v4l2_err(&vpu->v4l2_dev, "Failed to allocate video device\n");
+ 		return -ENOMEM;
+ 	}
+ 
++	func->id = funcid;
++
++	vfd = &func->vdev;
+ 	vfd->fops = &rockchip_vpu_fops;
+-	vfd->release = video_device_release;
++	vfd->release = video_device_release_empty;
+ 	vfd->lock = &vpu->vpu_mutex;
+ 	vfd->v4l2_dev = &vpu->v4l2_dev;
+ 	vfd->vfl_dir = VFL_DIR_M2M;
+ 	vfd->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_M2M_MPLANE;
+-	vfd->ioctl_ops = &rockchip_vpu_enc_ioctl_ops;
+-	snprintf(vfd->name, sizeof(vfd->name), "%s-enc", match->compatible);
+-	vpu->vfd_enc = vfd;
++	vfd->ioctl_ops = &rockchip_vpu_ioctl_ops;
++	snprintf(vfd->name, sizeof(vfd->name), "%s-%s", match->compatible,
++		 funcid == MEDIA_ENT_F_PROC_VIDEO_ENCODER ? "enc" : "dec");
++
++	if (funcid == MEDIA_ENT_F_PROC_VIDEO_ENCODER)
++		vpu->encoder = func;
++	else
++		vpu->decoder = func;
++
+ 	video_set_drvdata(vfd, vpu);
+ 
+-	ret = video_register_device(vfd, VFL_TYPE_GRABBER, 0);
++	ret = video_register_device(vfd, VFL_TYPE_GRABBER, -1);
+ 	if (ret) {
+ 		v4l2_err(&vpu->v4l2_dev, "Failed to register video device\n");
+-		goto err_free_dev;
++		return ret;
+ 	}
+-	v4l2_info(&vpu->v4l2_dev, "registered as /dev/video%d\n", vfd->num);
+ 
+-	function = MEDIA_ENT_F_PROC_VIDEO_ENCODER;
+-	ret = v4l2_m2m_register_media_controller(vpu->m2m_dev, vfd, function);
++	ret = rockchip_attach_func(vpu, func);
+ 	if (ret) {
+-		v4l2_err(&vpu->v4l2_dev, "Failed to init mem2mem media controller\n");
+-		goto err_unreg_video;
++		v4l2_err(&vpu->v4l2_dev,
++			 "Failed to attach functionality to the media device\n");
++		goto err_unreg_dev;
+ 	}
++
++	v4l2_info(&vpu->v4l2_dev, "registered as /dev/video%d\n", vfd->num);
++
+ 	return 0;
+ 
+-err_unreg_video:
++err_unreg_dev:
+ 	video_unregister_device(vfd);
+-err_free_dev:
+-	video_device_release(vfd);
+ 	return ret;
+ }
+ 
++static int rockchip_vpu_add_enc_func(struct rockchip_vpu_dev *vpu)
++{
++	if (!vpu->variant->enc_fmts)
++		return 0;
++
++	return rockchip_vpu_add_func(vpu, MEDIA_ENT_F_PROC_VIDEO_ENCODER);
++}
++
++static int rockchip_vpu_add_dec_func(struct rockchip_vpu_dev *vpu)
++{
++	if (!vpu->variant->dec_fmts)
++		return 0;
++
++	return rockchip_vpu_add_func(vpu, MEDIA_ENT_F_PROC_VIDEO_DECODER);
++}
++
++static void rockchip_vpu_remove_func(struct rockchip_vpu_dev *vpu,
++				     unsigned int funcid)
++{
++	struct rockchip_vpu_func *func;
++
++	if (funcid == MEDIA_ENT_F_PROC_VIDEO_ENCODER)
++		func = vpu->encoder;
++	else
++		func = vpu->decoder;
++
++	if (!func)
++		return;
++
++	rockchip_detach_func(func);
++	video_unregister_device(&func->vdev);
++}
++
++static void rockchip_vpu_remove_enc_func(struct rockchip_vpu_dev *vpu)
++{
++	rockchip_vpu_remove_func(vpu, MEDIA_ENT_F_PROC_VIDEO_ENCODER);
++}
++
++static void rockchip_vpu_remove_dec_func(struct rockchip_vpu_dev *vpu)
++{
++	rockchip_vpu_remove_func(vpu, MEDIA_ENT_F_PROC_VIDEO_DECODER);
++}
++
++static const struct media_device_ops rockchip_m2m_media_ops = {
++	.req_validate = vb2_request_validate,
++	.req_queue = v4l2_m2m_request_queue,
++};
++
+ static int rockchip_vpu_probe(struct platform_device *pdev)
+ {
+ 	const struct of_device_id *match;
+@@ -407,6 +701,7 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
+ 	if (IS_ERR(vpu->base))
+ 		return PTR_ERR(vpu->base);
+ 	vpu->enc_base = vpu->base + vpu->variant->enc_offset;
++	vpu->dec_base = vpu->base + vpu->variant->dec_offset;
+ 
+ 	ret = dma_set_coherent_mask(vpu->dev, DMA_BIT_MASK(32));
+ 	if (ret) {
+@@ -414,6 +709,23 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
++	if (vpu->variant->vdpu_irq) {
++		int irq;
++
++		irq = platform_get_irq_byname(vpu->pdev, "vdpu");
++		if (irq <= 0) {
++			dev_err(vpu->dev, "Could not get vdpu IRQ.\n");
++			return -ENXIO;
++		}
++
++		ret = devm_request_irq(vpu->dev, irq, vpu->variant->vdpu_irq,
++				       0, dev_name(vpu->dev), vpu);
++		if (ret) {
++			dev_err(vpu->dev, "Could not request vdpu IRQ.\n");
++			return ret;
++		}
++	}
++
+ 	if (vpu->variant->vepu_irq) {
+ 		int irq;
+ 
+@@ -462,33 +774,45 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	vpu->mdev.dev = vpu->dev;
+-	strlcpy(vpu->mdev.model, DRIVER_NAME, sizeof(vpu->mdev.model));
++	strscpy(vpu->mdev.model, DRIVER_NAME, sizeof(vpu->mdev.model));
++	strscpy(vpu->mdev.bus_info, "platform: " DRIVER_NAME,
++		sizeof(vpu->mdev.model));
+ 	media_device_init(&vpu->mdev);
++	vpu->mdev.ops = &rockchip_m2m_media_ops;
+ 	vpu->v4l2_dev.mdev = &vpu->mdev;
+ 
+-	ret = rockchip_vpu_video_device_register(vpu);
++	ret = rockchip_vpu_add_enc_func(vpu);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Failed to register encoder\n");
+ 		goto err_m2m_rel;
+ 	}
+ 
++	ret = rockchip_vpu_add_dec_func(vpu);
++	if (ret) {
++		dev_err(&pdev->dev, "Failed to register decoder\n");
++		goto err_rm_enc_func;
++	}
++
+ 	ret = media_device_register(&vpu->mdev);
+ 	if (ret) {
+ 		v4l2_err(&vpu->v4l2_dev, "Failed to register mem2mem media device\n");
+-		goto err_video_dev_unreg;
++		goto err_rm_dec_func;
+ 	}
++
+ 	return 0;
+-err_video_dev_unreg:
+-	if (vpu->vfd_enc) {
+-		video_unregister_device(vpu->vfd_enc);
+-		video_device_release(vpu->vfd_enc);
+-	}
++
++err_rm_dec_func:
++	rockchip_vpu_remove_dec_func(vpu);
++err_rm_enc_func:
++	rockchip_vpu_remove_enc_func(vpu);
+ err_m2m_rel:
++	media_device_cleanup(&vpu->mdev);
+ 	v4l2_m2m_release(vpu->m2m_dev);
+ err_v4l2_unreg:
+ 	v4l2_device_unregister(&vpu->v4l2_dev);
+ err_clk_unprepare:
+ 	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
++	pm_runtime_dont_use_autosuspend(vpu->dev);
+ 	pm_runtime_disable(vpu->dev);
+ 	return ret;
+ }
+@@ -500,15 +824,13 @@ static int rockchip_vpu_remove(struct platform_device *pdev)
+ 	v4l2_info(&vpu->v4l2_dev, "Removing %s\n", pdev->name);
+ 
+ 	media_device_unregister(&vpu->mdev);
+-	v4l2_m2m_unregister_media_controller(vpu->m2m_dev);
+-	v4l2_m2m_release(vpu->m2m_dev);
++	rockchip_vpu_remove_dec_func(vpu);
++	rockchip_vpu_remove_enc_func(vpu);
+ 	media_device_cleanup(&vpu->mdev);
+-	if (vpu->vfd_enc) {
+-		video_unregister_device(vpu->vfd_enc);
+-		video_device_release(vpu->vfd_enc);
+-	}
++	v4l2_m2m_release(vpu->m2m_dev);
+ 	v4l2_device_unregister(&vpu->v4l2_dev);
+ 	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
++	pm_runtime_dont_use_autosuspend(vpu->dev);
+ 	pm_runtime_disable(vpu->dev);
+ 	return 0;
+ }
+diff --git a/drivers/staging/media/rockchip/vpu/rockchip_vpu_enc.c b/drivers/staging/media/rockchip/vpu/rockchip_vpu_enc.c
+deleted file mode 100644
+index fb5e36aedd8c..000000000000
+--- a/drivers/staging/media/rockchip/vpu/rockchip_vpu_enc.c
++++ /dev/null
+@@ -1,670 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0
+-/*
+- * Rockchip VPU codec driver
+- *
+- * Copyright (C) 2018 Collabora, Ltd.
+- * Copyright (C) 2018 Rockchip Electronics Co., Ltd.
+- *	Alpha Lin <Alpha.Lin@rock-chips.com>
+- *	Jeffy Chen <jeffy.chen@rock-chips.com>
+- *
+- * Copyright 2018 Google LLC.
+- *	Tomasz Figa <tfiga@chromium.org>
+- *
+- * Based on s5p-mfc driver by Samsung Electronics Co., Ltd.
+- * Copyright (C) 2010-2011 Samsung Electronics Co., Ltd.
+- */
+-
+-#include <linux/interrupt.h>
+-#include <linux/io.h>
+-#include <linux/module.h>
+-#include <linux/pm_runtime.h>
+-#include <linux/videodev2.h>
+-#include <linux/workqueue.h>
+-#include <media/v4l2-ctrls.h>
+-#include <media/v4l2-event.h>
+-#include <media/v4l2-mem2mem.h>
+-#include <media/videobuf2-core.h>
+-#include <media/videobuf2-dma-sg.h>
+-
+-#include "rockchip_vpu.h"
+-#include "rockchip_vpu_hw.h"
+-#include "rockchip_vpu_common.h"
+-
+-/**
+- * struct v4l2_format_info - information about a V4L2 format
+- * @format: 4CC format identifier (V4L2_PIX_FMT_*)
+- * @header_size: Size of header, optional and used by compressed formats
+- * @num_planes: Number of planes (1 to 3)
+- * @cpp: Number of bytes per pixel (per plane)
+- * @hsub: Horizontal chroma subsampling factor
+- * @vsub: Vertical chroma subsampling factor
+- * @is_compressed: Is it a compressed format?
+- * @multiplanar: Is it a multiplanar variant format? (e.g. NV12M)
+- */
+-struct rockchip_vpu_v4l2_format_info {
+-	u32 format;
+-	u32 header_size;
+-	u8 num_planes;
+-	u8 cpp[3];
+-	u8 hsub;
+-	u8 vsub;
+-	u8 is_compressed;
+-	u8 multiplanar;
+-};
+-
+-static const struct rockchip_vpu_v4l2_format_info *
+-rockchip_vpu_v4l2_format_info(u32 format)
+-{
+-	static const struct rockchip_vpu_v4l2_format_info formats[] = {
+-		{ .format = V4L2_PIX_FMT_YUV420M,	.num_planes = 3, .cpp = { 1, 1, 1 }, .hsub = 2, .vsub = 2, .multiplanar = 1 },
+-		{ .format = V4L2_PIX_FMT_NV12M,		.num_planes = 2, .cpp = { 1, 2, 0 }, .hsub = 2, .vsub = 2, .multiplanar = 1 },
+-		{ .format = V4L2_PIX_FMT_YUYV,		.num_planes = 1, .cpp = { 2, 0, 0 }, .hsub = 2, .vsub = 1 },
+-		{ .format = V4L2_PIX_FMT_UYVY,		.num_planes = 1, .cpp = { 2, 0, 0 }, .hsub = 2, .vsub = 1 },
+-	};
+-	unsigned int i;
+-
+-	for (i = 0; i < ARRAY_SIZE(formats); ++i) {
+-		if (formats[i].format == format)
+-			return &formats[i];
+-	}
+-
+-	vpu_err("Unsupported V4L 4CC format (%08x)\n", format);
+-	return NULL;
+-}
+-
+-static void
+-fill_pixfmt_mp(struct v4l2_pix_format_mplane *pixfmt,
+-	       int pixelformat, int width, int height)
+-{
+-	const struct rockchip_vpu_v4l2_format_info *info;
+-	struct v4l2_plane_pix_format *plane;
+-	int i;
+-
+-	info = rockchip_vpu_v4l2_format_info(pixelformat);
+-	if (!info)
+-		return;
+-
+-	pixfmt->width = width;
+-	pixfmt->height = height;
+-	pixfmt->pixelformat = pixelformat;
+-
+-	if (!info->multiplanar) {
+-		pixfmt->num_planes = 1;
+-		plane = &pixfmt->plane_fmt[0];
+-		plane->bytesperline = info->is_compressed ?
+-					0 : width * info->cpp[0];
+-		plane->sizeimage = info->header_size;
+-		for (i = 0; i < info->num_planes; i++) {
+-			unsigned int hsub = (i == 0) ? 1 : info->hsub;
+-			unsigned int vsub = (i == 0) ? 1 : info->vsub;
+-
+-			plane->sizeimage += info->cpp[i] *
+-				DIV_ROUND_UP(width, hsub) *
+-				DIV_ROUND_UP(height, vsub);
+-		}
+-	} else {
+-		pixfmt->num_planes = info->num_planes;
+-		for (i = 0; i < info->num_planes; i++) {
+-			unsigned int hsub = (i == 0) ? 1 : info->hsub;
+-			unsigned int vsub = (i == 0) ? 1 : info->vsub;
+-
+-			plane = &pixfmt->plane_fmt[i];
+-			plane->bytesperline =
+-				info->cpp[i] * DIV_ROUND_UP(width, hsub);
+-			plane->sizeimage =
+-				plane->bytesperline * DIV_ROUND_UP(height, vsub);
+-		}
+-	}
+-}
+-
+-static const struct rockchip_vpu_fmt *
+-rockchip_vpu_find_format(struct rockchip_vpu_ctx *ctx, u32 fourcc)
+-{
+-	struct rockchip_vpu_dev *dev = ctx->dev;
+-	const struct rockchip_vpu_fmt *formats;
+-	unsigned int num_fmts, i;
+-
+-	formats = dev->variant->enc_fmts;
+-	num_fmts = dev->variant->num_enc_fmts;
+-	for (i = 0; i < num_fmts; i++)
+-		if (formats[i].fourcc == fourcc)
+-			return &formats[i];
+-	return NULL;
+-}
+-
+-static const struct rockchip_vpu_fmt *
+-rockchip_vpu_get_default_fmt(struct rockchip_vpu_ctx *ctx, bool bitstream)
+-{
+-	struct rockchip_vpu_dev *dev = ctx->dev;
+-	const struct rockchip_vpu_fmt *formats;
+-	unsigned int num_fmts, i;
+-
+-	formats = dev->variant->enc_fmts;
+-	num_fmts = dev->variant->num_enc_fmts;
+-	for (i = 0; i < num_fmts; i++) {
+-		if (bitstream == (formats[i].codec_mode != RK_VPU_MODE_NONE))
+-			return &formats[i];
+-	}
+-	return NULL;
+-}
+-
+-static int vidioc_querycap(struct file *file, void *priv,
+-			   struct v4l2_capability *cap)
+-{
+-	struct rockchip_vpu_dev *vpu = video_drvdata(file);
+-
+-	strscpy(cap->driver, vpu->dev->driver->name, sizeof(cap->driver));
+-	strscpy(cap->card, vpu->vfd_enc->name, sizeof(cap->card));
+-	snprintf(cap->bus_info, sizeof(cap->bus_info), "platform: %s",
+-		 vpu->dev->driver->name);
+-	return 0;
+-}
+-
+-static int vidioc_enum_framesizes(struct file *file, void *priv,
+-				  struct v4l2_frmsizeenum *fsize)
+-{
+-	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
+-	const struct rockchip_vpu_fmt *fmt;
+-
+-	if (fsize->index != 0) {
+-		vpu_debug(0, "invalid frame size index (expected 0, got %d)\n",
+-			  fsize->index);
+-		return -EINVAL;
+-	}
+-
+-	fmt = rockchip_vpu_find_format(ctx, fsize->pixel_format);
+-	if (!fmt) {
+-		vpu_debug(0, "unsupported bitstream format (%08x)\n",
+-			  fsize->pixel_format);
+-		return -EINVAL;
+-	}
+-
+-	/* This only makes sense for coded formats */
+-	if (fmt->codec_mode == RK_VPU_MODE_NONE)
+-		return -EINVAL;
+-
+-	fsize->type = V4L2_FRMSIZE_TYPE_STEPWISE;
+-	fsize->stepwise = fmt->frmsize;
+-
+-	return 0;
+-}
+-
+-static int vidioc_enum_fmt_vid_cap_mplane(struct file *file, void *priv,
+-					  struct v4l2_fmtdesc *f)
+-{
+-	struct rockchip_vpu_dev *dev = video_drvdata(file);
+-	const struct rockchip_vpu_fmt *fmt;
+-	const struct rockchip_vpu_fmt *formats;
+-	int num_fmts, i, j = 0;
+-
+-	formats = dev->variant->enc_fmts;
+-	num_fmts = dev->variant->num_enc_fmts;
+-	for (i = 0; i < num_fmts; i++) {
+-		/* Skip uncompressed formats */
+-		if (formats[i].codec_mode == RK_VPU_MODE_NONE)
+-			continue;
+-		if (j == f->index) {
+-			fmt = &formats[i];
+-			f->pixelformat = fmt->fourcc;
+-			return 0;
+-		}
+-		++j;
+-	}
+-	return -EINVAL;
+-}
+-
+-static int vidioc_enum_fmt_vid_out_mplane(struct file *file, void *priv,
+-					  struct v4l2_fmtdesc *f)
+-{
+-	struct rockchip_vpu_dev *dev = video_drvdata(file);
+-	const struct rockchip_vpu_fmt *formats;
+-	const struct rockchip_vpu_fmt *fmt;
+-	int num_fmts, i, j = 0;
+-
+-	formats = dev->variant->enc_fmts;
+-	num_fmts = dev->variant->num_enc_fmts;
+-	for (i = 0; i < num_fmts; i++) {
+-		if (formats[i].codec_mode != RK_VPU_MODE_NONE)
+-			continue;
+-		if (j == f->index) {
+-			fmt = &formats[i];
+-			f->pixelformat = fmt->fourcc;
+-			return 0;
+-		}
+-		++j;
+-	}
+-	return -EINVAL;
+-}
+-
+-static int vidioc_g_fmt_out_mplane(struct file *file, void *priv,
+-				   struct v4l2_format *f)
+-{
+-	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
+-	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
+-
+-	vpu_debug(4, "f->type = %d\n", f->type);
+-
+-	*pix_mp = ctx->src_fmt;
+-
+-	return 0;
+-}
+-
+-static int vidioc_g_fmt_cap_mplane(struct file *file, void *priv,
+-				   struct v4l2_format *f)
+-{
+-	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
+-	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
+-
+-	vpu_debug(4, "f->type = %d\n", f->type);
+-
+-	*pix_mp = ctx->dst_fmt;
+-
+-	return 0;
+-}
+-
+-static int
+-vidioc_try_fmt_cap_mplane(struct file *file, void *priv, struct v4l2_format *f)
+-{
+-	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
+-	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
+-	const struct rockchip_vpu_fmt *fmt;
+-
+-	vpu_debug(4, "%c%c%c%c\n",
+-		  (pix_mp->pixelformat & 0x7f),
+-		  (pix_mp->pixelformat >> 8) & 0x7f,
+-		  (pix_mp->pixelformat >> 16) & 0x7f,
+-		  (pix_mp->pixelformat >> 24) & 0x7f);
+-
+-	fmt = rockchip_vpu_find_format(ctx, pix_mp->pixelformat);
+-	if (!fmt) {
+-		fmt = rockchip_vpu_get_default_fmt(ctx, true);
+-		f->fmt.pix.pixelformat = fmt->fourcc;
+-	}
+-
+-	pix_mp->num_planes = 1;
+-	pix_mp->field = V4L2_FIELD_NONE;
+-	pix_mp->width = clamp(pix_mp->width,
+-			      fmt->frmsize.min_width,
+-			      fmt->frmsize.max_width);
+-	pix_mp->height = clamp(pix_mp->height,
+-			       fmt->frmsize.min_height,
+-			       fmt->frmsize.max_height);
+-	/* Round up to macroblocks. */
+-	pix_mp->width = round_up(pix_mp->width, JPEG_MB_DIM);
+-	pix_mp->height = round_up(pix_mp->height, JPEG_MB_DIM);
+-
+-	/*
+-	 * For compressed formats the application can specify
+-	 * sizeimage. If the application passes a zero sizeimage,
+-	 * let's default to the maximum frame size.
+-	 */
+-	if (!pix_mp->plane_fmt[0].sizeimage)
+-		pix_mp->plane_fmt[0].sizeimage = fmt->header_size +
+-			pix_mp->width * pix_mp->height * fmt->max_depth;
+-	memset(pix_mp->plane_fmt[0].reserved, 0,
+-	       sizeof(pix_mp->plane_fmt[0].reserved));
+-	return 0;
+-}
+-
+-static int
+-vidioc_try_fmt_out_mplane(struct file *file, void *priv, struct v4l2_format *f)
+-{
+-	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
+-	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
+-	const struct rockchip_vpu_fmt *fmt;
+-	unsigned int width, height;
+-	int i;
+-
+-	vpu_debug(4, "%c%c%c%c\n",
+-		  (pix_mp->pixelformat & 0x7f),
+-		  (pix_mp->pixelformat >> 8) & 0x7f,
+-		  (pix_mp->pixelformat >> 16) & 0x7f,
+-		  (pix_mp->pixelformat >> 24) & 0x7f);
+-
+-	fmt = rockchip_vpu_find_format(ctx, pix_mp->pixelformat);
+-	if (!fmt) {
+-		fmt = rockchip_vpu_get_default_fmt(ctx, false);
+-		f->fmt.pix.pixelformat = fmt->fourcc;
+-	}
+-
+-	pix_mp->field = V4L2_FIELD_NONE;
+-	width = clamp(pix_mp->width,
+-		      ctx->vpu_dst_fmt->frmsize.min_width,
+-		      ctx->vpu_dst_fmt->frmsize.max_width);
+-	height = clamp(pix_mp->height,
+-		       ctx->vpu_dst_fmt->frmsize.min_height,
+-		       ctx->vpu_dst_fmt->frmsize.max_height);
+-	/* Round up to macroblocks. */
+-	width = round_up(width, JPEG_MB_DIM);
+-	height = round_up(height, JPEG_MB_DIM);
+-
+-	/* Fill remaining fields */
+-	fill_pixfmt_mp(pix_mp, fmt->fourcc, width, height);
+-
+-	for (i = 0; i < pix_mp->num_planes; i++) {
+-		memset(pix_mp->plane_fmt[i].reserved, 0,
+-		       sizeof(pix_mp->plane_fmt[i].reserved));
+-	}
+-	return 0;
+-}
+-
+-void rockchip_vpu_enc_reset_dst_fmt(struct rockchip_vpu_dev *vpu,
+-				    struct rockchip_vpu_ctx *ctx)
+-{
+-	struct v4l2_pix_format_mplane *fmt = &ctx->dst_fmt;
+-
+-	ctx->vpu_dst_fmt = rockchip_vpu_get_default_fmt(ctx, true);
+-
+-	memset(fmt, 0, sizeof(*fmt));
+-
+-	fmt->num_planes = 1;
+-	fmt->width = clamp(fmt->width, ctx->vpu_dst_fmt->frmsize.min_width,
+-			   ctx->vpu_dst_fmt->frmsize.max_width);
+-	fmt->height = clamp(fmt->height, ctx->vpu_dst_fmt->frmsize.min_height,
+-			    ctx->vpu_dst_fmt->frmsize.max_height);
+-	fmt->pixelformat = ctx->vpu_dst_fmt->fourcc;
+-	fmt->field = V4L2_FIELD_NONE;
+-	fmt->colorspace = V4L2_COLORSPACE_JPEG,
+-	fmt->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+-	fmt->quantization = V4L2_QUANTIZATION_DEFAULT;
+-	fmt->xfer_func = V4L2_XFER_FUNC_DEFAULT;
+-
+-	fmt->plane_fmt[0].sizeimage = ctx->vpu_dst_fmt->header_size +
+-		fmt->width * fmt->height * ctx->vpu_dst_fmt->max_depth;
+-}
+-
+-void rockchip_vpu_enc_reset_src_fmt(struct rockchip_vpu_dev *vpu,
+-				    struct rockchip_vpu_ctx *ctx)
+-{
+-	struct v4l2_pix_format_mplane *fmt = &ctx->src_fmt;
+-	unsigned int width, height;
+-
+-	ctx->vpu_src_fmt = rockchip_vpu_get_default_fmt(ctx, false);
+-
+-	memset(fmt, 0, sizeof(*fmt));
+-
+-	width = clamp(fmt->width, ctx->vpu_dst_fmt->frmsize.min_width,
+-		      ctx->vpu_dst_fmt->frmsize.max_width);
+-	height = clamp(fmt->height, ctx->vpu_dst_fmt->frmsize.min_height,
+-		       ctx->vpu_dst_fmt->frmsize.max_height);
+-	fmt->field = V4L2_FIELD_NONE;
+-	fmt->colorspace = V4L2_COLORSPACE_JPEG,
+-	fmt->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+-	fmt->quantization = V4L2_QUANTIZATION_DEFAULT;
+-	fmt->xfer_func = V4L2_XFER_FUNC_DEFAULT;
+-
+-	fill_pixfmt_mp(fmt, ctx->vpu_src_fmt->fourcc, width, height);
+-}
+-
+-static int
+-vidioc_s_fmt_out_mplane(struct file *file, void *priv, struct v4l2_format *f)
+-{
+-	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
+-	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
+-	struct vb2_queue *vq;
+-	int ret;
+-
+-	/* Change not allowed if queue is streaming. */
+-	vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx, f->type);
+-	if (vb2_is_streaming(vq))
+-		return -EBUSY;
+-
+-	ret = vidioc_try_fmt_out_mplane(file, priv, f);
+-	if (ret)
+-		return ret;
+-
+-	ctx->vpu_src_fmt = rockchip_vpu_find_format(ctx, pix_mp->pixelformat);
+-	ctx->src_fmt = *pix_mp;
+-
+-	/* Propagate to the CAPTURE format */
+-	ctx->dst_fmt.colorspace = pix_mp->colorspace;
+-	ctx->dst_fmt.ycbcr_enc = pix_mp->ycbcr_enc;
+-	ctx->dst_fmt.xfer_func = pix_mp->xfer_func;
+-	ctx->dst_fmt.quantization = pix_mp->quantization;
+-	ctx->dst_fmt.width = pix_mp->width;
+-	ctx->dst_fmt.height = pix_mp->height;
+-
+-	vpu_debug(0, "OUTPUT codec mode: %d\n", ctx->vpu_src_fmt->codec_mode);
+-	vpu_debug(0, "fmt - w: %d, h: %d, mb - w: %d, h: %d\n",
+-		  pix_mp->width, pix_mp->height,
+-		  JPEG_MB_WIDTH(pix_mp->width),
+-		  JPEG_MB_HEIGHT(pix_mp->height));
+-	return 0;
+-}
+-
+-static int
+-vidioc_s_fmt_cap_mplane(struct file *file, void *priv, struct v4l2_format *f)
+-{
+-	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
+-	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
+-	struct rockchip_vpu_dev *vpu = ctx->dev;
+-	struct vb2_queue *vq, *peer_vq;
+-	int ret;
+-
+-	/* Change not allowed if queue is streaming. */
+-	vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx, f->type);
+-	if (vb2_is_streaming(vq))
+-		return -EBUSY;
+-
+-	/*
+-	 * Since format change on the CAPTURE queue will reset
+-	 * the OUTPUT queue, we can't allow doing so
+-	 * when the OUTPUT queue has buffers allocated.
+-	 */
+-	peer_vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx,
+-				  V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+-	if (vb2_is_busy(peer_vq) &&
+-	    (pix_mp->pixelformat != ctx->dst_fmt.pixelformat ||
+-	     pix_mp->height != ctx->dst_fmt.height ||
+-	     pix_mp->width != ctx->dst_fmt.width))
+-		return -EBUSY;
+-
+-	ret = vidioc_try_fmt_cap_mplane(file, priv, f);
+-	if (ret)
+-		return ret;
+-
+-	ctx->vpu_dst_fmt = rockchip_vpu_find_format(ctx, pix_mp->pixelformat);
+-	ctx->dst_fmt = *pix_mp;
+-
+-	vpu_debug(0, "CAPTURE codec mode: %d\n", ctx->vpu_dst_fmt->codec_mode);
+-	vpu_debug(0, "fmt - w: %d, h: %d, mb - w: %d, h: %d\n",
+-		  pix_mp->width, pix_mp->height,
+-		  JPEG_MB_WIDTH(pix_mp->width),
+-		  JPEG_MB_HEIGHT(pix_mp->height));
+-
+-	/*
+-	 * Current raw format might have become invalid with newly
+-	 * selected codec, so reset it to default just to be safe and
+-	 * keep internal driver state sane. User is mandated to set
+-	 * the raw format again after we return, so we don't need
+-	 * anything smarter.
+-	 */
+-	rockchip_vpu_enc_reset_src_fmt(vpu, ctx);
+-	return 0;
+-}
+-
+-const struct v4l2_ioctl_ops rockchip_vpu_enc_ioctl_ops = {
+-	.vidioc_querycap = vidioc_querycap,
+-	.vidioc_enum_framesizes = vidioc_enum_framesizes,
+-
+-	.vidioc_try_fmt_vid_cap_mplane = vidioc_try_fmt_cap_mplane,
+-	.vidioc_try_fmt_vid_out_mplane = vidioc_try_fmt_out_mplane,
+-	.vidioc_s_fmt_vid_out_mplane = vidioc_s_fmt_out_mplane,
+-	.vidioc_s_fmt_vid_cap_mplane = vidioc_s_fmt_cap_mplane,
+-	.vidioc_g_fmt_vid_out_mplane = vidioc_g_fmt_out_mplane,
+-	.vidioc_g_fmt_vid_cap_mplane = vidioc_g_fmt_cap_mplane,
+-	.vidioc_enum_fmt_vid_out_mplane = vidioc_enum_fmt_vid_out_mplane,
+-	.vidioc_enum_fmt_vid_cap_mplane = vidioc_enum_fmt_vid_cap_mplane,
+-
+-	.vidioc_reqbufs = v4l2_m2m_ioctl_reqbufs,
+-	.vidioc_querybuf = v4l2_m2m_ioctl_querybuf,
+-	.vidioc_qbuf = v4l2_m2m_ioctl_qbuf,
+-	.vidioc_dqbuf = v4l2_m2m_ioctl_dqbuf,
+-	.vidioc_prepare_buf = v4l2_m2m_ioctl_prepare_buf,
+-	.vidioc_create_bufs = v4l2_m2m_ioctl_create_bufs,
+-	.vidioc_expbuf = v4l2_m2m_ioctl_expbuf,
+-
+-	.vidioc_subscribe_event = v4l2_ctrl_subscribe_event,
+-	.vidioc_unsubscribe_event = v4l2_event_unsubscribe,
+-
+-	.vidioc_streamon = v4l2_m2m_ioctl_streamon,
+-	.vidioc_streamoff = v4l2_m2m_ioctl_streamoff,
+-};
+-
+-static int
+-rockchip_vpu_queue_setup(struct vb2_queue *vq,
+-			 unsigned int *num_buffers,
+-			 unsigned int *num_planes,
+-			 unsigned int sizes[],
+-			 struct device *alloc_devs[])
+-{
+-	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vq);
+-	struct v4l2_pix_format_mplane *pixfmt;
+-	int i;
+-
+-	switch (vq->type) {
+-	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
+-		pixfmt = &ctx->dst_fmt;
+-		break;
+-	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
+-		pixfmt = &ctx->src_fmt;
+-		break;
+-	default:
+-		vpu_err("invalid queue type: %d\n", vq->type);
+-		return -EINVAL;
+-	}
+-
+-	if (*num_planes) {
+-		if (*num_planes != pixfmt->num_planes)
+-			return -EINVAL;
+-		for (i = 0; i < pixfmt->num_planes; ++i)
+-			if (sizes[i] < pixfmt->plane_fmt[i].sizeimage)
+-				return -EINVAL;
+-		return 0;
+-	}
+-
+-	*num_planes = pixfmt->num_planes;
+-	for (i = 0; i < pixfmt->num_planes; ++i)
+-		sizes[i] = pixfmt->plane_fmt[i].sizeimage;
+-	return 0;
+-}
+-
+-static int rockchip_vpu_buf_prepare(struct vb2_buffer *vb)
+-{
+-	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+-	struct vb2_queue *vq = vb->vb2_queue;
+-	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vq);
+-	struct v4l2_pix_format_mplane *pixfmt;
+-	unsigned int sz;
+-	int ret = 0;
+-	int i;
+-
+-	switch (vq->type) {
+-	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
+-		pixfmt = &ctx->dst_fmt;
+-		break;
+-	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
+-		pixfmt = &ctx->src_fmt;
+-
+-		if (vbuf->field == V4L2_FIELD_ANY)
+-			vbuf->field = V4L2_FIELD_NONE;
+-		if (vbuf->field != V4L2_FIELD_NONE) {
+-			vpu_debug(4, "field %d not supported\n",
+-				  vbuf->field);
+-			return -EINVAL;
+-		}
+-		break;
+-	default:
+-		vpu_err("invalid queue type: %d\n", vq->type);
+-		return -EINVAL;
+-	}
+-
+-	for (i = 0; i < pixfmt->num_planes; ++i) {
+-		sz = pixfmt->plane_fmt[i].sizeimage;
+-		vpu_debug(4, "plane %d size: %ld, sizeimage: %u\n",
+-			  i, vb2_plane_size(vb, i), sz);
+-		if (vb2_plane_size(vb, i) < sz) {
+-			vpu_err("plane %d is too small\n", i);
+-			ret = -EINVAL;
+-			break;
+-		}
+-	}
+-
+-	return ret;
+-}
+-
+-static void rockchip_vpu_buf_queue(struct vb2_buffer *vb)
+-{
+-	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
+-	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+-
+-	v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, vbuf);
+-}
+-
+-static int rockchip_vpu_start_streaming(struct vb2_queue *q, unsigned int count)
+-{
+-	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(q);
+-	enum rockchip_vpu_codec_mode codec_mode;
+-
+-	if (V4L2_TYPE_IS_OUTPUT(q->type))
+-		ctx->sequence_out = 0;
+-	else
+-		ctx->sequence_cap = 0;
+-
+-	/* Set codec_ops for the chosen destination format */
+-	codec_mode = ctx->vpu_dst_fmt->codec_mode;
+-
+-	vpu_debug(4, "Codec mode = %d\n", codec_mode);
+-	ctx->codec_ops = &ctx->dev->variant->codec_ops[codec_mode];
+-
+-	/* A bounce buffer is needed for the JPEG payload */
+-	if (!V4L2_TYPE_IS_OUTPUT(q->type)) {
+-		ctx->bounce_size = ctx->dst_fmt.plane_fmt[0].sizeimage -
+-				  ctx->vpu_dst_fmt->header_size;
+-		ctx->bounce_buf = dma_alloc_attrs(ctx->dev->dev,
+-						  ctx->bounce_size,
+-						  &ctx->bounce_dma_addr,
+-						  GFP_KERNEL,
+-						  DMA_ATTR_ALLOC_SINGLE_PAGES);
+-	}
+-	return 0;
+-}
+-
+-static void rockchip_vpu_stop_streaming(struct vb2_queue *q)
+-{
+-	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(q);
+-
+-	if (!V4L2_TYPE_IS_OUTPUT(q->type))
+-		dma_free_attrs(ctx->dev->dev,
+-			       ctx->bounce_size,
+-			       ctx->bounce_buf,
+-			       ctx->bounce_dma_addr,
+-			       DMA_ATTR_ALLOC_SINGLE_PAGES);
+-
+-	/*
+-	 * The mem2mem framework calls v4l2_m2m_cancel_job before
+-	 * .stop_streaming, so there isn't any job running and
+-	 * it is safe to return all the buffers.
+-	 */
+-	for (;;) {
+-		struct vb2_v4l2_buffer *vbuf;
+-
+-		if (V4L2_TYPE_IS_OUTPUT(q->type))
+-			vbuf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
+-		else
+-			vbuf = v4l2_m2m_dst_buf_remove(ctx->fh.m2m_ctx);
+-		if (!vbuf)
+-			break;
+-		v4l2_m2m_buf_done(vbuf, VB2_BUF_STATE_ERROR);
+-	}
+-}
+-
+-const struct vb2_ops rockchip_vpu_enc_queue_ops = {
+-	.queue_setup = rockchip_vpu_queue_setup,
+-	.buf_prepare = rockchip_vpu_buf_prepare,
+-	.buf_queue = rockchip_vpu_buf_queue,
+-	.start_streaming = rockchip_vpu_start_streaming,
+-	.stop_streaming = rockchip_vpu_stop_streaming,
+-	.wait_prepare = vb2_ops_wait_prepare,
+-	.wait_finish = vb2_ops_wait_finish,
+-};
+diff --git a/drivers/staging/media/rockchip/vpu/rockchip_vpu_hw.h b/drivers/staging/media/rockchip/vpu/rockchip_vpu_hw.h
+index 2b955da1be1a..3d6b97af90fb 100644
+--- a/drivers/staging/media/rockchip/vpu/rockchip_vpu_hw.h
++++ b/drivers/staging/media/rockchip/vpu/rockchip_vpu_hw.h
+@@ -11,6 +11,7 @@
+ 
+ #include <linux/interrupt.h>
+ #include <linux/v4l2-controls.h>
++#include <media/mpeg2-ctrls.h>
+ #include <media/videobuf2-core.h>
+ 
+ struct rockchip_vpu_dev;
+@@ -18,9 +19,41 @@ struct rockchip_vpu_ctx;
+ struct rockchip_vpu_buf;
+ struct rockchip_vpu_variant;
+ 
++/**
++ * struct rockchip_vpu_aux_buf - auxiliary DMA buffer for hardware data
++ * @cpu:	CPU pointer to the buffer.
++ * @dma:	DMA address of the buffer.
++ * @size:	Size of the buffer.
++ */
++struct rockchip_vpu_aux_buf {
++	void *cpu;
++	dma_addr_t dma;
++	size_t size;
++};
++
++/**
++ * struct rockchip_vpu_jpeg_enc_hw_ctx
++ * @bounce_buffer:	Bounce buffer
++ */
++struct rockchip_vpu_jpeg_enc_hw_ctx {
++	struct rockchip_vpu_aux_buf bounce_buffer;
++};
++
++/**
++ * struct rockchip_vpu_mpeg2_dec_hw_ctx
++ * @qtable:		Quantization table
++ */
++struct rockchip_vpu_mpeg2_dec_hw_ctx {
++	struct rockchip_vpu_aux_buf qtable;
++};
++
+ /**
+  * struct rockchip_vpu_codec_ops - codec mode specific operations
+  *
++ * @init:	If needed, can be used for initialization.
++ *		Optional and called from process context.
++ * @exit:	If needed, can be used to undo the .init phase.
++ *		Optional and called from process context.
+  * @run:	Start single {en,de)coding job. Called from atomic context
+  *		to indicate that a pair of buffers is ready and the hardware
+  *		should be programmed and started.
+@@ -28,6 +61,8 @@ struct rockchip_vpu_variant;
+  * @reset:	Reset the hardware in case of a timeout.
+  */
+ struct rockchip_vpu_codec_ops {
++	int (*init)(struct rockchip_vpu_ctx *ctx);
++	void (*exit)(struct rockchip_vpu_ctx *ctx);
+ 	void (*run)(struct rockchip_vpu_ctx *ctx);
+ 	void (*done)(struct rockchip_vpu_ctx *ctx, enum vb2_buffer_state);
+ 	void (*reset)(struct rockchip_vpu_ctx *ctx);
+@@ -44,6 +79,7 @@ enum rockchip_vpu_enc_fmt {
+ };
+ 
+ extern const struct rockchip_vpu_variant rk3399_vpu_variant;
++extern const struct rockchip_vpu_variant rk3328_vpu_variant;
+ extern const struct rockchip_vpu_variant rk3288_vpu_variant;
+ 
+ void rockchip_vpu_watchdog(struct work_struct *work);
+@@ -54,5 +90,14 @@ void rockchip_vpu_irq_done(struct rockchip_vpu_dev *vpu,
+ 
+ void rk3288_vpu_jpeg_enc_run(struct rockchip_vpu_ctx *ctx);
+ void rk3399_vpu_jpeg_enc_run(struct rockchip_vpu_ctx *ctx);
++int rockchip_vpu_jpeg_enc_init(struct rockchip_vpu_ctx *ctx);
++void rockchip_vpu_jpeg_enc_exit(struct rockchip_vpu_ctx *ctx);
++
++void rk3288_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx);
++void rk3399_vpu_mpeg2_dec_run(struct rockchip_vpu_ctx *ctx);
++void rockchip_vpu_mpeg2_dec_copy_qtable(u8 *qtable,
++	const struct v4l2_ctrl_mpeg2_quantization *ctrl);
++int rockchip_vpu_mpeg2_dec_init(struct rockchip_vpu_ctx *ctx);
++void rockchip_vpu_mpeg2_dec_exit(struct rockchip_vpu_ctx *ctx);
+ 
+ #endif /* ROCKCHIP_VPU_HW_H_ */
+diff --git a/drivers/staging/media/rockchip/vpu/rockchip_vpu_jpeg.c b/drivers/staging/media/rockchip/vpu/rockchip_vpu_jpeg.c
+index 0ff0badc1f7a..30b97d207dc5 100644
+--- a/drivers/staging/media/rockchip/vpu/rockchip_vpu_jpeg.c
++++ b/drivers/staging/media/rockchip/vpu/rockchip_vpu_jpeg.c
+@@ -6,9 +6,11 @@
+  * Copyright (C) Jean-Francois Moine (http://moinejf.free.fr)
+  * Copyright (C) 2014 Philipp Zabel, Pengutronix
+  */
++#include <linux/dma-mapping.h>
+ #include <linux/kernel.h>
+ #include <linux/string.h>
+ #include "rockchip_vpu_jpeg.h"
++#include "rockchip_vpu.h"
+ 
+ #define LUMA_QUANT_OFF		7
+ #define CHROMA_QUANT_OFF	72
+@@ -288,3 +290,30 @@ void rockchip_vpu_jpeg_header_assemble(struct rockchip_vpu_jpeg_ctx *ctx)
+ 
+ 	jpeg_set_quality(buf, ctx->quality);
+ }
++
++int rockchip_vpu_jpeg_enc_init(struct rockchip_vpu_ctx *ctx)
++{
++	ctx->jpeg_enc.bounce_buffer.size =
++		ctx->dst_fmt.plane_fmt[0].sizeimage -
++		ctx->vpu_dst_fmt->header_size;
++
++	ctx->jpeg_enc.bounce_buffer.cpu =
++		dma_alloc_attrs(ctx->dev->dev,
++				ctx->jpeg_enc.bounce_buffer.size,
++				&ctx->jpeg_enc.bounce_buffer.dma,
++				GFP_KERNEL,
++				DMA_ATTR_ALLOC_SINGLE_PAGES);
++	if (!ctx->jpeg_enc.bounce_buffer.cpu)
++		return -ENOMEM;
++
++	return 0;
++}
++
++void rockchip_vpu_jpeg_enc_exit(struct rockchip_vpu_ctx *ctx)
++{
++	dma_free_attrs(ctx->dev->dev,
++		       ctx->jpeg_enc.bounce_buffer.size,
++		       ctx->jpeg_enc.bounce_buffer.cpu,
++		       ctx->jpeg_enc.bounce_buffer.dma,
++		       DMA_ATTR_ALLOC_SINGLE_PAGES);
++}
+diff --git a/drivers/staging/media/rockchip/vpu/rockchip_vpu_mpeg2.c b/drivers/staging/media/rockchip/vpu/rockchip_vpu_mpeg2.c
+new file mode 100644
+index 000000000000..5a5b9ea1f6b5
+--- /dev/null
++++ b/drivers/staging/media/rockchip/vpu/rockchip_vpu_mpeg2.c
+@@ -0,0 +1,61 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Rockchip VPU codec driver
++ *
++ * Copyright (C) 2018 Rockchip Electronics Co., Ltd.
++ */
++
++#include "rockchip_vpu.h"
++
++static const u8 zigzag[64] = {
++	0,   1,  8, 16,  9,  2,  3, 10,
++	17, 24, 32, 25, 18, 11,  4,  5,
++	12, 19, 26, 33, 40, 48, 41, 34,
++	27, 20, 13,  6,  7, 14, 21, 28,
++	35, 42, 49, 56, 57, 50, 43, 36,
++	29, 22, 15, 23, 30, 37, 44, 51,
++	58, 59, 52, 45, 38, 31, 39, 46,
++	53, 60, 61, 54, 47, 55, 62, 63
++};
++
++void rockchip_vpu_mpeg2_dec_copy_qtable(u8 *qtable,
++	const struct v4l2_ctrl_mpeg2_quantization *ctrl)
++{
++	int i, n;
++
++	if (!qtable || !ctrl)
++		return;
++
++	for (i = 0; i < ARRAY_SIZE(zigzag); i++) {
++		n = zigzag[i];
++		qtable[n + 0] = ctrl->intra_quantiser_matrix[i];
++		qtable[n + 64] = ctrl->non_intra_quantiser_matrix[i];
++		qtable[n + 128] = ctrl->chroma_intra_quantiser_matrix[i];
++		qtable[n + 192] = ctrl->chroma_non_intra_quantiser_matrix[i];
++	}
++}
++
++int rockchip_vpu_mpeg2_dec_init(struct rockchip_vpu_ctx *ctx)
++{
++	struct rockchip_vpu_dev *vpu = ctx->dev;
++
++	ctx->mpeg2_dec.qtable.size = ARRAY_SIZE(zigzag) * 4;
++	ctx->mpeg2_dec.qtable.cpu =
++		dma_alloc_coherent(vpu->dev,
++				   ctx->mpeg2_dec.qtable.size,
++				   &ctx->mpeg2_dec.qtable.dma,
++				   GFP_KERNEL);
++	if (!ctx->mpeg2_dec.qtable.cpu)
++		return -ENOMEM;
++	return 0;
++}
++
++void rockchip_vpu_mpeg2_dec_exit(struct rockchip_vpu_ctx *ctx)
++{
++	struct rockchip_vpu_dev *vpu = ctx->dev;
++
++	dma_free_coherent(vpu->dev,
++			  ctx->mpeg2_dec.qtable.size,
++			  ctx->mpeg2_dec.qtable.cpu,
++			  ctx->mpeg2_dec.qtable.dma);
++}
+diff --git a/drivers/staging/media/rockchip/vpu/rockchip_vpu_v4l2.c b/drivers/staging/media/rockchip/vpu/rockchip_vpu_v4l2.c
+new file mode 100644
+index 000000000000..9768189148be
+--- /dev/null
++++ b/drivers/staging/media/rockchip/vpu/rockchip_vpu_v4l2.c
+@@ -0,0 +1,692 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Rockchip VPU codec driver
++ *
++ * Copyright (C) 2018 Collabora, Ltd.
++ * Copyright (C) 2018 Rockchip Electronics Co., Ltd.
++ *	Alpha Lin <Alpha.Lin@rock-chips.com>
++ *	Jeffy Chen <jeffy.chen@rock-chips.com>
++ *
++ * Copyright 2018 Google LLC.
++ *	Tomasz Figa <tfiga@chromium.org>
++ *
++ * Based on s5p-mfc driver by Samsung Electronics Co., Ltd.
++ * Copyright (C) 2010-2011 Samsung Electronics Co., Ltd.
++ */
++
++#include <linux/interrupt.h>
++#include <linux/io.h>
++#include <linux/module.h>
++#include <linux/pm_runtime.h>
++#include <linux/videodev2.h>
++#include <linux/workqueue.h>
++#include <media/v4l2-ctrls.h>
++#include <media/v4l2-event.h>
++#include <media/v4l2-mem2mem.h>
++#include <media/videobuf2-core.h>
++#include <media/videobuf2-dma-sg.h>
++
++#include "rockchip_vpu.h"
++#include "rockchip_vpu_hw.h"
++#include "rockchip_vpu_v4l2.h"
++
++static const struct rockchip_vpu_fmt *
++rockchip_vpu_get_formats(const struct rockchip_vpu_ctx *ctx,
++			 unsigned int *num_fmts)
++{
++	const struct rockchip_vpu_fmt *formats;
++
++	if (rockchip_vpu_is_encoder_ctx(ctx)) {
++		formats = ctx->dev->variant->enc_fmts;
++		*num_fmts = ctx->dev->variant->num_enc_fmts;
++	} else {
++		formats = ctx->dev->variant->dec_fmts;
++		*num_fmts = ctx->dev->variant->num_dec_fmts;
++	}
++
++	return formats;
++}
++
++static const struct rockchip_vpu_fmt *
++rockchip_vpu_find_format(const struct rockchip_vpu_fmt *formats,
++			 unsigned int num_fmts, u32 fourcc)
++{
++	unsigned int i;
++
++	for (i = 0; i < num_fmts; i++)
++		if (formats[i].fourcc == fourcc)
++			return &formats[i];
++	return NULL;
++}
++
++static const struct rockchip_vpu_fmt *
++rockchip_vpu_get_default_fmt(const struct rockchip_vpu_fmt *formats,
++			     unsigned int num_fmts, bool bitstream)
++{
++	unsigned int i;
++
++	for (i = 0; i < num_fmts; i++) {
++		if (bitstream == (formats[i].codec_mode != RK_VPU_MODE_NONE))
++			return &formats[i];
++	}
++	return NULL;
++}
++
++static int vidioc_querycap(struct file *file, void *priv,
++			   struct v4l2_capability *cap)
++{
++	struct rockchip_vpu_dev *vpu = video_drvdata(file);
++	struct video_device *vdev = video_devdata(file);
++
++	strscpy(cap->driver, vpu->dev->driver->name, sizeof(cap->driver));
++	strscpy(cap->card, vdev->name, sizeof(cap->card));
++	snprintf(cap->bus_info, sizeof(cap->bus_info), "platform: %s",
++		 vpu->dev->driver->name);
++	return 0;
++}
++
++static int vidioc_enum_framesizes(struct file *file, void *priv,
++				  struct v4l2_frmsizeenum *fsize)
++{
++	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
++	const struct rockchip_vpu_fmt *formats, *fmt;
++	unsigned int num_fmts;
++
++	if (fsize->index != 0) {
++		vpu_debug(0, "invalid frame size index (expected 0, got %d)\n",
++			  fsize->index);
++		return -EINVAL;
++	}
++
++	formats = rockchip_vpu_get_formats(ctx, &num_fmts);
++	fmt = rockchip_vpu_find_format(formats, num_fmts, fsize->pixel_format);
++	if (!fmt) {
++		vpu_debug(0, "unsupported bitstream format (%08x)\n",
++			  fsize->pixel_format);
++		return -EINVAL;
++	}
++
++	/* This only makes sense for coded formats */
++	if (fmt->codec_mode == RK_VPU_MODE_NONE)
++		return -EINVAL;
++
++	fsize->type = V4L2_FRMSIZE_TYPE_STEPWISE;
++	fsize->stepwise = fmt->frmsize;
++
++	return 0;
++}
++
++static int vidioc_enum_fmt(struct file *file, void *priv,
++			   struct v4l2_fmtdesc *f, bool capture)
++
++{
++	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
++	const struct rockchip_vpu_fmt *fmt, *formats;
++	unsigned int num_fmts, i, j = 0;
++	bool skip_mode_none;
++
++	/*
++	 * When dealing with an encoder:
++	 *  - on the capture side we want to filter out all MODE_NONE formats.
++	 *  - on the output side we want to filter out all formats that are
++	 *    not MODE_NONE.
++	 * When dealing with a decoder:
++	 *  - on the capture side we want to filter out all formats that are
++	 *    not MODE_NONE.
++	 *  - on the output side we want to filter out all MODE_NONE formats.
++	 */
++	skip_mode_none = capture == rockchip_vpu_is_encoder_ctx(ctx);
++
++	formats = rockchip_vpu_get_formats(ctx, &num_fmts);
++	for (i = 0; i < num_fmts; i++) {
++		bool mode_none = formats[i].codec_mode == RK_VPU_MODE_NONE;
++
++		if (skip_mode_none == mode_none)
++			continue;
++		if (j == f->index) {
++			fmt = &formats[i];
++			f->pixelformat = fmt->fourcc;
++			return 0;
++		}
++		++j;
++	}
++	return -EINVAL;
++}
++
++static int vidioc_enum_fmt_vid_cap_mplane(struct file *file, void *priv,
++					  struct v4l2_fmtdesc *f)
++{
++	return vidioc_enum_fmt(file, priv, f, true);
++}
++
++static int vidioc_enum_fmt_vid_out_mplane(struct file *file, void *priv,
++					  struct v4l2_fmtdesc *f)
++{
++	return vidioc_enum_fmt(file, priv, f, false);
++}
++
++static int vidioc_g_fmt_out_mplane(struct file *file, void *priv,
++				   struct v4l2_format *f)
++{
++	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
++	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
++
++	vpu_debug(4, "f->type = %d\n", f->type);
++
++	*pix_mp = ctx->src_fmt;
++
++	return 0;
++}
++
++static int vidioc_g_fmt_cap_mplane(struct file *file, void *priv,
++				   struct v4l2_format *f)
++{
++	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
++	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
++
++	vpu_debug(4, "f->type = %d\n", f->type);
++
++	*pix_mp = ctx->dst_fmt;
++
++	return 0;
++}
++
++static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f,
++			  bool capture)
++{
++	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
++	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
++	const struct rockchip_vpu_fmt *formats, *fmt, *vpu_fmt;
++	unsigned int num_fmts;
++	bool coded;
++
++	coded = capture == rockchip_vpu_is_encoder_ctx(ctx);
++
++	vpu_debug(4, "trying format %c%c%c%c\n",
++		  (pix_mp->pixelformat & 0x7f),
++		  (pix_mp->pixelformat >> 8) & 0x7f,
++		  (pix_mp->pixelformat >> 16) & 0x7f,
++		  (pix_mp->pixelformat >> 24) & 0x7f);
++
++	formats = rockchip_vpu_get_formats(ctx, &num_fmts);
++	fmt = rockchip_vpu_find_format(formats, num_fmts, pix_mp->pixelformat);
++	if (!fmt) {
++		fmt = rockchip_vpu_get_default_fmt(formats, num_fmts, coded);
++		f->fmt.pix_mp.pixelformat = fmt->fourcc;
++	}
++
++	if (coded) {
++		pix_mp->num_planes = 1;
++		vpu_fmt = fmt;
++	} else if (rockchip_vpu_is_encoder_ctx(ctx)) {
++		vpu_fmt = ctx->vpu_dst_fmt;
++	} else {
++		vpu_fmt = ctx->vpu_src_fmt;
++		/*
++		 * Width/height on the CAPTURE end of a decoder are ignored and
++		 * replaced by the OUTPUT ones.
++		 */
++		pix_mp->width = ctx->src_fmt.width;
++		pix_mp->height = ctx->src_fmt.height;
++	}
++
++	pix_mp->field = V4L2_FIELD_NONE;
++
++	v4l2_apply_frmsize_constraints(&pix_mp->width, &pix_mp->height,
++				       &vpu_fmt->frmsize);
++
++	if (!coded) {
++		/* Fill remaining fields */
++		v4l2_fill_pixfmt_mp(pix_mp, fmt->fourcc, pix_mp->width,
++				    pix_mp->height);
++	} else if (!pix_mp->plane_fmt[0].sizeimage) {
++		/*
++		 * For coded formats the application can specify
++		 * sizeimage. If the application passes a zero sizeimage,
++		 * let's default to the maximum frame size.
++		 */
++		pix_mp->plane_fmt[0].sizeimage = fmt->header_size +
++			pix_mp->width * pix_mp->height * fmt->max_depth;
++	}
++
++	return 0;
++}
++
++static int vidioc_try_fmt_cap_mplane(struct file *file, void *priv,
++				     struct v4l2_format *f)
++{
++	return vidioc_try_fmt(file, priv, f, true);
++}
++
++static int vidioc_try_fmt_out_mplane(struct file *file, void *priv,
++				     struct v4l2_format *f)
++{
++	return vidioc_try_fmt(file, priv, f, false);
++}
++
++static void
++rockchip_vpu_reset_fmt(struct v4l2_pix_format_mplane *fmt,
++		       const struct rockchip_vpu_fmt *vpu_fmt)
++{
++	memset(fmt, 0, sizeof(*fmt));
++
++	fmt->pixelformat = vpu_fmt->fourcc;
++	fmt->field = V4L2_FIELD_NONE;
++	fmt->colorspace = V4L2_COLORSPACE_JPEG,
++	fmt->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
++	fmt->quantization = V4L2_QUANTIZATION_DEFAULT;
++	fmt->xfer_func = V4L2_XFER_FUNC_DEFAULT;
++}
++
++static void
++rockchip_vpu_reset_encoded_fmt(struct rockchip_vpu_ctx *ctx)
++{
++	const struct rockchip_vpu_fmt *vpu_fmt, *formats;
++	struct v4l2_pix_format_mplane *fmt;
++	unsigned int num_fmts;
++
++	formats = rockchip_vpu_get_formats(ctx, &num_fmts);
++	vpu_fmt = rockchip_vpu_get_default_fmt(formats, num_fmts, true);
++
++	if (rockchip_vpu_is_encoder_ctx(ctx)) {
++		ctx->vpu_dst_fmt = vpu_fmt;
++		fmt = &ctx->dst_fmt;
++	} else {
++		ctx->vpu_src_fmt = vpu_fmt;
++		fmt = &ctx->src_fmt;
++	}
++
++	rockchip_vpu_reset_fmt(fmt, vpu_fmt);
++	fmt->num_planes = 1;
++	fmt->width = vpu_fmt->frmsize.min_width;
++	fmt->height = vpu_fmt->frmsize.min_height;
++	fmt->plane_fmt[0].sizeimage = vpu_fmt->header_size +
++				fmt->width * fmt->height * vpu_fmt->max_depth;
++}
++
++static void
++rockchip_vpu_reset_raw_fmt(struct rockchip_vpu_ctx *ctx)
++{
++	const struct rockchip_vpu_fmt *raw_vpu_fmt, *formats;
++	struct v4l2_pix_format_mplane *raw_fmt, *encoded_fmt;
++	unsigned int num_fmts;
++
++	formats = rockchip_vpu_get_formats(ctx, &num_fmts);
++	raw_vpu_fmt = rockchip_vpu_get_default_fmt(formats, num_fmts, false);
++
++	if (rockchip_vpu_is_encoder_ctx(ctx)) {
++		ctx->vpu_src_fmt = raw_vpu_fmt;
++		raw_fmt = &ctx->src_fmt;
++		encoded_fmt = &ctx->dst_fmt;
++	} else {
++		ctx->vpu_dst_fmt = raw_vpu_fmt;
++		raw_fmt = &ctx->dst_fmt;
++		encoded_fmt = &ctx->src_fmt;
++	}
++
++	rockchip_vpu_reset_fmt(raw_fmt, raw_vpu_fmt);
++	v4l2_fill_pixfmt_mp(raw_fmt, raw_vpu_fmt->fourcc,
++			    encoded_fmt->width,
++			    encoded_fmt->height);
++}
++
++void rockchip_vpu_reset_fmts(struct rockchip_vpu_ctx *ctx)
++{
++	rockchip_vpu_reset_encoded_fmt(ctx);
++	rockchip_vpu_reset_raw_fmt(ctx);
++}
++
++static void
++rockchip_vpu_update_requires_request(struct rockchip_vpu_ctx *ctx,
++				     u32 fourcc)
++{
++	switch (fourcc) {
++	case V4L2_PIX_FMT_JPEG:
++		ctx->fh.m2m_ctx->out_q_ctx.q.requires_requests = true;
++		break;
++	case V4L2_PIX_FMT_MPEG2_SLICE:
++		ctx->fh.m2m_ctx->out_q_ctx.q.requires_requests = false;
++		break;
++	default:
++		break;
++	}
++}
++
++static int
++vidioc_s_fmt_out_mplane(struct file *file, void *priv, struct v4l2_format *f)
++{
++	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
++	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
++	const struct rockchip_vpu_fmt *formats;
++	unsigned int num_fmts;
++	struct vb2_queue *vq;
++	int ret;
++
++	/* Change not allowed if queue is busy. */
++	vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx, f->type);
++	if (vb2_is_busy(vq))
++		return -EBUSY;
++
++	if (!rockchip_vpu_is_encoder_ctx(ctx)) {
++		struct vb2_queue *peer_vq;
++
++		/*
++		 * Since format change on the OUTPUT queue will reset
++		 * the CAPTURE queue, we can't allow doing so
++		 * when the CAPTURE queue has buffers allocated.
++		 */
++		peer_vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx,
++					  V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
++		if (vb2_is_busy(peer_vq))
++			return -EBUSY;
++	}
++
++	ret = vidioc_try_fmt_out_mplane(file, priv, f);
++	if (ret)
++		return ret;
++
++	formats = rockchip_vpu_get_formats(ctx, &num_fmts);
++	ctx->vpu_src_fmt = rockchip_vpu_find_format(formats, num_fmts,
++						    pix_mp->pixelformat);
++	ctx->src_fmt = *pix_mp;
++
++	/*
++	 * Current raw format might have become invalid with newly
++	 * selected codec, so reset it to default just to be safe and
++	 * keep internal driver state sane. User is mandated to set
++	 * the raw format again after we return, so we don't need
++	 * anything smarter.
++	 * Note that rockchip_vpu_reset_raw_fmt() also propagates size
++	 * changes to the raw format.
++	 */
++	if (!rockchip_vpu_is_encoder_ctx(ctx))
++		rockchip_vpu_reset_raw_fmt(ctx);
++
++	/* Colorimetry information are always propagated. */
++	ctx->dst_fmt.colorspace = pix_mp->colorspace;
++	ctx->dst_fmt.ycbcr_enc = pix_mp->ycbcr_enc;
++	ctx->dst_fmt.xfer_func = pix_mp->xfer_func;
++	ctx->dst_fmt.quantization = pix_mp->quantization;
++
++	rockchip_vpu_update_requires_request(ctx, pix_mp->pixelformat);
++
++	vpu_debug(0, "OUTPUT codec mode: %d\n", ctx->vpu_src_fmt->codec_mode);
++	vpu_debug(0, "fmt - w: %d, h: %d\n",
++		  pix_mp->width, pix_mp->height);
++	return 0;
++}
++
++static int vidioc_s_fmt_cap_mplane(struct file *file, void *priv,
++				   struct v4l2_format *f)
++{
++	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
++	struct rockchip_vpu_ctx *ctx = fh_to_ctx(priv);
++	const struct rockchip_vpu_fmt *formats;
++	struct vb2_queue *vq;
++	unsigned int num_fmts;
++	int ret;
++
++	/* Change not allowed if queue is busy. */
++	vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx, f->type);
++	if (vb2_is_busy(vq))
++		return -EBUSY;
++
++	if (rockchip_vpu_is_encoder_ctx(ctx)) {
++		struct vb2_queue *peer_vq;
++
++		/*
++		 * Since format change on the CAPTURE queue will reset
++		 * the OUTPUT queue, we can't allow doing so
++		 * when the OUTPUT queue has buffers allocated.
++		 */
++		peer_vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx,
++					  V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
++		if (vb2_is_busy(peer_vq) &&
++		    (pix_mp->pixelformat != ctx->dst_fmt.pixelformat ||
++		     pix_mp->height != ctx->dst_fmt.height ||
++		     pix_mp->width != ctx->dst_fmt.width))
++			return -EBUSY;
++	}
++
++	ret = vidioc_try_fmt_cap_mplane(file, priv, f);
++	if (ret)
++		return ret;
++
++	formats = rockchip_vpu_get_formats(ctx, &num_fmts);
++	ctx->vpu_dst_fmt = rockchip_vpu_find_format(formats, num_fmts,
++						    pix_mp->pixelformat);
++	ctx->dst_fmt = *pix_mp;
++
++	/*
++	 * Current raw format might have become invalid with newly
++	 * selected codec, so reset it to default just to be safe and
++	 * keep internal driver state sane. User is mandated to set
++	 * the raw format again after we return, so we don't need
++	 * anything smarter.
++	 * Note that rockchip_vpu_reset_raw_fmt() also propagates size
++	 * changes to the raw format.
++	 */
++	if (rockchip_vpu_is_encoder_ctx(ctx))
++		rockchip_vpu_reset_raw_fmt(ctx);
++
++	/* Colorimetry information are always propagated. */
++	ctx->src_fmt.colorspace = pix_mp->colorspace;
++	ctx->src_fmt.ycbcr_enc = pix_mp->ycbcr_enc;
++	ctx->src_fmt.xfer_func = pix_mp->xfer_func;
++	ctx->src_fmt.quantization = pix_mp->quantization;
++
++	vpu_debug(0, "CAPTURE codec mode: %d\n", ctx->vpu_dst_fmt->codec_mode);
++	vpu_debug(0, "fmt - w: %d, h: %d\n",
++		  pix_mp->width, pix_mp->height);
++
++	rockchip_vpu_update_requires_request(ctx, pix_mp->pixelformat);
++
++	return 0;
++}
++
++const struct v4l2_ioctl_ops rockchip_vpu_ioctl_ops = {
++	.vidioc_querycap = vidioc_querycap,
++	.vidioc_enum_framesizes = vidioc_enum_framesizes,
++
++	.vidioc_try_fmt_vid_cap_mplane = vidioc_try_fmt_cap_mplane,
++	.vidioc_try_fmt_vid_out_mplane = vidioc_try_fmt_out_mplane,
++	.vidioc_s_fmt_vid_out_mplane = vidioc_s_fmt_out_mplane,
++	.vidioc_s_fmt_vid_cap_mplane = vidioc_s_fmt_cap_mplane,
++	.vidioc_g_fmt_vid_out_mplane = vidioc_g_fmt_out_mplane,
++	.vidioc_g_fmt_vid_cap_mplane = vidioc_g_fmt_cap_mplane,
++	.vidioc_enum_fmt_vid_out_mplane = vidioc_enum_fmt_vid_out_mplane,
++	.vidioc_enum_fmt_vid_cap_mplane = vidioc_enum_fmt_vid_cap_mplane,
++
++	.vidioc_reqbufs = v4l2_m2m_ioctl_reqbufs,
++	.vidioc_querybuf = v4l2_m2m_ioctl_querybuf,
++	.vidioc_qbuf = v4l2_m2m_ioctl_qbuf,
++	.vidioc_dqbuf = v4l2_m2m_ioctl_dqbuf,
++	.vidioc_prepare_buf = v4l2_m2m_ioctl_prepare_buf,
++	.vidioc_create_bufs = v4l2_m2m_ioctl_create_bufs,
++	.vidioc_expbuf = v4l2_m2m_ioctl_expbuf,
++
++	.vidioc_subscribe_event = v4l2_ctrl_subscribe_event,
++	.vidioc_unsubscribe_event = v4l2_event_unsubscribe,
++
++	.vidioc_streamon = v4l2_m2m_ioctl_streamon,
++	.vidioc_streamoff = v4l2_m2m_ioctl_streamoff,
++};
++
++static int
++rockchip_vpu_queue_setup(struct vb2_queue *vq,
++			 unsigned int *num_buffers,
++			 unsigned int *num_planes,
++			 unsigned int sizes[],
++			 struct device *alloc_devs[])
++{
++	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vq);
++	struct v4l2_pix_format_mplane *pixfmt;
++	int i;
++
++	switch (vq->type) {
++	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
++		pixfmt = &ctx->dst_fmt;
++		break;
++	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
++		pixfmt = &ctx->src_fmt;
++		break;
++	default:
++		vpu_err("invalid queue type: %d\n", vq->type);
++		return -EINVAL;
++	}
++
++	if (*num_planes) {
++		if (*num_planes != pixfmt->num_planes)
++			return -EINVAL;
++		for (i = 0; i < pixfmt->num_planes; ++i)
++			if (sizes[i] < pixfmt->plane_fmt[i].sizeimage)
++				return -EINVAL;
++		return 0;
++	}
++
++	*num_planes = pixfmt->num_planes;
++	for (i = 0; i < pixfmt->num_planes; ++i)
++		sizes[i] = pixfmt->plane_fmt[i].sizeimage;
++	return 0;
++}
++
++static int
++rockchip_vpu_buf_plane_check(struct vb2_buffer *vb,
++			     const struct rockchip_vpu_fmt *vpu_fmt,
++			     struct v4l2_pix_format_mplane *pixfmt)
++{
++	unsigned int sz;
++	int i;
++
++	for (i = 0; i < pixfmt->num_planes; ++i) {
++		sz = pixfmt->plane_fmt[i].sizeimage;
++		vpu_debug(4, "plane %d size: %ld, sizeimage: %u\n",
++			  i, vb2_plane_size(vb, i), sz);
++		if (vb2_plane_size(vb, i) < sz) {
++			vpu_err("plane %d is too small for output\n", i);
++			return -EINVAL;
++		}
++	}
++	return 0;
++}
++
++static int rockchip_vpu_buf_prepare(struct vb2_buffer *vb)
++{
++	struct vb2_queue *vq = vb->vb2_queue;
++	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vq);
++
++	if (V4L2_TYPE_IS_OUTPUT(vq->type))
++		return rockchip_vpu_buf_plane_check(vb, ctx->vpu_src_fmt,
++						    &ctx->src_fmt);
++
++	return rockchip_vpu_buf_plane_check(vb, ctx->vpu_dst_fmt,
++					    &ctx->dst_fmt);
++}
++
++static void rockchip_vpu_buf_queue(struct vb2_buffer *vb)
++{
++	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
++	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
++
++	v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, vbuf);
++}
++
++static bool rockchip_vpu_vq_is_coded(struct vb2_queue *q)
++{
++	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(q);
++
++	return rockchip_vpu_is_encoder_ctx(ctx) != V4L2_TYPE_IS_OUTPUT(q->type);
++}
++
++static int rockchip_vpu_start_streaming(struct vb2_queue *q,
++					unsigned int count)
++{
++	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(q);
++	int ret = 0;
++
++	if (V4L2_TYPE_IS_OUTPUT(q->type))
++		ctx->sequence_out = 0;
++	else
++		ctx->sequence_cap = 0;
++
++	if (rockchip_vpu_vq_is_coded(q)) {
++		enum rockchip_vpu_codec_mode codec_mode;
++
++		if (V4L2_TYPE_IS_OUTPUT(q->type))
++			codec_mode = ctx->vpu_src_fmt->codec_mode;
++		else
++			codec_mode = ctx->vpu_dst_fmt->codec_mode;
++
++		vpu_debug(4, "Codec mode = %d\n", codec_mode);
++		ctx->codec_ops = &ctx->dev->variant->codec_ops[codec_mode];
++		if (ctx->codec_ops && ctx->codec_ops->init)
++			ret = ctx->codec_ops->init(ctx);
++	}
++
++	return ret;
++}
++
++static void
++rockchip_vpu_return_bufs(struct vb2_queue *q,
++			 struct vb2_v4l2_buffer *(*buf_remove)(struct v4l2_m2m_ctx *))
++{
++	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(q);
++
++	for (;;) {
++		struct vb2_v4l2_buffer *vbuf;
++
++		vbuf = buf_remove(ctx->fh.m2m_ctx);
++		if (!vbuf)
++			break;
++		v4l2_ctrl_request_complete(vbuf->vb2_buf.req_obj.req,
++					   &ctx->ctrl_handler);
++		v4l2_m2m_buf_done(vbuf, VB2_BUF_STATE_ERROR);
++	}
++}
++
++static void rockchip_vpu_stop_streaming(struct vb2_queue *q)
++{
++	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(q);
++
++	if (rockchip_vpu_vq_is_coded(q)) {
++		if (ctx->codec_ops && ctx->codec_ops->exit)
++			ctx->codec_ops->exit(ctx);
++	}
++
++	/*
++	 * The mem2mem framework calls v4l2_m2m_cancel_job before
++	 * .stop_streaming, so there isn't any job running and
++	 * it is safe to return all the buffers.
++	 */
++	if (V4L2_TYPE_IS_OUTPUT(q->type))
++		rockchip_vpu_return_bufs(q, v4l2_m2m_src_buf_remove);
++	else
++		rockchip_vpu_return_bufs(q, v4l2_m2m_dst_buf_remove);
++}
++
++static void rockchip_vpu_buf_request_complete(struct vb2_buffer *vb)
++{
++	struct rockchip_vpu_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
++
++	v4l2_ctrl_request_complete(vb->req_obj.req, &ctx->ctrl_handler);
++}
++
++static int rockchip_vpu_buf_out_validate(struct vb2_buffer *vb)
++{
++	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
++
++	vbuf->field = V4L2_FIELD_NONE;
++	return 0;
++}
++
++const struct vb2_ops rockchip_vpu_queue_ops = {
++	.queue_setup = rockchip_vpu_queue_setup,
++	.buf_prepare = rockchip_vpu_buf_prepare,
++	.buf_queue = rockchip_vpu_buf_queue,
++	.buf_out_validate = rockchip_vpu_buf_out_validate,
++	.buf_request_complete = rockchip_vpu_buf_request_complete,
++	.start_streaming = rockchip_vpu_start_streaming,
++	.stop_streaming = rockchip_vpu_stop_streaming,
++	.wait_prepare = vb2_ops_wait_prepare,
++	.wait_finish = vb2_ops_wait_finish,
++};
+diff --git a/drivers/staging/media/rockchip/vpu/rockchip_vpu_common.h b/drivers/staging/media/rockchip/vpu/rockchip_vpu_v4l2.h
+similarity index 50%
+rename from drivers/staging/media/rockchip/vpu/rockchip_vpu_common.h
+rename to drivers/staging/media/rockchip/vpu/rockchip_vpu_v4l2.h
+index ca77668d9579..493e8751d22d 100644
+--- a/drivers/staging/media/rockchip/vpu/rockchip_vpu_common.h
++++ b/drivers/staging/media/rockchip/vpu/rockchip_vpu_v4l2.h
+@@ -13,17 +13,14 @@
+  * Copyright (C) 2011 Samsung Electronics Co., Ltd.
+  */
+ 
+-#ifndef ROCKCHIP_VPU_COMMON_H_
+-#define ROCKCHIP_VPU_COMMON_H_
++#ifndef ROCKCHIP_VPU_V4L2_H_
++#define ROCKCHIP_VPU_V4L2_H_
+ 
+ #include "rockchip_vpu.h"
+ 
+-extern const struct v4l2_ioctl_ops rockchip_vpu_enc_ioctl_ops;
+-extern const struct vb2_ops rockchip_vpu_enc_queue_ops;
++extern const struct v4l2_ioctl_ops rockchip_vpu_ioctl_ops;
++extern const struct vb2_ops rockchip_vpu_queue_ops;
+ 
+-void rockchip_vpu_enc_reset_src_fmt(struct rockchip_vpu_dev *vpu,
+-				    struct rockchip_vpu_ctx *ctx);
+-void rockchip_vpu_enc_reset_dst_fmt(struct rockchip_vpu_dev *vpu,
+-				    struct rockchip_vpu_ctx *ctx);
++void rockchip_vpu_reset_fmts(struct rockchip_vpu_ctx *ctx);
+ 
+-#endif /* ROCKCHIP_VPU_COMMON_H_ */
++#endif /* ROCKCHIP_VPU_V4L2_H_ */
+diff --git a/drivers/staging/media/sunxi/cedrus/Makefile b/drivers/staging/media/sunxi/cedrus/Makefile
+index e9dc68b7bcb6..aaf141fc58b6 100644
+--- a/drivers/staging/media/sunxi/cedrus/Makefile
++++ b/drivers/staging/media/sunxi/cedrus/Makefile
+@@ -1,3 +1,4 @@
+ obj-$(CONFIG_VIDEO_SUNXI_CEDRUS) += sunxi-cedrus.o
+ 
+-sunxi-cedrus-y = cedrus.o cedrus_video.o cedrus_hw.o cedrus_dec.o cedrus_mpeg2.o
++sunxi-cedrus-y = cedrus.o cedrus_video.o cedrus_hw.o cedrus_dec.o \
++		 cedrus_mpeg2.o cedrus_h264.o
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.c b/drivers/staging/media/sunxi/cedrus/cedrus.c
+index d0429c0e6b6b..748a52d7d9c2 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.c
+@@ -40,6 +40,36 @@ static const struct cedrus_control cedrus_controls[] = {
+ 		.codec		= CEDRUS_CODEC_MPEG2,
+ 		.required	= false,
+ 	},
++	{
++		.id		= V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS,
++		.elem_size	= sizeof(struct v4l2_ctrl_h264_decode_params),
++		.codec		= CEDRUS_CODEC_H264,
++		.required	= true,
++	},
++	{
++		.id		= V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS,
++		.elem_size	= sizeof(struct v4l2_ctrl_h264_slice_params),
++		.codec		= CEDRUS_CODEC_H264,
++		.required	= true,
++	},
++	{
++		.id		= V4L2_CID_MPEG_VIDEO_H264_SPS,
++		.elem_size	= sizeof(struct v4l2_ctrl_h264_sps),
++		.codec		= CEDRUS_CODEC_H264,
++		.required	= true,
++	},
++	{
++		.id		= V4L2_CID_MPEG_VIDEO_H264_PPS,
++		.elem_size	= sizeof(struct v4l2_ctrl_h264_pps),
++		.codec		= CEDRUS_CODEC_H264,
++		.required	= true,
++	},
++	{
++		.id		= V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX,
++		.elem_size	= sizeof(struct v4l2_ctrl_h264_scaling_matrix),
++		.codec		= CEDRUS_CODEC_H264,
++		.required	= true,
++	},
+ };
+ 
+ #define CEDRUS_CONTROLS_COUNT	ARRAY_SIZE(cedrus_controls)
+@@ -278,6 +308,7 @@ static int cedrus_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	dev->dec_ops[CEDRUS_CODEC_MPEG2] = &cedrus_dec_ops_mpeg2;
++	dev->dec_ops[CEDRUS_CODEC_H264] = &cedrus_dec_ops_h264;
+ 
+ 	mutex_init(&dev->dev_mutex);
+ 
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.h b/drivers/staging/media/sunxi/cedrus/cedrus.h
+index c57c04b41d2e..bef79f630520 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.h
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.h
+@@ -32,7 +32,7 @@
+ 
+ enum cedrus_codec {
+ 	CEDRUS_CODEC_MPEG2,
+-
++	CEDRUS_CODEC_H264,
+ 	CEDRUS_CODEC_LAST,
+ };
+ 
+@@ -42,6 +42,12 @@ enum cedrus_irq_status {
+ 	CEDRUS_IRQ_OK,
+ };
+ 
++enum cedrus_h264_pic_type {
++	CEDRUS_H264_PIC_TYPE_FRAME	= 0,
++	CEDRUS_H264_PIC_TYPE_FIELD,
++	CEDRUS_H264_PIC_TYPE_MBAFF,
++};
++
+ struct cedrus_control {
+ 	u32			id;
+ 	u32			elem_size;
+@@ -49,6 +55,14 @@ struct cedrus_control {
+ 	unsigned char		required:1;
+ };
+ 
++struct cedrus_h264_run {
++	const struct v4l2_ctrl_h264_decode_params	*decode_params;
++	const struct v4l2_ctrl_h264_pps			*pps;
++	const struct v4l2_ctrl_h264_scaling_matrix	*scaling_matrix;
++	const struct v4l2_ctrl_h264_slice_params	*slice_params;
++	const struct v4l2_ctrl_h264_sps			*sps;
++};
++
+ struct cedrus_mpeg2_run {
+ 	const struct v4l2_ctrl_mpeg2_slice_params	*slice_params;
+ 	const struct v4l2_ctrl_mpeg2_quantization	*quantization;
+@@ -59,12 +73,20 @@ struct cedrus_run {
+ 	struct vb2_v4l2_buffer	*dst;
+ 
+ 	union {
++		struct cedrus_h264_run	h264;
+ 		struct cedrus_mpeg2_run	mpeg2;
+ 	};
+ };
+ 
+ struct cedrus_buffer {
+ 	struct v4l2_m2m_buffer          m2m_buf;
++
++	union {
++		struct {
++			unsigned int			position;
++			enum cedrus_h264_pic_type	pic_type;
++		} h264;
++	} codec;
+ };
+ 
+ struct cedrus_ctx {
+@@ -79,6 +101,19 @@ struct cedrus_ctx {
+ 	struct v4l2_ctrl		**ctrls;
+ 
+ 	struct vb2_buffer		*dst_bufs[VIDEO_MAX_FRAME];
++
++	union {
++		struct {
++			void		*mv_col_buf;
++			dma_addr_t	mv_col_buf_dma;
++			ssize_t		mv_col_buf_field_size;
++			ssize_t		mv_col_buf_size;
++			void		*pic_info_buf;
++			dma_addr_t	pic_info_buf_dma;
++			void		*neighbor_info_buf;
++			dma_addr_t	neighbor_info_buf_dma;
++		} h264;
++	} codec;
+ };
+ 
+ struct cedrus_dec_ops {
+@@ -121,6 +156,7 @@ struct cedrus_dev {
+ };
+ 
+ extern struct cedrus_dec_ops cedrus_dec_ops_mpeg2;
++extern struct cedrus_dec_ops cedrus_dec_ops_h264;
+ 
+ static inline void cedrus_write(struct cedrus_dev *dev, u32 reg, u32 val)
+ {
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
+index 4d6d602cdde6..bdad87eb9d79 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
+@@ -46,6 +46,19 @@ void cedrus_device_run(void *priv)
+ 			V4L2_CID_MPEG_VIDEO_MPEG2_QUANTIZATION);
+ 		break;
+ 
++	case V4L2_PIX_FMT_H264_SLICE_RAW:
++		run.h264.decode_params = cedrus_find_control_data(ctx,
++			V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS);
++		run.h264.pps = cedrus_find_control_data(ctx,
++			V4L2_CID_MPEG_VIDEO_H264_PPS);
++		run.h264.scaling_matrix = cedrus_find_control_data(ctx,
++			V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX);
++		run.h264.slice_params = cedrus_find_control_data(ctx,
++			V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS);
++		run.h264.sps = cedrus_find_control_data(ctx,
++			V4L2_CID_MPEG_VIDEO_H264_SPS);
++		break;
++
+ 	default:
+ 		break;
+ 	}
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_h264.c b/drivers/staging/media/sunxi/cedrus/cedrus_h264.c
+new file mode 100644
+index 000000000000..a30bb283f69f
+--- /dev/null
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_h264.c
+@@ -0,0 +1,576 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * Cedrus VPU driver
++ *
++ * Copyright (c) 2013 Jens Kuske <jenskuske@gmail.com>
++ * Copyright (c) 2018 Bootlin
++ */
++
++#include <linux/types.h>
++
++#include <media/videobuf2-dma-contig.h>
++
++#include "cedrus.h"
++#include "cedrus_hw.h"
++#include "cedrus_regs.h"
++
++enum cedrus_h264_sram_off {
++	CEDRUS_SRAM_H264_PRED_WEIGHT_TABLE	= 0x000,
++	CEDRUS_SRAM_H264_FRAMEBUFFER_LIST	= 0x100,
++	CEDRUS_SRAM_H264_REF_LIST_0		= 0x190,
++	CEDRUS_SRAM_H264_REF_LIST_1		= 0x199,
++	CEDRUS_SRAM_H264_SCALING_LIST_8x8_0	= 0x200,
++	CEDRUS_SRAM_H264_SCALING_LIST_8x8_1	= 0x210,
++	CEDRUS_SRAM_H264_SCALING_LIST_4x4	= 0x220,
++};
++
++struct cedrus_h264_sram_ref_pic {
++	__le32	top_field_order_cnt;
++	__le32	bottom_field_order_cnt;
++	__le32	frame_info;
++	__le32	luma_ptr;
++	__le32	chroma_ptr;
++	__le32	mv_col_top_ptr;
++	__le32	mv_col_bot_ptr;
++	__le32	reserved;
++} __packed;
++
++#define CEDRUS_H264_FRAME_NUM		18
++
++#define CEDRUS_NEIGHBOR_INFO_BUF_SIZE	(16 * SZ_1K)
++#define CEDRUS_PIC_INFO_BUF_SIZE	(128 * SZ_1K)
++
++static void cedrus_h264_write_sram(struct cedrus_dev *dev,
++				   enum cedrus_h264_sram_off off,
++				   const void *data, size_t len)
++{
++	const u32 *buffer = data;
++	size_t count = DIV_ROUND_UP(len, 4);
++
++	cedrus_write(dev, VE_AVC_SRAM_PORT_OFFSET, off << 2);
++
++	while (count--)
++		cedrus_write(dev, VE_AVC_SRAM_PORT_DATA, *buffer++);
++}
++
++static dma_addr_t cedrus_h264_mv_col_buf_addr(struct cedrus_ctx *ctx,
++					      unsigned int position,
++					      unsigned int field)
++{
++	dma_addr_t addr = ctx->codec.h264.mv_col_buf_dma;
++
++	/* Adjust for the position */
++	addr += position * ctx->codec.h264.mv_col_buf_field_size * 2;
++
++	/* Adjust for the field */
++	addr += field * ctx->codec.h264.mv_col_buf_field_size;
++
++	return addr;
++}
++
++static void cedrus_fill_ref_pic(struct cedrus_ctx *ctx,
++				struct cedrus_buffer *buf,
++				unsigned int top_field_order_cnt,
++				unsigned int bottom_field_order_cnt,
++				struct cedrus_h264_sram_ref_pic *pic)
++{
++	struct vb2_buffer *vbuf = &buf->m2m_buf.vb.vb2_buf;
++	unsigned int position = buf->codec.h264.position;
++
++	pic->top_field_order_cnt = cpu_to_le32(top_field_order_cnt);
++	pic->bottom_field_order_cnt = cpu_to_le32(bottom_field_order_cnt);
++	pic->frame_info = cpu_to_le32(buf->codec.h264.pic_type << 8);
++
++	pic->luma_ptr = cpu_to_le32(cedrus_buf_addr(vbuf, &ctx->dst_fmt, 0));
++	pic->chroma_ptr = cpu_to_le32(cedrus_buf_addr(vbuf, &ctx->dst_fmt, 1));
++	pic->mv_col_top_ptr =
++		cpu_to_le32(cedrus_h264_mv_col_buf_addr(ctx, position, 0));
++	pic->mv_col_bot_ptr =
++		cpu_to_le32(cedrus_h264_mv_col_buf_addr(ctx, position, 1));
++}
++
++static void cedrus_write_frame_list(struct cedrus_ctx *ctx,
++				    struct cedrus_run *run)
++{
++	struct cedrus_h264_sram_ref_pic pic_list[CEDRUS_H264_FRAME_NUM];
++	const struct v4l2_ctrl_h264_decode_params *decode = run->h264.decode_params;
++	const struct v4l2_ctrl_h264_slice_params *slice = run->h264.slice_params;
++	const struct v4l2_ctrl_h264_sps *sps = run->h264.sps;
++	struct vb2_queue *cap_q = &ctx->fh.m2m_ctx->cap_q_ctx.q;
++	struct cedrus_buffer *output_buf;
++	struct cedrus_dev *dev = ctx->dev;
++	unsigned long used_dpbs = 0;
++	unsigned int position;
++	unsigned int output = 0;
++	unsigned int i;
++
++	memset(pic_list, 0, sizeof(pic_list));
++
++	for (i = 0; i < ARRAY_SIZE(decode->dpb); i++) {
++		const struct v4l2_h264_dpb_entry *dpb = &decode->dpb[i];
++		struct cedrus_buffer *cedrus_buf;
++		int buf_idx;
++
++		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_VALID))
++			continue;
++
++		buf_idx = vb2_find_timestamp(cap_q, dpb->reference_ts, 0);
++		if (buf_idx < 0)
++			continue;
++
++		cedrus_buf = vb2_to_cedrus_buffer(ctx->dst_bufs[buf_idx]);
++		position = cedrus_buf->codec.h264.position;
++		used_dpbs |= BIT(position);
++
++		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE))
++			continue;
++
++		cedrus_fill_ref_pic(ctx, cedrus_buf,
++				    dpb->top_field_order_cnt,
++				    dpb->bottom_field_order_cnt,
++				    &pic_list[position]);
++
++		output = max(position, output);
++	}
++
++	position = find_next_zero_bit(&used_dpbs, CEDRUS_H264_FRAME_NUM,
++				      output);
++	if (position >= CEDRUS_H264_FRAME_NUM)
++		position = find_first_zero_bit(&used_dpbs, CEDRUS_H264_FRAME_NUM);
++
++	output_buf = vb2_to_cedrus_buffer(&run->dst->vb2_buf);
++	output_buf->codec.h264.position = position;
++
++	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC)
++		output_buf->codec.h264.pic_type = CEDRUS_H264_PIC_TYPE_FIELD;
++	else if (sps->flags & V4L2_H264_SPS_FLAG_MB_ADAPTIVE_FRAME_FIELD)
++		output_buf->codec.h264.pic_type = CEDRUS_H264_PIC_TYPE_MBAFF;
++	else
++		output_buf->codec.h264.pic_type = CEDRUS_H264_PIC_TYPE_FRAME;
++
++	cedrus_fill_ref_pic(ctx, output_buf,
++			    decode->top_field_order_cnt,
++			    decode->bottom_field_order_cnt,
++			    &pic_list[position]);
++
++	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_FRAMEBUFFER_LIST,
++			       pic_list, sizeof(pic_list));
++
++	cedrus_write(dev, VE_H264_OUTPUT_FRAME_IDX, position);
++}
++
++#define CEDRUS_MAX_REF_IDX	32
++
++static void _cedrus_write_ref_list(struct cedrus_ctx *ctx,
++				   struct cedrus_run *run,
++				   const u8 *ref_list, u8 num_ref,
++				   enum cedrus_h264_sram_off sram)
++{
++	const struct v4l2_ctrl_h264_decode_params *decode = run->h264.decode_params;
++	struct vb2_queue *cap_q = &ctx->fh.m2m_ctx->cap_q_ctx.q;
++	struct cedrus_dev *dev = ctx->dev;
++	u8 sram_array[CEDRUS_MAX_REF_IDX];
++	unsigned int i;
++	size_t size;
++
++	memset(sram_array, 0, sizeof(sram_array));
++
++	for (i = 0; i < num_ref; i++) {
++		const struct v4l2_h264_dpb_entry *dpb;
++		const struct cedrus_buffer *cedrus_buf;
++		const struct vb2_v4l2_buffer *ref_buf;
++		unsigned int position;
++		int buf_idx;
++		u8 dpb_idx;
++
++		dpb_idx = ref_list[i];
++		dpb = &decode->dpb[dpb_idx];
++
++		if (!(dpb->flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE))
++			continue;
++
++		buf_idx = vb2_find_timestamp(cap_q, dpb->reference_ts, 0);
++		if (buf_idx < 0)
++			continue;
++
++		ref_buf = to_vb2_v4l2_buffer(ctx->dst_bufs[buf_idx]);
++		cedrus_buf = vb2_v4l2_to_cedrus_buffer(ref_buf);
++		position = cedrus_buf->codec.h264.position;
++
++		sram_array[i] |= position << 1;
++		if (ref_buf->field == V4L2_FIELD_BOTTOM)
++			sram_array[i] |= BIT(0);
++	}
++
++	size = min_t(size_t, ALIGN(num_ref, 4), sizeof(sram_array));
++	cedrus_h264_write_sram(dev, sram, &sram_array, size);
++}
++
++static void cedrus_write_ref_list0(struct cedrus_ctx *ctx,
++				   struct cedrus_run *run)
++{
++	const struct v4l2_ctrl_h264_slice_params *slice = run->h264.slice_params;
++
++	_cedrus_write_ref_list(ctx, run,
++			       slice->ref_pic_list0,
++			       slice->num_ref_idx_l0_active_minus1 + 1,
++			       CEDRUS_SRAM_H264_REF_LIST_0);
++}
++
++static void cedrus_write_ref_list1(struct cedrus_ctx *ctx,
++				   struct cedrus_run *run)
++{
++	const struct v4l2_ctrl_h264_slice_params *slice = run->h264.slice_params;
++
++	_cedrus_write_ref_list(ctx, run,
++			       slice->ref_pic_list1,
++			       slice->num_ref_idx_l1_active_minus1 + 1,
++			       CEDRUS_SRAM_H264_REF_LIST_1);
++}
++
++static void cedrus_write_scaling_lists(struct cedrus_ctx *ctx,
++				       struct cedrus_run *run)
++{
++	const struct v4l2_ctrl_h264_scaling_matrix *scaling =
++		run->h264.scaling_matrix;
++	struct cedrus_dev *dev = ctx->dev;
++
++	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_8x8_0,
++			       scaling->scaling_list_8x8[0],
++			       sizeof(scaling->scaling_list_8x8[0]));
++
++	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_8x8_1,
++			       scaling->scaling_list_8x8[3],
++			       sizeof(scaling->scaling_list_8x8[3]));
++
++	cedrus_h264_write_sram(dev, CEDRUS_SRAM_H264_SCALING_LIST_4x4,
++			       scaling->scaling_list_4x4,
++			       sizeof(scaling->scaling_list_4x4));
++}
++
++static void cedrus_write_pred_weight_table(struct cedrus_ctx *ctx,
++					   struct cedrus_run *run)
++{
++	const struct v4l2_ctrl_h264_slice_params *slice =
++		run->h264.slice_params;
++	const struct v4l2_h264_pred_weight_table *pred_weight =
++		&slice->pred_weight_table;
++	struct cedrus_dev *dev = ctx->dev;
++	int i, j, k;
++
++	cedrus_write(dev, VE_H264_SHS_WP,
++		     ((pred_weight->chroma_log2_weight_denom & 0x7) << 4) |
++		     ((pred_weight->luma_log2_weight_denom & 0x7) << 0));
++
++	cedrus_write(dev, VE_AVC_SRAM_PORT_OFFSET,
++		     CEDRUS_SRAM_H264_PRED_WEIGHT_TABLE << 2);
++
++	for (i = 0; i < ARRAY_SIZE(pred_weight->weight_factors); i++) {
++		const struct v4l2_h264_weight_factors *factors =
++			&pred_weight->weight_factors[i];
++
++		for (j = 0; j < ARRAY_SIZE(factors->luma_weight); j++) {
++			u32 val;
++
++			val = (((u32)factors->luma_offset[j] & 0x1ff) << 16) |
++				(factors->luma_weight[j] & 0x1ff);
++			cedrus_write(dev, VE_AVC_SRAM_PORT_DATA, val);
++		}
++
++		for (j = 0; j < ARRAY_SIZE(factors->chroma_weight); j++) {
++			for (k = 0; k < ARRAY_SIZE(factors->chroma_weight[0]); k++) {
++				u32 val;
++
++				val = (((u32)factors->chroma_offset[j][k] & 0x1ff) << 16) |
++					(factors->chroma_weight[j][k] & 0x1ff);
++				cedrus_write(dev, VE_AVC_SRAM_PORT_DATA, val);
++			}
++		}
++	}
++}
++
++static void cedrus_set_params(struct cedrus_ctx *ctx,
++			      struct cedrus_run *run)
++{
++	const struct v4l2_ctrl_h264_decode_params *decode = run->h264.decode_params;
++	const struct v4l2_ctrl_h264_slice_params *slice = run->h264.slice_params;
++	const struct v4l2_ctrl_h264_pps *pps = run->h264.pps;
++	const struct v4l2_ctrl_h264_sps *sps = run->h264.sps;
++	struct vb2_buffer *src_buf = &run->src->vb2_buf;
++	struct cedrus_dev *dev = ctx->dev;
++	dma_addr_t src_buf_addr;
++	u32 offset = slice->header_bit_size;
++	u32 len = (slice->size * 8) - offset;
++	u32 reg;
++
++	cedrus_write(dev, VE_H264_VLD_LEN, len);
++	cedrus_write(dev, VE_H264_VLD_OFFSET, offset);
++
++	src_buf_addr = vb2_dma_contig_plane_dma_addr(src_buf, 0);
++	cedrus_write(dev, VE_H264_VLD_END,
++		     src_buf_addr + vb2_get_plane_payload(src_buf, 0));
++	cedrus_write(dev, VE_H264_VLD_ADDR,
++		     VE_H264_VLD_ADDR_VAL(src_buf_addr) |
++		     VE_H264_VLD_ADDR_FIRST | VE_H264_VLD_ADDR_VALID |
++		     VE_H264_VLD_ADDR_LAST);
++
++	/*
++	 * FIXME: Since the bitstream parsing is done in software, and
++	 * in userspace, this shouldn't be needed anymore. But it
++	 * turns out that removing it breaks the decoding process,
++	 * without any clear indication why.
++	 */
++	cedrus_write(dev, VE_H264_TRIGGER_TYPE,
++		     VE_H264_TRIGGER_TYPE_INIT_SWDEC);
++
++	if (((pps->flags & V4L2_H264_PPS_FLAG_WEIGHTED_PRED) &&
++	     (slice->slice_type == V4L2_H264_SLICE_TYPE_P ||
++	      slice->slice_type == V4L2_H264_SLICE_TYPE_SP)) ||
++	    (pps->weighted_bipred_idc == 1 &&
++	     slice->slice_type == V4L2_H264_SLICE_TYPE_B))
++		cedrus_write_pred_weight_table(ctx, run);
++
++	if ((slice->slice_type == V4L2_H264_SLICE_TYPE_P) ||
++	    (slice->slice_type == V4L2_H264_SLICE_TYPE_SP) ||
++	    (slice->slice_type == V4L2_H264_SLICE_TYPE_B))
++		cedrus_write_ref_list0(ctx, run);
++
++	if (slice->slice_type == V4L2_H264_SLICE_TYPE_B)
++		cedrus_write_ref_list1(ctx, run);
++
++	// picture parameters
++	reg = 0;
++	/*
++	 * FIXME: the kernel headers are allowing the default value to
++	 * be passed, but the libva doesn't give us that.
++	 */
++	reg |= (slice->num_ref_idx_l0_active_minus1 & 0x1f) << 10;
++	reg |= (slice->num_ref_idx_l1_active_minus1 & 0x1f) << 5;
++	reg |= (pps->weighted_bipred_idc & 0x3) << 2;
++	if (pps->flags & V4L2_H264_PPS_FLAG_ENTROPY_CODING_MODE)
++		reg |= VE_H264_PPS_ENTROPY_CODING_MODE;
++	if (pps->flags & V4L2_H264_PPS_FLAG_WEIGHTED_PRED)
++		reg |= VE_H264_PPS_WEIGHTED_PRED;
++	if (pps->flags & V4L2_H264_PPS_FLAG_CONSTRAINED_INTRA_PRED)
++		reg |= VE_H264_PPS_CONSTRAINED_INTRA_PRED;
++	if (pps->flags & V4L2_H264_PPS_FLAG_TRANSFORM_8X8_MODE)
++		reg |= VE_H264_PPS_TRANSFORM_8X8_MODE;
++	cedrus_write(dev, VE_H264_PPS, reg);
++
++	// sequence parameters
++	reg = 0;
++	reg |= (sps->chroma_format_idc & 0x7) << 19;
++	reg |= (sps->pic_width_in_mbs_minus1 & 0xff) << 8;
++	reg |= sps->pic_height_in_map_units_minus1 & 0xff;
++	if (sps->flags & V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY)
++		reg |= VE_H264_SPS_MBS_ONLY;
++	if (sps->flags & V4L2_H264_SPS_FLAG_MB_ADAPTIVE_FRAME_FIELD)
++		reg |= VE_H264_SPS_MB_ADAPTIVE_FRAME_FIELD;
++	if (sps->flags & V4L2_H264_SPS_FLAG_DIRECT_8X8_INFERENCE)
++		reg |= VE_H264_SPS_DIRECT_8X8_INFERENCE;
++	cedrus_write(dev, VE_H264_SPS, reg);
++
++	// slice parameters
++	reg = 0;
++	reg |= decode->nal_ref_idc ? BIT(12) : 0;
++	reg |= (slice->slice_type & 0xf) << 8;
++	reg |= slice->cabac_init_idc & 0x3;
++	reg |= VE_H264_SHS_FIRST_SLICE_IN_PIC;
++	if (slice->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC)
++		reg |= VE_H264_SHS_FIELD_PIC;
++	if (slice->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD)
++		reg |= VE_H264_SHS_BOTTOM_FIELD;
++	if (slice->flags & V4L2_H264_SLICE_FLAG_DIRECT_SPATIAL_MV_PRED)
++		reg |= VE_H264_SHS_DIRECT_SPATIAL_MV_PRED;
++	cedrus_write(dev, VE_H264_SHS, reg);
++
++	reg = 0;
++	reg |= VE_H264_SHS2_NUM_REF_IDX_ACTIVE_OVRD;
++	reg |= (slice->num_ref_idx_l0_active_minus1 & 0x1f) << 24;
++	reg |= (slice->num_ref_idx_l1_active_minus1 & 0x1f) << 16;
++	reg |= (slice->disable_deblocking_filter_idc & 0x3) << 8;
++	reg |= (slice->slice_alpha_c0_offset_div2 & 0xf) << 4;
++	reg |= slice->slice_beta_offset_div2 & 0xf;
++	cedrus_write(dev, VE_H264_SHS2, reg);
++
++	reg = 0;
++	reg |= (pps->second_chroma_qp_index_offset & 0x3f) << 16;
++	reg |= (pps->chroma_qp_index_offset & 0x3f) << 8;
++	reg |= (pps->pic_init_qp_minus26 + 26 + slice->slice_qp_delta) & 0x3f;
++	cedrus_write(dev, VE_H264_SHS_QP, reg);
++
++	// clear status flags
++	cedrus_write(dev, VE_H264_STATUS, cedrus_read(dev, VE_H264_STATUS));
++
++	// enable int
++	cedrus_write(dev, VE_H264_CTRL,
++		     VE_H264_CTRL_SLICE_DECODE_INT |
++		     VE_H264_CTRL_DECODE_ERR_INT |
++		     VE_H264_CTRL_VLD_DATA_REQ_INT);
++}
++
++static enum cedrus_irq_status
++cedrus_h264_irq_status(struct cedrus_ctx *ctx)
++{
++	struct cedrus_dev *dev = ctx->dev;
++	u32 reg = cedrus_read(dev, VE_H264_STATUS);
++
++	if (reg & (VE_H264_STATUS_DECODE_ERR_INT |
++		   VE_H264_STATUS_VLD_DATA_REQ_INT))
++		return CEDRUS_IRQ_ERROR;
++
++	if (reg & VE_H264_CTRL_SLICE_DECODE_INT)
++		return CEDRUS_IRQ_OK;
++
++	return CEDRUS_IRQ_NONE;
++}
++
++static void cedrus_h264_irq_clear(struct cedrus_ctx *ctx)
++{
++	struct cedrus_dev *dev = ctx->dev;
++
++	cedrus_write(dev, VE_H264_STATUS,
++		     VE_H264_STATUS_INT_MASK);
++}
++
++static void cedrus_h264_irq_disable(struct cedrus_ctx *ctx)
++{
++	struct cedrus_dev *dev = ctx->dev;
++	u32 reg = cedrus_read(dev, VE_H264_CTRL);
++
++	cedrus_write(dev, VE_H264_CTRL,
++		     reg & ~VE_H264_CTRL_INT_MASK);
++}
++
++static void cedrus_h264_setup(struct cedrus_ctx *ctx,
++			      struct cedrus_run *run)
++{
++	struct cedrus_dev *dev = ctx->dev;
++
++	cedrus_engine_enable(dev, CEDRUS_CODEC_H264);
++
++	cedrus_write(dev, VE_H264_SDROT_CTRL, 0);
++	cedrus_write(dev, VE_H264_EXTRA_BUFFER1,
++		     ctx->codec.h264.pic_info_buf_dma);
++	cedrus_write(dev, VE_H264_EXTRA_BUFFER2,
++		     ctx->codec.h264.neighbor_info_buf_dma);
++
++	cedrus_write_scaling_lists(ctx, run);
++	cedrus_write_frame_list(ctx, run);
++
++	cedrus_set_params(ctx, run);
++}
++
++static int cedrus_h264_start(struct cedrus_ctx *ctx)
++{
++	struct cedrus_dev *dev = ctx->dev;
++	unsigned int field_size;
++	unsigned int mv_col_size;
++	int ret;
++
++	/*
++	 * FIXME: It seems that the H6 cedarX code is using a formula
++	 * here based on the size of the frame, while all the older
++	 * code is using a fixed size, so that might need to be
++	 * changed at some point.
++	 */
++	ctx->codec.h264.pic_info_buf =
++		dma_alloc_coherent(dev->dev, CEDRUS_PIC_INFO_BUF_SIZE,
++				   &ctx->codec.h264.pic_info_buf_dma,
++				   GFP_KERNEL);
++	if (!ctx->codec.h264.pic_info_buf)
++		return -ENOMEM;
++
++	/*
++	 * That buffer is supposed to be 16kiB in size, and be aligned
++	 * on 16kiB as well. However, dma_alloc_coherent provides the
++	 * guarantee that we'll have a CPU and DMA address aligned on
++	 * the smallest page order that is greater to the requested
++	 * size, so we don't have to overallocate.
++	 */
++	ctx->codec.h264.neighbor_info_buf =
++		dma_alloc_coherent(dev->dev, CEDRUS_NEIGHBOR_INFO_BUF_SIZE,
++				   &ctx->codec.h264.neighbor_info_buf_dma,
++				   GFP_KERNEL);
++	if (!ctx->codec.h264.neighbor_info_buf) {
++		ret = -ENOMEM;
++		goto err_pic_buf;
++	}
++
++	field_size = DIV_ROUND_UP(ctx->src_fmt.width, 16) *
++		DIV_ROUND_UP(ctx->src_fmt.height, 16) * 16;
++
++	/*
++	 * FIXME: This is actually conditional to
++	 * V4L2_H264_SPS_FLAG_DIRECT_8X8_INFERENCE not being set, we
++	 * might have to rework this if memory efficiency ever is
++	 * something we need to work on.
++	 */
++	field_size = field_size * 2;
++
++	/*
++	 * FIXME: This is actually conditional to
++	 * V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY not being set, we might
++	 * have to rework this if memory efficiency ever is something
++	 * we need to work on.
++	 */
++	field_size = field_size * 2;
++	ctx->codec.h264.mv_col_buf_field_size = field_size;
++
++	mv_col_size = field_size * 2 * CEDRUS_H264_FRAME_NUM;
++	ctx->codec.h264.mv_col_buf_size = mv_col_size;
++	ctx->codec.h264.mv_col_buf = dma_alloc_coherent(dev->dev,
++							ctx->codec.h264.mv_col_buf_size,
++							&ctx->codec.h264.mv_col_buf_dma,
++							GFP_KERNEL);
++	if (!ctx->codec.h264.mv_col_buf) {
++		ret = -ENOMEM;
++		goto err_neighbor_buf;
++	}
++
++	return 0;
++
++err_neighbor_buf:
++	dma_free_coherent(dev->dev, CEDRUS_NEIGHBOR_INFO_BUF_SIZE,
++			  ctx->codec.h264.neighbor_info_buf,
++			  ctx->codec.h264.neighbor_info_buf_dma);
++
++err_pic_buf:
++	dma_free_coherent(dev->dev, CEDRUS_PIC_INFO_BUF_SIZE,
++			  ctx->codec.h264.pic_info_buf,
++			  ctx->codec.h264.pic_info_buf_dma);
++	return ret;
++}
++
++static void cedrus_h264_stop(struct cedrus_ctx *ctx)
++{
++	struct cedrus_dev *dev = ctx->dev;
++
++	dma_free_coherent(dev->dev, ctx->codec.h264.mv_col_buf_size,
++			  ctx->codec.h264.mv_col_buf,
++			  ctx->codec.h264.mv_col_buf_dma);
++	dma_free_coherent(dev->dev, CEDRUS_NEIGHBOR_INFO_BUF_SIZE,
++			  ctx->codec.h264.neighbor_info_buf,
++			  ctx->codec.h264.neighbor_info_buf_dma);
++	dma_free_coherent(dev->dev, CEDRUS_PIC_INFO_BUF_SIZE,
++			  ctx->codec.h264.pic_info_buf,
++			  ctx->codec.h264.pic_info_buf_dma);
++}
++
++static void cedrus_h264_trigger(struct cedrus_ctx *ctx)
++{
++	struct cedrus_dev *dev = ctx->dev;
++
++	cedrus_write(dev, VE_H264_TRIGGER_TYPE,
++		     VE_H264_TRIGGER_TYPE_AVC_SLICE_DECODE);
++}
++
++struct cedrus_dec_ops cedrus_dec_ops_h264 = {
++	.irq_clear	= cedrus_h264_irq_clear,
++	.irq_disable	= cedrus_h264_irq_disable,
++	.irq_status	= cedrus_h264_irq_status,
++	.setup		= cedrus_h264_setup,
++	.start		= cedrus_h264_start,
++	.stop		= cedrus_h264_stop,
++	.trigger	= cedrus_h264_trigger,
++};
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_hw.c b/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
+index fbfff7c1c771..748f7f673547 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
+@@ -46,6 +46,10 @@ int cedrus_engine_enable(struct cedrus_dev *dev, enum cedrus_codec codec)
+ 		reg |= VE_MODE_DEC_MPEG;
+ 		break;
+ 
++	case CEDRUS_CODEC_H264:
++		reg |= VE_MODE_DEC_H264;
++		break;
++
+ 	default:
+ 		return -EINVAL;
+ 	}
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_regs.h b/drivers/staging/media/sunxi/cedrus/cedrus_regs.h
+index de2d6b6f64bf..3e9931416e45 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_regs.h
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_regs.h
+@@ -232,4 +232,95 @@
+ #define VE_DEC_MPEG_ROT_LUMA			(VE_ENGINE_DEC_MPEG + 0xcc)
+ #define VE_DEC_MPEG_ROT_CHROMA			(VE_ENGINE_DEC_MPEG + 0xd0)
+ 
++#define VE_H264_SPS			0x200
++#define VE_H264_SPS_MBS_ONLY			BIT(18)
++#define VE_H264_SPS_MB_ADAPTIVE_FRAME_FIELD	BIT(17)
++#define VE_H264_SPS_DIRECT_8X8_INFERENCE	BIT(16)
++
++#define VE_H264_PPS			0x204
++#define VE_H264_PPS_ENTROPY_CODING_MODE		BIT(15)
++#define VE_H264_PPS_WEIGHTED_PRED		BIT(4)
++#define VE_H264_PPS_CONSTRAINED_INTRA_PRED	BIT(1)
++#define VE_H264_PPS_TRANSFORM_8X8_MODE		BIT(0)
++
++#define VE_H264_SHS			0x208
++#define VE_H264_SHS_FIRST_SLICE_IN_PIC		BIT(5)
++#define VE_H264_SHS_FIELD_PIC			BIT(4)
++#define VE_H264_SHS_BOTTOM_FIELD		BIT(3)
++#define VE_H264_SHS_DIRECT_SPATIAL_MV_PRED	BIT(2)
++
++#define VE_H264_SHS2			0x20c
++#define VE_H264_SHS2_NUM_REF_IDX_ACTIVE_OVRD	BIT(12)
++
++#define VE_H264_SHS_WP			0x210
++
++#define VE_H264_SHS_QP			0x21c
++#define VE_H264_SHS_QP_SCALING_MATRIX_DEFAULT	BIT(24)
++
++#define VE_H264_CTRL			0x220
++#define VE_H264_CTRL_VLD_DATA_REQ_INT		BIT(2)
++#define VE_H264_CTRL_DECODE_ERR_INT		BIT(1)
++#define VE_H264_CTRL_SLICE_DECODE_INT		BIT(0)
++
++#define VE_H264_CTRL_INT_MASK		(VE_H264_CTRL_VLD_DATA_REQ_INT | \
++					 VE_H264_CTRL_DECODE_ERR_INT | \
++					 VE_H264_CTRL_SLICE_DECODE_INT)
++
++#define VE_H264_TRIGGER_TYPE		0x224
++#define VE_H264_TRIGGER_TYPE_AVC_SLICE_DECODE	(8 << 0)
++#define VE_H264_TRIGGER_TYPE_INIT_SWDEC		(7 << 0)
++
++#define VE_H264_STATUS			0x228
++#define VE_H264_STATUS_VLD_DATA_REQ_INT		VE_H264_CTRL_VLD_DATA_REQ_INT
++#define VE_H264_STATUS_DECODE_ERR_INT		VE_H264_CTRL_DECODE_ERR_INT
++#define VE_H264_STATUS_SLICE_DECODE_INT		VE_H264_CTRL_SLICE_DECODE_INT
++
++#define VE_H264_STATUS_INT_MASK			VE_H264_CTRL_INT_MASK
++
++#define VE_H264_CUR_MB_NUM		0x22c
++
++#define VE_H264_VLD_ADDR		0x230
++#define VE_H264_VLD_ADDR_FIRST			BIT(30)
++#define VE_H264_VLD_ADDR_LAST			BIT(29)
++#define VE_H264_VLD_ADDR_VALID			BIT(28)
++#define VE_H264_VLD_ADDR_VAL(x)			(((x) & 0x0ffffff0) | ((x) >> 28))
++
++#define VE_H264_VLD_OFFSET		0x234
++#define VE_H264_VLD_LEN			0x238
++#define VE_H264_VLD_END			0x23c
++#define VE_H264_SDROT_CTRL		0x240
++#define VE_H264_OUTPUT_FRAME_IDX	0x24c
++#define VE_H264_EXTRA_BUFFER1		0x250
++#define VE_H264_EXTRA_BUFFER2		0x254
++#define VE_H264_BASIC_BITS		0x2dc
++#define VE_AVC_SRAM_PORT_OFFSET		0x2e0
++#define VE_AVC_SRAM_PORT_DATA		0x2e4
++
++#define VE_ISP_INPUT_SIZE		0xa00
++#define VE_ISP_INPUT_STRIDE		0xa04
++#define VE_ISP_CTRL			0xa08
++#define VE_ISP_INPUT_LUMA		0xa78
++#define VE_ISP_INPUT_CHROMA		0xa7c
++
++#define VE_AVC_PARAM			0xb04
++#define VE_AVC_QP			0xb08
++#define VE_AVC_MOTION_EST		0xb10
++#define VE_AVC_CTRL			0xb14
++#define VE_AVC_TRIGGER			0xb18
++#define VE_AVC_STATUS			0xb1c
++#define VE_AVC_BASIC_BITS		0xb20
++#define VE_AVC_UNK_BUF			0xb60
++#define VE_AVC_VLE_ADDR			0xb80
++#define VE_AVC_VLE_END			0xb84
++#define VE_AVC_VLE_OFFSET		0xb88
++#define VE_AVC_VLE_MAX			0xb8c
++#define VE_AVC_VLE_LENGTH		0xb90
++#define VE_AVC_REF_LUMA			0xba0
++#define VE_AVC_REF_CHROMA		0xba4
++#define VE_AVC_REC_LUMA			0xbb0
++#define VE_AVC_REC_CHROMA		0xbb4
++#define VE_AVC_REF_SLUMA		0xbb8
++#define VE_AVC_REC_SLUMA		0xbbc
++#define VE_AVC_MB_INFO			0xbc0
++
+ #endif
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_video.c b/drivers/staging/media/sunxi/cedrus/cedrus_video.c
+index 9673874ece10..e2b530b1a956 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_video.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_video.c
+@@ -37,6 +37,10 @@ static struct cedrus_format cedrus_formats[] = {
+ 		.pixelformat	= V4L2_PIX_FMT_MPEG2_SLICE,
+ 		.directions	= CEDRUS_DECODE_SRC,
+ 	},
++	{
++		.pixelformat	= V4L2_PIX_FMT_H264_SLICE_RAW,
++		.directions	= CEDRUS_DECODE_SRC,
++	},
+ 	{
+ 		.pixelformat	= V4L2_PIX_FMT_SUNXI_TILED_NV12,
+ 		.directions	= CEDRUS_DECODE_DST,
+@@ -100,6 +104,7 @@ static void cedrus_prepare_format(struct v4l2_pix_format *pix_fmt)
+ 
+ 	switch (pix_fmt->pixelformat) {
+ 	case V4L2_PIX_FMT_MPEG2_SLICE:
++	case V4L2_PIX_FMT_H264_SLICE_RAW:
+ 		/* Zero bytes per line for encoded source. */
+ 		bytesperline = 0;
+ 
+@@ -464,6 +469,10 @@ static int cedrus_start_streaming(struct vb2_queue *vq, unsigned int count)
+ 		ctx->current_codec = CEDRUS_CODEC_MPEG2;
+ 		break;
+ 
++	case V4L2_PIX_FMT_H264_SLICE_RAW:
++		ctx->current_codec = CEDRUS_CODEC_H264;
++		break;
++
+ 	default:
+ 		return -EINVAL;
+ 	}
+diff --git a/include/media/h264-ctrls.h b/include/media/h264-ctrls.h
+new file mode 100644
+index 000000000000..e1404d78d6ff
+--- /dev/null
++++ b/include/media/h264-ctrls.h
+@@ -0,0 +1,197 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * These are the H.264 state controls for use with stateless H.264
++ * codec drivers.
++ *
++ * It turns out that these structs are not stable yet and will undergo
++ * more changes. So keep them private until they are stable and ready to
++ * become part of the official public API.
++ */
++
++#ifndef _H264_CTRLS_H_
++#define _H264_CTRLS_H_
++
++#include <linux/videodev2.h>
++
++/* Our pixel format isn't stable at the moment */
++#define V4L2_PIX_FMT_H264_SLICE_RAW v4l2_fourcc('S', '2', '6', '4') /* H264 parsed slices */
++
++/*
++ * This is put insanely high to avoid conflicting with controls that
++ * would be added during the phase where those controls are not
++ * stable. It should be fixed eventually.
++ */
++#define V4L2_CID_MPEG_VIDEO_H264_SPS		(V4L2_CID_MPEG_BASE+1000)
++#define V4L2_CID_MPEG_VIDEO_H264_PPS		(V4L2_CID_MPEG_BASE+1001)
++#define V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX	(V4L2_CID_MPEG_BASE+1002)
++#define V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS	(V4L2_CID_MPEG_BASE+1003)
++#define V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS	(V4L2_CID_MPEG_BASE+1004)
++
++/* enum v4l2_ctrl_type type values */
++#define V4L2_CTRL_TYPE_H264_SPS			0x0110
++#define V4L2_CTRL_TYPE_H264_PPS			0x0111
++#define V4L2_CTRL_TYPE_H264_SCALING_MATRIX	0x0112
++#define V4L2_CTRL_TYPE_H264_SLICE_PARAMS	0x0113
++#define V4L2_CTRL_TYPE_H264_DECODE_PARAMS	0x0114
++
++#define V4L2_H264_SPS_CONSTRAINT_SET0_FLAG			0x01
++#define V4L2_H264_SPS_CONSTRAINT_SET1_FLAG			0x02
++#define V4L2_H264_SPS_CONSTRAINT_SET2_FLAG			0x04
++#define V4L2_H264_SPS_CONSTRAINT_SET3_FLAG			0x08
++#define V4L2_H264_SPS_CONSTRAINT_SET4_FLAG			0x10
++#define V4L2_H264_SPS_CONSTRAINT_SET5_FLAG			0x20
++
++#define V4L2_H264_SPS_FLAG_SEPARATE_COLOUR_PLANE		0x01
++#define V4L2_H264_SPS_FLAG_QPPRIME_Y_ZERO_TRANSFORM_BYPASS	0x02
++#define V4L2_H264_SPS_FLAG_DELTA_PIC_ORDER_ALWAYS_ZERO		0x04
++#define V4L2_H264_SPS_FLAG_GAPS_IN_FRAME_NUM_VALUE_ALLOWED	0x08
++#define V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY			0x10
++#define V4L2_H264_SPS_FLAG_MB_ADAPTIVE_FRAME_FIELD		0x20
++#define V4L2_H264_SPS_FLAG_DIRECT_8X8_INFERENCE			0x40
++
++struct v4l2_ctrl_h264_sps {
++	__u8 profile_idc;
++	__u8 constraint_set_flags;
++	__u8 level_idc;
++	__u8 seq_parameter_set_id;
++	__u8 chroma_format_idc;
++	__u8 bit_depth_luma_minus8;
++	__u8 bit_depth_chroma_minus8;
++	__u8 log2_max_frame_num_minus4;
++	__u8 pic_order_cnt_type;
++	__u8 log2_max_pic_order_cnt_lsb_minus4;
++	__u8 max_num_ref_frames;
++	__u8 num_ref_frames_in_pic_order_cnt_cycle;
++	__s32 offset_for_ref_frame[255];
++	__s32 offset_for_non_ref_pic;
++	__s32 offset_for_top_to_bottom_field;
++	__u16 pic_width_in_mbs_minus1;
++	__u16 pic_height_in_map_units_minus1;
++	__u32 flags;
++};
++
++#define V4L2_H264_PPS_FLAG_ENTROPY_CODING_MODE				0x0001
++#define V4L2_H264_PPS_FLAG_BOTTOM_FIELD_PIC_ORDER_IN_FRAME_PRESENT	0x0002
++#define V4L2_H264_PPS_FLAG_WEIGHTED_PRED				0x0004
++#define V4L2_H264_PPS_FLAG_DEBLOCKING_FILTER_CONTROL_PRESENT		0x0008
++#define V4L2_H264_PPS_FLAG_CONSTRAINED_INTRA_PRED			0x0010
++#define V4L2_H264_PPS_FLAG_REDUNDANT_PIC_CNT_PRESENT			0x0020
++#define V4L2_H264_PPS_FLAG_TRANSFORM_8X8_MODE				0x0040
++#define V4L2_H264_PPS_FLAG_PIC_SCALING_MATRIX_PRESENT			0x0080
++
++struct v4l2_ctrl_h264_pps {
++	__u8 pic_parameter_set_id;
++	__u8 seq_parameter_set_id;
++	__u8 num_slice_groups_minus1;
++	__u8 num_ref_idx_l0_default_active_minus1;
++	__u8 num_ref_idx_l1_default_active_minus1;
++	__u8 weighted_bipred_idc;
++	__s8 pic_init_qp_minus26;
++	__s8 pic_init_qs_minus26;
++	__s8 chroma_qp_index_offset;
++	__s8 second_chroma_qp_index_offset;
++	__u16 flags;
++};
++
++struct v4l2_ctrl_h264_scaling_matrix {
++	__u8 scaling_list_4x4[6][16];
++	__u8 scaling_list_8x8[6][64];
++};
++
++struct v4l2_h264_weight_factors {
++	__s16 luma_weight[32];
++	__s16 luma_offset[32];
++	__s16 chroma_weight[32][2];
++	__s16 chroma_offset[32][2];
++};
++
++struct v4l2_h264_pred_weight_table {
++	__u16 luma_log2_weight_denom;
++	__u16 chroma_log2_weight_denom;
++	struct v4l2_h264_weight_factors weight_factors[2];
++};
++
++#define V4L2_H264_SLICE_TYPE_P				0
++#define V4L2_H264_SLICE_TYPE_B				1
++#define V4L2_H264_SLICE_TYPE_I				2
++#define V4L2_H264_SLICE_TYPE_SP				3
++#define V4L2_H264_SLICE_TYPE_SI				4
++
++#define V4L2_H264_SLICE_FLAG_FIELD_PIC			0x01
++#define V4L2_H264_SLICE_FLAG_BOTTOM_FIELD		0x02
++#define V4L2_H264_SLICE_FLAG_DIRECT_SPATIAL_MV_PRED	0x04
++#define V4L2_H264_SLICE_FLAG_SP_FOR_SWITCH		0x08
++
++struct v4l2_ctrl_h264_slice_params {
++	/* Size in bytes, including header */
++	__u32 size;
++	/* Offset in bits to slice_data() from the beginning of this slice. */
++	__u32 header_bit_size;
++
++	__u16 first_mb_in_slice;
++	__u8 slice_type;
++	__u8 pic_parameter_set_id;
++	__u8 colour_plane_id;
++	__u8 redundant_pic_cnt;
++	__u16 frame_num;
++	__u16 idr_pic_id;
++	__u16 pic_order_cnt_lsb;
++	__s32 delta_pic_order_cnt_bottom;
++	__s32 delta_pic_order_cnt0;
++	__s32 delta_pic_order_cnt1;
++
++	struct v4l2_h264_pred_weight_table pred_weight_table;
++	/* Size in bits of dec_ref_pic_marking() syntax element. */
++	__u32 dec_ref_pic_marking_bit_size;
++	/* Size in bits of pic order count syntax. */
++	__u32 pic_order_cnt_bit_size;
++
++	__u8 cabac_init_idc;
++	__s8 slice_qp_delta;
++	__s8 slice_qs_delta;
++	__u8 disable_deblocking_filter_idc;
++	__s8 slice_alpha_c0_offset_div2;
++	__s8 slice_beta_offset_div2;
++	__u8 num_ref_idx_l0_active_minus1;
++	__u8 num_ref_idx_l1_active_minus1;
++	__u32 slice_group_change_cycle;
++
++	/*
++	 * Entries on each list are indices into
++	 * v4l2_ctrl_h264_decode_params.dpb[].
++	 */
++	__u8 ref_pic_list0[32];
++	__u8 ref_pic_list1[32];
++
++	__u32 flags;
++};
++
++#define V4L2_H264_DPB_ENTRY_FLAG_VALID		0x01
++#define V4L2_H264_DPB_ENTRY_FLAG_ACTIVE		0x02
++#define V4L2_H264_DPB_ENTRY_FLAG_LONG_TERM	0x04
++
++struct v4l2_h264_dpb_entry {
++	__u64 reference_ts;
++	__u16 frame_num;
++	__u16 pic_num;
++	/* Note that field is indicated by v4l2_buffer.field */
++	__s32 top_field_order_cnt;
++	__s32 bottom_field_order_cnt;
++	__u32 flags; /* V4L2_H264_DPB_ENTRY_FLAG_* */
++};
++
++#define V4L2_H264_DECODE_PARAM_FLAG_IDR_PIC	0x01
++
++struct v4l2_ctrl_h264_decode_params {
++	struct v4l2_h264_dpb_entry dpb[16];
++	__u16 num_slices;
++	__u16 nal_ref_idc;
++	__u8 ref_pic_list_p0[32];
++	__u8 ref_pic_list_b0[32];
++	__u8 ref_pic_list_b1[32];
++	__s32 top_field_order_cnt;
++	__s32 bottom_field_order_cnt;
++	__u32 flags; /* V4L2_H264_DECODE_PARAM_FLAG_* */
++};
++
++#endif
+diff --git a/include/media/v4l2-common.h b/include/media/v4l2-common.h
+index 0a41bbecf3d3..e826b154bc35 100644
+--- a/include/media/v4l2-common.h
++++ b/include/media/v4l2-common.h
+@@ -420,9 +420,11 @@ struct v4l2_format_info {
+ 
+ const struct v4l2_format_info *v4l2_format_info(u32 format);
+ 
+-int v4l2_fill_pixfmt(struct v4l2_pix_format *pixfmt, int pixelformat,
+-		     int width, int height);
+-int v4l2_fill_pixfmt_mp(struct v4l2_pix_format_mplane *pixfmt, int pixelformat,
+-			int width, int height);
++void v4l2_apply_frmsize_constraints(u32 *width, u32 *height,
++				    const struct v4l2_frmsize_stepwise *frmsize);
++int v4l2_fill_pixfmt(struct v4l2_pix_format *pixfmt, u32 pixelformat,
++		     u32 width, u32 height);
++int v4l2_fill_pixfmt_mp(struct v4l2_pix_format_mplane *pixfmt, u32 pixelformat,
++			u32 width, u32 height);
+ 
+ #endif /* V4L2_COMMON_H_ */
+diff --git a/include/media/v4l2-ctrls.h b/include/media/v4l2-ctrls.h
+index ee026387f513..a8aede26491e 100644
+--- a/include/media/v4l2-ctrls.h
++++ b/include/media/v4l2-ctrls.h
+@@ -23,11 +23,12 @@
+ #include <media/media-request.h>
+ 
+ /*
+- * Include the mpeg2 and fwht stateless codec compound control definitions.
++ * Include the stateless codec compound control definitions.
+  * This will move to the public headers once this API is fully stable.
+  */
+ #include <media/mpeg2-ctrls.h>
+ #include <media/fwht-ctrls.h>
++#include <media/h264-ctrls.h>
+ 
+ /* forward references */
+ struct file;
+@@ -51,6 +52,11 @@ struct poll_table_struct;
+  * @p_mpeg2_slice_params:	Pointer to a MPEG2 slice parameters structure.
+  * @p_mpeg2_quantization:	Pointer to a MPEG2 quantization data structure.
+  * @p_fwht_params:		Pointer to a FWHT stateless parameters structure.
++ * @p_h264_sps:			Pointer to a struct v4l2_ctrl_h264_sps.
++ * @p_h264_pps:			Pointer to a struct v4l2_ctrl_h264_pps.
++ * @p_h264_scaling_matrix:	Pointer to a struct v4l2_ctrl_h264_scaling_matrix.
++ * @p_h264_slice_params:	Pointer to a struct v4l2_ctrl_h264_slice_params.
++ * @p_h264_decode_params:	Pointer to a struct v4l2_ctrl_h264_decode_params.
+  * @p:				Pointer to a compound value.
+  */
+ union v4l2_ctrl_ptr {
+@@ -63,6 +69,11 @@ union v4l2_ctrl_ptr {
+ 	struct v4l2_ctrl_mpeg2_slice_params *p_mpeg2_slice_params;
+ 	struct v4l2_ctrl_mpeg2_quantization *p_mpeg2_quantization;
+ 	struct v4l2_ctrl_fwht_params *p_fwht_params;
++	struct v4l2_ctrl_h264_sps *p_h264_sps;
++	struct v4l2_ctrl_h264_pps *p_h264_pps;
++	struct v4l2_ctrl_h264_scaling_matrix *p_h264_scaling_matrix;
++	struct v4l2_ctrl_h264_slice_params *p_h264_slice_params;
++	struct v4l2_ctrl_h264_decode_params *p_h264_decode_params;
+ 	void *p;
+ };
+ 

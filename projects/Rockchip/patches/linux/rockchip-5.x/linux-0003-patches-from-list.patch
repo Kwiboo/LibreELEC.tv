@@ -1,0 +1,129 @@
+From ae85f92289509b44f291d2a95b858a36f7444aaa Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 17 Feb 2019 22:14:38 +0000
+Subject: [PATCH] mmc: core: set initial signal voltage on power off
+
+Some boards have SD card connectors where the power rail cannot be switched
+off by the driver. If the card has not been power cycled, it may still be
+using 1.8V signaling after a warm re-boot. Bootroms expecting 3.3V signaling
+will fail to boot from a UHS card that continue to use 1.8V signaling.
+
+Set initial signal voltage in mmc_power_off() to allow re-boot to function.
+
+This fixes re-boot with UHS cards on Asus Tinker Board (Rockchip RK3288),
+same issue have been seen on some Rockchip RK3399 boards.
+
+I am sending this as a RFC because I have no insights into SD/MMC subsystem,
+this change fix a re-boot issue on my boards and does not break emmc/sdio.
+Is this an acceptable workaround? Any advice is appreciated.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ drivers/mmc/core/core.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/mmc/core/core.c b/drivers/mmc/core/core.c
+index 1e6b07c176dc..0cfc3593a363 100644
+--- a/drivers/mmc/core/core.c
++++ b/drivers/mmc/core/core.c
+@@ -1684,6 +1684,14 @@ void mmc_power_off(struct mmc_host *host)
+ 	if (host->ios.power_mode == MMC_POWER_OFF)
+ 		return;
+ 
++	mmc_set_initial_signal_voltage(host);
++
++	/*
++	 * This delay should be sufficient to allow the power supply
++	 * to reach the minimum voltage.
++	 */
++	mmc_delay(host->ios.power_delay_ms);
++
+ 	mmc_pwrseq_power_off(host);
+ 
+ 	host->ios.clock = 0;
+
+From b149e57dd5f3fb7e49bc77993a9d3d0dc8f75669 Mon Sep 17 00:00:00 2001
+From: Katsuhiro Suzuki <katsuhiro@katsuster.net>
+Date: Mon, 18 Feb 2019 02:34:07 +0900
+Subject: [PATCH] arm64: dts: rockchip: add HDMI sound node for rk3328-rock64
+
+This patch adds HDMI sound (I2S0) node for rock64.
+
+After apply this patch, UART2 will fail to allocate DMA resources
+but UART driver can work fine without DMA.
+
+This error is related to the DMAC of rk3328 (pl330 or compatible).
+DMAC connected to 16 DMA sources. Each sources have ID number that is
+called 'Req number' in rk3328 TRM. Currently total 7 sources has been
+activated as follows:
+
+| Req number | Source | Required  |
+|            |        | channels  |
+|------------+--------+-----------|
+| 14, 15     | I2S1   | 2ch       |
+|  6,  7     | UART2  | 2ch       |
+|     10     | SPDIF  | 1ch       |
+|  8,  9     | SPI0   | 2ch       |
+|------------+--------+-----------|
+|            | Total  | 7ch       |
+
+HDMI audio needs to activate new source I2S0 (Req number 11 and 12).
+I2S0 can work concurrently with other sources, but rk3328 DMAC can
+use max 8 channels at same time. If I2S0 is simply activated by this
+patch, required DMAC channels will be 9. So last one (UART2) cannot
+allocate the DMA resources.
+
+Virt-dma mechanism for pl0330 DMAC driver is needed to fix this
+problem.
+
+Signed-off-by: Katsuhiro Suzuki <katsuhiro@katsuster.net>
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rock64.dts | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+index 7cfd5ca6cc85..77205683f9f5 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rock64.dts
+@@ -88,7 +88,8 @@
+ 	sound {
+ 		compatible = "audio-graph-card";
+ 		label = "rockchip,rk3328";
+-		dais = <&i2s1_p0
++		dais = <&i2s0_p0
++			&i2s1_p0
+ 			&spdif_p0>;
+ 	};
+ 
+@@ -161,6 +162,12 @@
+ 
+ &hdmi {
+ 	status = "okay";
++
++	port@0 {
++		hdmi_p0_0: endpoint {
++			remote-endpoint = <&i2s0_p0_0>;
++		};
++	};
+ };
+ 
+ &hdmiphy {
+@@ -278,6 +285,18 @@
+ 	};
+ };
+ 
++&i2s0 {
++	status = "okay";
++
++	i2s0_p0: port {
++		i2s0_p0_0: endpoint {
++			dai-format = "i2s";
++			mclk-fs = <256>;
++			remote-endpoint = <&hdmi_p0_0>;
++		};
++	};
++};
++
+ &i2s1 {
+ 	status = "okay";
+ 

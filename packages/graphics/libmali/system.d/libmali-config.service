@@ -1,0 +1,11 @@
+[Unit]
+Description=Runtime symlink service for Mali library
+Before=graphical.target
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/libmali-config
+
+[Install]
+WantedBy=multi-user.target

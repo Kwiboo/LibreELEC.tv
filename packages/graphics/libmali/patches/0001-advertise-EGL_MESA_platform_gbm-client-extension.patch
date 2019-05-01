@@ -1,0 +1,199 @@
+From 543c3b7448511bc659c5961b8bb1d3da34a02ace Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Wed, 1 May 2019 12:13:49 +0000
+Subject: [PATCH] advertise EGL_MESA_platform_gbm client extension
+
+---
+ .../libmali-bifrost-g31-r16p0-gbm.so          | Bin 18340496 -> 18340496 bytes
+ .../libmali-bifrost-g52-r16p0-gbm.so          | Bin 18428696 -> 18428696 bytes
+ .../libmali-utgard-450-r7p0-gbm.so            | Bin 1545488 -> 1545488 bytes
+ .../libmali-bifrost-g31-r16p0-gbm.so          | Bin 14278828 -> 14278828 bytes
+ .../libmali-bifrost-g52-r16p0-gbm.so          | Bin 14275204 -> 14275204 bytes
+ .../libmali-midgard-t620-r12p0-wayland-gbm.so | Bin 21485996 -> 21485996 bytes
+ .../libmali-midgard-t720-r18p0-gbm.so         | Bin 4465036 -> 4465036 bytes
+ .../libmali-utgard-400-r7p0-gbm.so            | Bin 851744 -> 851744 bytes
+ .../libmali-utgard-450-r7p0-gbm.so            | Bin 851612 -> 851612 bytes
+ 9 files changed, 0 insertions(+), 0 deletions(-)
+
+diff --git a/lib/aarch64-linux-gnu/libmali-bifrost-g31-r16p0-gbm.so b/lib/aarch64-linux-gnu/libmali-bifrost-g31-r16p0-gbm.so
+index 987556919e4ebf5dc417650f58511304907234e1..365bfa46f9652b5d21918e1a1d9ad724668b6d34 100755
+GIT binary patch
+delta 697
+zcmWl}X<*KE007|4W;UD64qIwS=n$Ps2kPxj3QM^{X{_2(*49!<j+LiYO_@|f(LqA4
+zgbqsSzN19vLPdAhp_Bf<56@G#rXjU1QY}#vNs={{qM1}_noF0Vg-lsm%9bNno>uY|
+zI6!L$I!K{5+G^)u?H!_njygHiVGehM&W_YYS4TP8F^+Yd<8^a_6LoizlbzyJJ@nMe
+zX-*e&hPX5Jc9uTQc8<RK>95GS1~||81{!3rA%?oZFvE>-p^J=kv0|f)R^k$ux=g7u
+zmmA{>R~oC_RVq}vT9s>zbFJ%KZ@e2!aHEMPnQV$`H@VqV+~QU>Zgaak)SBi_cbTrv
+z40oI99{0LWy;)|P<9-jAYn}%^<YAAPZ-GZG^q55!TjFs`EwkJTD?MSAC#|-|T2Fb}
+zGoH21de3>@1}}KgMlX5UD_-@Q*S+CQZ+Y80-u0gMZL--1KD5P0w%X=npZL^gKKF$N
+zU)pYmoxbw5Z|t($x4!eeAN=SiKl{a=)r~pv+@jutV#SqXM~^G5s46cmD=AM%s4t2)
+z7S_b#jgem?zeRqJ{1Mq3`7`oY<nPEok$)rqMfOGZ*T&+B(<7lKp`=i9sA(uA)GU-5
+nN((g)rH3*?Ekc>0tWe8Pb|@#58_El{3gstmh{X#M2h{%$8bme@
+
+delta 697
+zcmWl}cYx1z007WC^K5r#rzj&tLnNs<zXr}IWh8Y*QMl|V+0Q7I%Q}09vPFZ+h)SEv
+z-jq>_6Djli`QyEeH3t(iB16Q>Cc7MR$|bi1dE}K(egza%NMVVRBrBq*Vu~xFq*88B
+z+Kp~fMp-wzMLFeFP|>X_sjQ0IR8`IG?r^8ORCl);YPv@)_p0qab=>a(52~x46!pbC
+z<YA9^R09n)lB%&Lnrh}Tk8AD;Pimp1R$6;X8&7NN8P7`7PJ116^ql8)(%B1M)J0d_
+zq<cwsJ@nK|Z+-OjvVQt|#j6H*%|L?;HpEcF495r~jWXKn-Y~|S-txAwGQ4A)@g|sP
+zl1!6LG1WBF%`np}v&}KrJoCM4frS=%&-)fzVyR`8TVbVDKCs#vANt70KC#w1pZd(_
+z*4tpCO}?<%7GL_x*S7k`x4!eeAN=Si+idr<U;Ju^op#x6kG=NU?|_32IqZm|j`_{+
+zjyvI`Q~vO$)Bf_eGtREgN{S_?HfWyKqg(qvox1l*PwU(vJuWUTvq>zg^r)0rR^(jd
+zpUC;hg~-2=i;@2#|3@xGE=R6Ju12nnNr}aejfAp=vWIena)xq+a)%N^c|v(Z`9k?a
+g1wsWwg+hfxiJ_!Wa;QkCXsB5H`jlAl_-2{c0qsXM%>V!Z
+
+diff --git a/lib/aarch64-linux-gnu/libmali-bifrost-g52-r16p0-gbm.so b/lib/aarch64-linux-gnu/libmali-bifrost-g52-r16p0-gbm.so
+index dafc03c97fe9bdc32059a3ce6361addf0895f287..3f599222c2ce6ad5bbfa00f25077282bbd57cf3d 100755
+GIT binary patch
+delta 691
+zcmWl}d3=|1007|6R%>fpwXGf1LI-kmP(tKbj7Wz@N--Onqtzs5j?t5)nRRNe4*I!8
+zHAT|OQI0NmA?Ku%V#zhU-#?zGW_x{7O{83$cuh2wpqWHTnoE`<RSPY(k|te-)-q+u
+zmZOcf+R4@4Ar5tz4m#?jv%?+XNL?J|Xva8KSKV~i!*Pz+Q!gjz?L;RzSs$l3RbQt$
+z-5Ji5r=PQ&E#EoL)!%u}H^2o38f35`E;Lkui(G7&OAI%{rA8X%GM6iKg(AhSbd{@(
+zR^l4hy3X~+C^gnNWo|IujV8Fs&2Dk4+uUxVJKX6mcPn>~driV*_o*<&{idq)fGQ8F
+zHqCT1%rwhv51FIJ!yfUd$2@MXdFET-2~S!m<|$8m#<QODycfJ^k(az|u_czO^@?Sd
+zd(~@Jc-=~GSf$QtYrN?#Z+pjD>%8kd@B6@d8*H@6W*_><$3F3?&wOr+t-kQ3uWa+R
+zZ+z=J-}^zmA8q%O9d_Dfw>|dy*)R6l?^nOoHYCT=2j&;#6_$-DnlO6Y_|n3X;?j!T
+zSVQDM<oC$I$RCkEBY#Eyj{Fm8jQkt<uQE3lR~-q(hnj?%h7v-}LW!ZIQ1ei7C?%8{
+hY7uG~Y86TgrH3*?twWiitWb6+C$26x)+Vm8>VM8GJ{<r6
+
+delta 691
+zcmWl}X<*KE003aaY-ZS88*jNHM@m#mrQ{Yx=+d#a%BanjR#KGeao-`M%k}0g9g0q*
+zTPQg?U1^2LU6l0yeR!VYl0C`Ak>L`QRz_Kg%1M%}yc89rs;H96(xj`Rs%omMAw#B`
+zYKb|^*=nn!u6pV_M*|I=tC7Z<XzD!8obLk7U8seYE^@I;v~sD-w05~GT&az#T&=BZ
+zw9{S(9d*)K7hPSeo9?c2y&ihHK`*`aaig2u>=w7`>o&K$!=19+C0mZW-Q!;U<mzvL
+z``j;2zJUr9dcYtLD)Nwr4fcp39`%@^hI!l*hI`Uep2i3xjWXI8V~sQ31QSg%*%Z&1
+zYMSYuHAAtPW_ix@Uhtxq%r?hd^UN3bvIQ1eWU(cddc~`jdClwI@TTS7^0pOLddIuo
+z^S%#!XqDC0_{drx`^2X{^SLj4X`QdEx4}kV`^F~U+H8xhw)xKYe(<B8{A{}&cG_jP
+zU+nR#62JM~Ui<9#hXW4!(;<f)adi2ylz4i#F1@k}^RkQj6%5MH%FW3yH7XWA7C9a{
+z5&0|fcjRQ`ROFw?zme0C{~~9`#o`H*BB9cuGNH1e#8A0VQYbl8K9mxw5K0YI3{?tM
+d4yA?CLsddmL)AjnLp4Gf39Dl9%!Jbu{s*JTJ=_2Q
+
+diff --git a/lib/aarch64-linux-gnu/libmali-utgard-450-r7p0-gbm.so b/lib/aarch64-linux-gnu/libmali-utgard-450-r7p0-gbm.so
+index b73a0e8f87aa7f7d958ff0cf42e75a325c20a8a3..ba469246780b5ae9ce21cbbe306666cbd203ee3b 100755
+GIT binary patch
+delta 84
+zcmbQRDsIB6xP}(S7N!>F7M2#)7Pc1l7LFFq7OocV7M>Q~7QPn#7J(MQ7NHj57LgXw
+oEn-iU1$|wE9pejf5=+wZi*n=BlX52;GD^1#sE92WP!TT#0HVMe;Q#;t
+
+delta 84
+zcmbQRDsIB6xP}(S7N!>F7M2#)7Pc1l7LFFq7OocV7M>Q~7QPn#7J(MQ7NHj57LgXw
+oEn-iU1-(6j;tO&TOVaX-a^usJaup^UGD^1#sE92WP!TT#0HXaGzyJUM
+
+diff --git a/lib/arm-linux-gnueabihf/libmali-bifrost-g31-r16p0-gbm.so b/lib/arm-linux-gnueabihf/libmali-bifrost-g31-r16p0-gbm.so
+index 56acd1c017d630fee8ab805525447cd488661bde..ebb031dd737464bb8bed99582fa8d7b953e0a3a2 100755
+GIT binary patch
+delta 533
+zcmWN=g?0{L007XVrekWD?(Xhkdb(>&$82W0hRZb5-EBIjn_qW4f!FZeb8hyte^J?C
+zhFo&XBd>g-<X1pJg%nmqQN<KjLbQ@fDXomMVw6)}1+glsq_Qfis;0UcYO1BSI_j#Y
+zz6Kg<q_HNNYNojsT56@WHri^Zy$(9+q_Zx%iqlPZJ;dv&m)`p5tDpW73^33jgAFm%
+zFvE>7(kP>iG1fTaO^|4!Ns>%9#Z=QwH^WS`%r-}|xl*K>C(V567FcMJ#g<rVndMek
+zX_XACt+5vCte0tnjW*eAi><cVZig&8?Xue*d+oE|0S6s&*bzq^bKD6hopRb4XPtB2
+z1s7eC?XoMby5_nYZo1{RJMOx7E2mH-Iw5{&Tw>~+N$Jy4(vlOWCnaabMsmXY;e+sD
+z_$YiFJ_(<O&%)>7i|}RmDtsNj3Ezg1@Ll*m{1AQ&KZT#eFX7klTlhWv5&jH+g}=i;
+LcVi=evts@O+hX|b
+
+delta 533
+zcmWN=gLW2R007X8Wv*JbZM$U~YpWL5)>?Mm%w^jxFDx(r*?59pqwk(`GqV5X%LrG?
+zDVN;x$Sa@x3MeQ_A%zuDR58VsP*N$Sl~Go-a>}b9Mn#oWRz+3SR98bywbWKeUG>!0
+zKtqi*)<jdyG}l5)t+dugTkW*hK}Vf*)<sv{bk{>qz4X>ctiJl`Z-9XY8ElB5h8b>z
+zkwzJ9jIqWUZ-R*?i8EQe1XD~kO`_>$m}!>T=14MEvJ~^AnlH@)3oWwP5=$+!+zKnL
+zvf3JJt;2d7Y_!Q{TWqz>c025}OS;|m*lVBt4mjwL!;U!WnBz`3>6FvXIP0AAF1YBD
+z%dW_9)iu}MaMLZfWxC_8d+ujuMMX;Vj~y15GABMQF*!9UZhAsej*T&qtnfkjFnkm~
+z4xfZi!)IZ3_&j_Oz6@W5ufsRt+b|No3*Uzy!jIvn@N@Vj{2G1>zlT4<pW(0YclhUC
+JOyqBR^nbf1_^bc`
+
+diff --git a/lib/arm-linux-gnueabihf/libmali-bifrost-g52-r16p0-gbm.so b/lib/arm-linux-gnueabihf/libmali-bifrost-g52-r16p0-gbm.so
+index 7fc488f878a2ec2dd2054965c58d8ec7085a790f..679c1e018f6d6c485fc31b3d277e32cad2ed6e87 100755
+GIT binary patch
+delta 533
+zcmWN=V|Nx{007XFU0b$oTdS6BudQ0z!m?N0TFbU=E-b&<<}c`+{=&ZW+;gtee{%~{
+zWs_YFIpvaD9(m=HUjYRbQdkjDq7_w4aV3;gN@-=3RZe*oR8&c2Ra8|?bv4vfOKo-3
+zRZo2lG}K6AO*GX^b1k&gN^5Pj)lPdIbks>_F}mogn^@iT&{HqH_0d;9{S7eCAcGAt
+z)G))1Fw!WajWO0Z<HeaEUV@1xnJm#1Q%y773`vsBG|Oyrq?l`-`4(7ck;Rr+YMJF$
+zSSi&itF6IW>!evP-3A+Nve_0}ZL{4DJMFUD9((Px-vI|5a@Y|^9dq0XC!KQI8E2hy
+z-USz3a@iGEU31+HH)Xixwma@-Wd4gp_lq486E{04eqQ3Nl;pT63CU?$k<9R3ct3m)
+zJ`5j)kHaTnBzzh^3!jHC!k6Kz@OAhmd>g(C--jQ<kKw2AbND6v8h#7Ehd;uf;ji%b
+Kovg^8^r-*F3>6gs
+
+delta 533
+zcmWN=V|Nx{007WzEZeqiua@n#Ra;tHYgwyqt!3M`?Kj)}1)bAh=u6K%=Q{BxmoQyc
+z*<_bPPPyckM_&2lS3p696c(k3qKYZ5gpx`rt&FnDDX)TxDygiBs;a53hMH=rt&Y0t
+zsjq>C8fmPFrkZK4g_c@rt&O(YX|IEhI_a#7uDa>2hn{+g)>|Jj`s$~@0R|dmupx#T
+zX1EbX8fCOG#u{h5SQEsFH_;@MB}g>IRMSj1Lz0=2rI;nvY-#40Yo7TQSZI;OmRM?;
+zbjz)<605A1VU0{{t+U<+8*Q@L7F%tz-3~kLvfCbe?X%wj2OV<Q5l0<!+zBV0a@rYZ
+zopas=7hQ7M6<1wz-3>S0a{Kz7zmXy_(Su`CX2hi>B&R0DCdMaa$@mw!6W$H)h4;e;
+z;luDz_&AJ&Pr|3+v+#NNB77OX3SWnB!nfhO@O}6p{1|=;KZjq!ui>}wd-x;#8UDKU
+JFY-Gx>OZB>6x09!
+
+diff --git a/lib/arm-linux-gnueabihf/libmali-midgard-t620-r12p0-wayland-gbm.so b/lib/arm-linux-gnueabihf/libmali-midgard-t620-r12p0-wayland-gbm.so
+index 61db84f307480eeba0930308892825be3cd2094d..c6dcdfbce11f9bc7cfbb145fe6f8b5432cfffd21 100755
+GIT binary patch
+delta 994
+zcmW;IRa6xK6hzU51%ibM3MRH7wtzlG3A?+nuraY)kKKvgEp~Tzx7gj?t#|x5d(HR6
+zZkq2JYYoDQc*G|G2}y)AE+obkH<FN)WF#jA?xZ9YsYydx(&2$8>B)c>-ee>bnaM&{
+zvf)E^a*&f;<R%Y!$%ij~<j0=^6r>P^DMC?-QJeq*38DlgaZrlV1XG5xgb+#?;gq91
+z6{tuhDpQ53RHHgIs7WnqQ-`|LqdpC2NFy54gb13_jOMhUC6TnEHEn21JKEEMC_2)K
+z&UB$G-H4_;J?Kd<deeu#^rJrm7|0+7GlZeQForXNk&I$AV;IXg#xsG5Oky%qn94M!
+z6T=K<GK<;FVJ`ES&jJ>*h{Y^nDa%;S3Rbd;)x@%fwX9=38`#JuHnWATY-2k+*vT$-
+zvxmLxV?PHt$RQ4MgrgkeI43yCDNb{Svz+5R7r4kJE^~#eT;uxYIA@1@<<OeJ5uH0U
+zi*D7aYg9z*=20>JjySI=A?_YA(T+IJ5s{8K>xOmHx@FzA?pSxNd)9sHf%VXOWIeW?
+zSWm5I)^qEH_0oD}y|&(1Z>@LMd+USs(fVY4w!T<jt#8(M>xcEz`epsL{#bv<L^_-%
+zSR$T?FA|7^B9U+wE+VmT6>cJlNGg(v<RXP|7b!(5ky@k?X+=8WAv{HTkwJI~Z;?@C
+z5}8F7kyT_9J|erwA##dbBDcsR@``-ISNMti!e0~+1w|oISQHUOMKMua1c*QpBua>q
+d;{R)<v`UL$QAU&%AtF?SIqi#dggb@L{s)>ikKX_Q
+
+delta 1014
+zcmY+=Rd^2o6o&C<jM;RIjbUO~=&nD*OiXvqFuBR;=GC3k-KM*{yG?g@H|KNb;{846
+z`7Te)#(8cr)<B$yLtLDRM|@mJfGch!BoT>8LQ;~EoD`%a74D=a4IX%smUMWLo(yEf
+zn@nUT3t90Y8`;T$FMjwFKu&Uzn>^$tANeUjK?+frA{3<<#VJ8a9F(Fofs~;v<p`oY
+z!Bn6km8eVzRj5ies#AlS)S@<Zs7pQS(}0FFqA^WqN+`_;qd6^TNjR-&O&i+Mj`l<l
+zNe4R8iOzJPD^YZ#J3Z)0FM895zVxF%0~p941~UX0$}omAf{~13G-DXcIL0%9iA-WL
+zQ<%y$qM6PNW-^P}%waC`n9l+hvWUejVJXX4&I(qtiWpY2hPA9?Jsa4_CN{H$t!!gE
+zJJ`uCcC&}Q>|;L%ILILmbA+QD<2WZc$tg~AhO?aGJQujgB`$M?t6bX@>*DaOT%l%Y
+zr--nqRvo)UhPG}V=^Ydt68hiRBdk|MScjI;9*$VA=qN|5=kRbxtaaVGVcoQDS+}h_
+z)?MqKb>DhmJ+vNKkF6)xQ|p=a+<IZXv|d@StvA+N>z(!9`e1#uK3SiwFV<J<oAurL
+zVg0mzS--76qr)9e<1G<K#1+mWo`^48L;~R|+(bf=NF)|XL{gDVBo`?}N|8#qi_{{G
+z@DQFNtw<-lM0$}yWE9>algKQxh^)d#WE0s%4&f{Ogue(7IYlm!TjUXWMLv;V6c7bP
+rAyHTq5k*BYQCyS|CB?t5mC{vO1d1}EtSBdfM0uyZ;f`RZ;8}kGcF>pY
+
+diff --git a/lib/arm-linux-gnueabihf/libmali-midgard-t720-r18p0-gbm.so b/lib/arm-linux-gnueabihf/libmali-midgard-t720-r18p0-gbm.so
+index 97d8b9f2b39722a27ea5e33f00ce856e9deb499c..ffdc4bbbe104c9178a03bd18226bb2b18d6cea9e 100755
+GIT binary patch
+delta 194
+zcmWN=%~C;e7{KA_gnUN`NAjJII)sYjh)zvQD;IDk3pPwmT!6)Irj3Q2yZEonbOGI1
+z?=$o4{`T5VZaG2Y6c=thoZ-cXp8!EZggGZdlnY|SNpMM$6lruaT#@CP9C->9DN&}v
+z4OME?X>iLO22EPr)22h02OfE%NB?MQDmr<e+RoSVV>AE!UO9`|>R>5T|1p#)2hx&5
+T`7B3rEMKH8Uw;kt=B)n#mJ~!m
+
+delta 193
+zcmWN=Jx;=K7{K9BzCodi3R3wL0l}gODlH%)3yB*SXk@^J27?~J;g`5{VB;45$;1P2
+zG2SP6yxm6g<PSbH`~(ORB20uRG2$F>NP;9fM;w#lgj3E)li{2!1{dVWQ=mwRGM7}i
+zqDqZA*EDEygGq~9?r3vQhb|91@<i{?(v<!-ojIS&_wU7O?K&TGcWW!l_%)R!ZP}Lt
+TIh4<GBwyrMzW$qP;(YA^TUkT@
+
+diff --git a/lib/arm-linux-gnueabihf/libmali-utgard-400-r7p0-gbm.so b/lib/arm-linux-gnueabihf/libmali-utgard-400-r7p0-gbm.so
+index 5c37e2a263f6738d1ed2568be050aa2b84d11111..9adb3bcfbf6fee01399f2e8c796726aa4c197483 100755
+GIT binary patch
+delta 70
+zcmZ4R&v?N<<AxT-7N!>F7M2#)7Pc1l7LFFq7OpMaf{%oJU4tFt3vv=m((;RP<I|IJ
+a8Kzf1=B}8&=P7qlJMUxe?Yxh9gk=DyDjHS*
+
+delta 70
+zcmZ4R&v?N<<AxT-7N!>F7M2#)7Pc1l7LFFq7OpMaf{%o}J%Zv3auQ3@@{4lg)01))
+a7^YW0=B}8&=P7qlJMUxe?Yxh9gk=DxUm7(4
+
+diff --git a/lib/arm-linux-gnueabihf/libmali-utgard-450-r7p0-gbm.so b/lib/arm-linux-gnueabihf/libmali-utgard-450-r7p0-gbm.so
+index 8b7800541963c10e3c1d948aa10808d071d2f3e4..30b42e38e9d1ff4fb2486c6d4a15bd9dedf8c286 100755
+GIT binary patch
+delta 70
+zcmV-M0J;C1{WF~XGk}BvgaU*Egam{Iga(8Mgb0KQgbK6^#o7{0MN>gvaBN|8W^ZzB
+cUuR-%0GBV^3wW1s-V1Vv!P^VB!P^YmBEWnccmMzZ
+
+delta 70
+zcmV-M0J;C1{WF~XGk}BvgaU*Egam{Iga(8Mgb0KQgbK6^#o7`}NK#*LY+-a}Z*py4
+cXJTz20GBV^3wW1s-V1Vv!P^VB!P^YmBEPX5R{#J2
+
+-- 
+2.17.1
+

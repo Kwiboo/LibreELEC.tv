@@ -1,0 +1,1247 @@
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+index 48796e944b..451be80230 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+@@ -9,17 +9,21 @@
+ #include "DVDVideoCodecDRMPRIME.h"
+ 
+ #include "ServiceBroker.h"
++#include "cores/VideoPlayer/DVDCodecs/DVDCodecs.h"
+ #include "cores/VideoPlayer/DVDCodecs/DVDFactoryCodec.h"
+ #include "cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h"
++#include "cores/VideoPlayer/Process/gbm/VideoBufferDumb.h"
+ #include "settings/Settings.h"
+ #include "settings/SettingsComponent.h"
+ #include "settings/lib/Setting.h"
+ #include "threads/SingleLock.h"
++#include "utils/CPUInfo.h"
+ #include "utils/log.h"
+ #include "windowing/gbm/WinSystemGbm.h"
+ 
+ extern "C" {
+ #include <libavcodec/avcodec.h>
++#include <libavutil/opt.h>
+ #include <libavutil/pixdesc.h>
+ }
+ 
+@@ -30,6 +34,7 @@ CDVDVideoCodecDRMPRIME::CDVDVideoCodecDRMPRIME(CProcessInfo& processInfo)
+ {
+   m_pFrame = av_frame_alloc();
+   m_videoBufferPool = std::make_shared<CVideoBufferPoolDRMPRIME>();
++  m_videoBufferPoolSW = std::make_shared<CVideoBufferPoolDumb>();
+ }
+ 
+ CDVDVideoCodecDRMPRIME::~CDVDVideoCodecDRMPRIME()
+@@ -56,11 +61,13 @@ static const AVCodecHWConfig* FindHWConfig(const AVCodec* codec)
+   const AVCodecHWConfig* config = nullptr;
+   for (int n = 0; (config = avcodec_get_hw_config(codec, n)); n++)
+   {
+-    if (config->pix_fmt != AV_PIX_FMT_DRM_PRIME)
++    if (config->pix_fmt != AV_PIX_FMT_DRM_PRIME &&
++        config->pix_fmt != AV_PIX_FMT_VAAPI)
+       continue;
+ 
+     if ((config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX) &&
+-        config->device_type == AV_HWDEVICE_TYPE_DRM)
++        (config->device_type == AV_HWDEVICE_TYPE_DRM ||
++         config->device_type == AV_HWDEVICE_TYPE_VAAPI))
+       return config;
+ 
+     if ((config->methods & AV_CODEC_HW_CONFIG_METHOD_INTERNAL))
+@@ -87,6 +94,11 @@ static const AVCodec* FindDecoder(CDVDStreamInfo& hints)
+       return codec;
+   }
+ 
++  // TODO: only use fallback codec when drmprime codec should do sw decoding
++  codec = avcodec_find_decoder(hints.codec);
++  if (codec && (codec->capabilities & AV_CODEC_CAP_DR1) == AV_CODEC_CAP_DR1)
++    return codec;
++
+   return nullptr;
+ }
+ 
+@@ -94,7 +106,8 @@ enum AVPixelFormat CDVDVideoCodecDRMPRIME::GetFormat(struct AVCodecContext* avct
+ {
+   for (int n = 0; fmt[n] != AV_PIX_FMT_NONE; n++)
+   {
+-    if (fmt[n] == AV_PIX_FMT_DRM_PRIME)
++    if (fmt[n] == AV_PIX_FMT_DRM_PRIME || fmt[n] == AV_PIX_FMT_VAAPI ||
++        fmt[n] == AV_PIX_FMT_YUV420P || fmt[n] == AV_PIX_FMT_YUV420P10)
+     {
+       CDVDVideoCodecDRMPRIME* ctx = static_cast<CDVDVideoCodecDRMPRIME*>(avctx->opaque);
+       ctx->UpdateProcessInfo(avctx, fmt[n]);
+@@ -105,6 +118,33 @@ enum AVPixelFormat CDVDVideoCodecDRMPRIME::GetFormat(struct AVCodecContext* avct
+   return AV_PIX_FMT_NONE;
+ }
+ 
++static void ReleaseBuffer(void* opaque, uint8_t* data)
++{
++  CVideoBufferDumb* buffer = static_cast<CVideoBufferDumb*>(opaque);
++  CLog::Log(LOGDEBUG, "CDVDVideoCodecDRMPRIME::{} - buffer:{}", __FUNCTION__, buffer->GetId());
++  buffer->Release();
++}
++
++int CDVDVideoCodecDRMPRIME::GetBuffer(struct AVCodecContext* avctx, AVFrame* frame, int flags)
++{
++  int result = avcodec_default_get_buffer2(avctx, frame, flags);
++
++  if (frame->format == AV_PIX_FMT_YUV420P || frame->format == AV_PIX_FMT_YUV420P10)
++  {
++    CDVDVideoCodecDRMPRIME* ctx = static_cast<CDVDVideoCodecDRMPRIME*>(avctx->opaque);
++    CVideoBufferDumb* buffer = dynamic_cast<CVideoBufferDumb*>(ctx->m_videoBufferPoolSW->Get());
++
++    CLog::Log(LOGDEBUG, "CDVDVideoCodecDRMPRIME::{} - buffer:{} width:{} height:{} format:{} flags:{}", __FUNCTION__, buffer->GetId(), frame->width, frame->height, av_get_pix_fmt_name((AVPixelFormat)frame->format), flags);
++
++    buffer->Alloc(frame);
++
++    frame->opaque = static_cast<void*>(buffer);
++    frame->opaque_ref = av_buffer_create(nullptr, 0, ReleaseBuffer, frame->opaque, AV_BUFFER_FLAG_READONLY);
++  }
++
++  return result;
++}
++
+ bool CDVDVideoCodecDRMPRIME::Open(CDVDStreamInfo& hints, CDVDCodecOptions& options)
+ {
+   const AVCodec* pCodec = FindDecoder(hints);
+@@ -121,12 +161,11 @@ bool CDVDVideoCodecDRMPRIME::Open(CDVDStreamInfo& hints, CDVDCodecOptions& optio
+     return false;
+ 
+   const AVCodecHWConfig* pConfig = FindHWConfig(pCodec);
+-  if (pConfig &&
+-      (pConfig->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX) &&
+-      pConfig->device_type == AV_HWDEVICE_TYPE_DRM)
++  if (pConfig && (pConfig->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX))
+   {
+     CWinSystemGbm* winSystem = dynamic_cast<CWinSystemGbm*>(CServiceBroker::GetWinSystem());
+-    if (av_hwdevice_ctx_create(&m_pCodecContext->hw_device_ctx, AV_HWDEVICE_TYPE_DRM, drmGetDeviceNameFromFd2(winSystem->GetDrm()->GetFileDescriptor()), nullptr, 0) < 0)
++    const char* device = pConfig->device_type == AV_HWDEVICE_TYPE_DRM ? drmGetDeviceNameFromFd2(winSystem->GetDrm()->GetFileDescriptor()) : nullptr;
++    if (av_hwdevice_ctx_create(&m_pCodecContext->hw_device_ctx, pConfig->device_type, device, nullptr, 0) < 0)
+     {
+       CLog::Log(LOGNOTICE, "CDVDVideoCodecDRMPRIME::%s - unable to create hwdevice context", __FUNCTION__);
+       avcodec_free_context(&m_pCodecContext);
+@@ -137,6 +176,7 @@ bool CDVDVideoCodecDRMPRIME::Open(CDVDStreamInfo& hints, CDVDCodecOptions& optio
+   m_pCodecContext->pix_fmt = AV_PIX_FMT_DRM_PRIME;
+   m_pCodecContext->opaque = static_cast<void*>(this);
+   m_pCodecContext->get_format = GetFormat;
++  m_pCodecContext->get_buffer2 = GetBuffer;
+   m_pCodecContext->codec_tag = hints.codec_tag;
+   m_pCodecContext->coded_width = hints.width;
+   m_pCodecContext->coded_height = hints.height;
+@@ -144,6 +184,12 @@ bool CDVDVideoCodecDRMPRIME::Open(CDVDStreamInfo& hints, CDVDCodecOptions& optio
+   m_pCodecContext->time_base.num = 1;
+   m_pCodecContext->time_base.den = DVD_TIME_BASE;
+ 
++  m_pCodecContext->thread_safe_callbacks = 1;
++  m_pCodecContext->thread_count = g_cpuInfo.getCPUCount();
++
++  if (pConfig && pConfig->device_type == AV_HWDEVICE_TYPE_VAAPI)
++    m_pCodecContext->extra_hw_frames = 6;
++
+   if (hints.extradata && hints.extrasize > 0)
+   {
+     m_pCodecContext->extradata_size = hints.extrasize;
+@@ -151,6 +197,9 @@ bool CDVDVideoCodecDRMPRIME::Open(CDVDStreamInfo& hints, CDVDCodecOptions& optio
+     memcpy(m_pCodecContext->extradata, hints.extradata, hints.extrasize);
+   }
+ 
++  for (auto&& option : options.m_keys)
++    av_opt_set(m_pCodecContext, option.m_name.c_str(), option.m_value.c_str(), 0);
++
+   if (avcodec_open2(m_pCodecContext, pCodec, nullptr) < 0)
+   {
+     CLog::Log(LOGNOTICE, "CDVDVideoCodecDRMPRIME::%s - unable to open codec", __FUNCTION__);
+@@ -176,7 +225,7 @@ void CDVDVideoCodecDRMPRIME::UpdateProcessInfo(struct AVCodecContext* avctx, con
+   else
+     m_name = "ffmpeg";
+ 
+-  m_processInfo.SetVideoDecoderName(m_name, pix_fmt == AV_PIX_FMT_DRM_PRIME);
++  m_processInfo.SetVideoDecoderName(m_name, pix_fmt == AV_PIX_FMT_DRM_PRIME || pix_fmt == AV_PIX_FMT_VAAPI);
+ }
+ 
+ bool CDVDVideoCodecDRMPRIME::AddData(const DemuxPacket& packet)
+@@ -255,8 +304,7 @@ void CDVDVideoCodecDRMPRIME::SetPictureParams(VideoPicture* pVideoPicture)
+   pVideoPicture->iRepeatPicture = 0;
+   pVideoPicture->iFlags = 0;
+   pVideoPicture->iFlags |= m_pFrame->interlaced_frame ? DVP_FLAG_INTERLACED : 0;
+-  pVideoPicture->iFlags |= m_pFrame->top_field_first ? DVP_FLAG_TOP_FIELD_FIRST: 0;
+-  pVideoPicture->iFlags |= m_pFrame->data[0] ? 0 : DVP_FLAG_DROPPED;
++  pVideoPicture->iFlags |= m_pFrame->top_field_first ? DVP_FLAG_TOP_FIELD_FIRST : 0;
+ 
+   int64_t pts = m_pFrame->pts;
+   if (pts == AV_NOPTS_VALUE)
+@@ -270,6 +318,12 @@ CDVDVideoCodec::VCReturn CDVDVideoCodecDRMPRIME::GetPicture(VideoPicture* pVideo
+   if (m_codecControlFlags & DVD_CODEC_CTRL_DRAIN)
+     Drain();
+ 
++  if (pVideoPicture->videoBuffer)
++  {
++    pVideoPicture->videoBuffer->Release();
++    pVideoPicture->videoBuffer = nullptr;
++  }
++
+   int ret = avcodec_receive_frame(m_pCodecContext, m_pFrame);
+   if (ret == AVERROR(EAGAIN))
+     return VC_BUFFER;
+@@ -281,18 +335,25 @@ CDVDVideoCodec::VCReturn CDVDVideoCodecDRMPRIME::GetPicture(VideoPicture* pVideo
+     return VC_ERROR;
+   }
+ 
+-  if (pVideoPicture->videoBuffer)
+-    pVideoPicture->videoBuffer->Release();
+-  pVideoPicture->videoBuffer = nullptr;
+-
+   SetPictureParams(pVideoPicture);
+ 
+-  if (m_pFrame->format == AV_PIX_FMT_DRM_PRIME)
++  if (m_pFrame->format == AV_PIX_FMT_DRM_PRIME || m_pFrame->format == AV_PIX_FMT_VAAPI)
+   {
+     CVideoBufferDRMPRIME* buffer = dynamic_cast<CVideoBufferDRMPRIME*>(m_videoBufferPool->Get());
+     buffer->SetRef(m_pFrame);
+     pVideoPicture->videoBuffer = buffer;
+   }
++  else if (m_pFrame->opaque)
++  {
++    CVideoBufferDumb* buffer = static_cast<CVideoBufferDumb*>(m_pFrame->opaque);
++    buffer->Acquire();
++    buffer->SetRef(pVideoPicture);
++    buffer->Import(m_pFrame);
++    pVideoPicture->videoBuffer = buffer;
++
++    // TODO: copy HDR metadata ?
++    av_frame_unref(m_pFrame);
++  }
+ 
+   if (!pVideoPicture->videoBuffer)
+   {
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h
+index 8d399eb5bc..13dfdb4a4b 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h
+@@ -36,10 +36,12 @@ protected:
+   void SetPictureParams(VideoPicture* pVideoPicture);
+   void UpdateProcessInfo(struct AVCodecContext* avctx, const enum AVPixelFormat fmt);
+   static enum AVPixelFormat GetFormat(struct AVCodecContext* avctx, const enum AVPixelFormat* fmt);
++  static int GetBuffer(struct AVCodecContext* avctx, AVFrame* frame, int flags);
+ 
+   std::string m_name;
+   int m_codecControlFlags = 0;
+   AVCodecContext* m_pCodecContext = nullptr;
+   AVFrame* m_pFrame = nullptr;
+   std::shared_ptr<IVideoBufferPool> m_videoBufferPool;
++  std::shared_ptr<IVideoBufferPool> m_videoBufferPoolSW;
+ };
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/CMakeLists.txt b/xbmc/cores/VideoPlayer/Process/gbm/CMakeLists.txt
+index d1398d77a3..a2912a806c 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/CMakeLists.txt
++++ b/xbmc/cores/VideoPlayer/Process/gbm/CMakeLists.txt
+@@ -1,7 +1,9 @@
+ set(SOURCES ProcessInfoGBM.cpp
+-            VideoBufferDRMPRIME.cpp)
++            VideoBufferDRMPRIME.cpp
++            VideoBufferDumb.cpp)
+ 
+ set(HEADERS ProcessInfoGBM.h
+-            VideoBufferDRMPRIME.h)
++            VideoBufferDRMPRIME.h
++            VideoBufferDumb.h)
+ 
+ core_add_library(processGBM)
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
+index 719f0185bc..e22191070e 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
+@@ -43,6 +43,14 @@ void CVideoBufferDRMPRIME::Unref()
+   av_frame_unref(m_pFrame);
+ }
+ 
++AVDRMFrameDescriptor* CVideoBufferDRMPRIME::GetDescriptor() const
++{
++  if (m_pMapFrame)
++    return reinterpret_cast<AVDRMFrameDescriptor*>(m_pMapFrame->data[0]);
++
++  return reinterpret_cast<AVDRMFrameDescriptor*>(m_pFrame->data[0]);
++}
++
+ int CVideoBufferDRMPRIME::GetColorEncoding() const
+ {
+   switch (m_pFrame->colorspace)
+@@ -80,10 +88,36 @@ int CVideoBufferDRMPRIME::GetColorRange() const
+ 
+ bool CVideoBufferDRMPRIME::IsValid() const
+ {
++  if (m_pFrame->format == AV_PIX_FMT_VAAPI)
++    return true;
++
+   AVDRMFrameDescriptor* descriptor = GetDescriptor();
+   return descriptor && descriptor->nb_layers;
+ }
+ 
++bool CVideoBufferDRMPRIME::Map()
++{
++  if (m_pFrame->format == AV_PIX_FMT_VAAPI)
++  {
++    m_pMapFrame = av_frame_alloc();
++    m_pMapFrame->format = AV_PIX_FMT_DRM_PRIME;
++
++    int ret = av_hwframe_map(m_pMapFrame, m_pFrame, 0);
++    if (ret)
++    {
++      av_frame_free(&m_pMapFrame);
++      return false;
++    }
++  }
++
++  return true;
++}
++
++void CVideoBufferDRMPRIME::Unmap()
++{
++  av_frame_free(&m_pMapFrame);
++}
++
+ CVideoBufferPoolDRMPRIME::~CVideoBufferPoolDRMPRIME()
+ {
+   for (auto buf : m_all)
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h
+index 643395a681..b23a56171d 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h
+@@ -72,10 +72,7 @@ public:
+   void SetRef(AVFrame* frame);
+   void Unref();
+ 
+-  AVDRMFrameDescriptor* GetDescriptor() const override
+-  {
+-    return reinterpret_cast<AVDRMFrameDescriptor*>(m_pFrame->data[0]);
+-  }
++  AVDRMFrameDescriptor* GetDescriptor() const override;
+   uint32_t GetWidth() const override
+   {
+     return m_pFrame->width;
+@@ -88,9 +85,12 @@ public:
+   int GetColorRange() const override;
+ 
+   bool IsValid() const override;
++  bool Map() override;
++  void Unmap() override;
+ 
+ protected:
+   AVFrame* m_pFrame = nullptr;
++  AVFrame* m_pMapFrame = nullptr;
+ };
+ 
+ class CVideoBufferPoolDRMPRIME : public IVideoBufferPool
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp
+new file mode 100644
+index 0000000000..6bf148374c
+--- /dev/null
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp
+@@ -0,0 +1,286 @@
++/*
++ *  Copyright (C) 2019 Team Kodi
++ *  This file is part of Kodi - https://kodi.tv
++ *
++ *  SPDX-License-Identifier: GPL-2.0-or-later
++ *  See LICENSES/README.md for more information.
++ */
++
++#include "VideoBufferDumb.h"
++#include "threads/SingleLock.h"
++#include "utils/log.h"
++
++#include <linux/dma-buf.h>
++#include <sys/mman.h>
++
++#include "ServiceBroker.h"
++#include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodec.h"
++#include "windowing/gbm/WinSystemGbm.h"
++
++extern "C" {
++#include <libavcodec/avcodec.h>
++}
++
++using namespace KODI::WINDOWING::GBM;
++
++CVideoBufferDumb::CVideoBufferDumb(IVideoBufferPool& pool, int id)
++  : CVideoBufferDRMPRIME(pool, id)
++{
++  CLog::Log(LOGDEBUG, "CVideoBufferDumb::{} - id:{}", __FUNCTION__, m_id);
++}
++
++CVideoBufferDumb::~CVideoBufferDumb()
++{
++  CLog::Log(LOGDEBUG, "CVideoBufferDumb::{} - id:{}", __FUNCTION__, m_id);
++  Unref();
++  Destroy();
++}
++
++void CVideoBufferDumb::GetPlanes(uint8_t*(&planes)[YuvImage::MAX_PLANES])
++{
++  AVDRMFrameDescriptor* descriptor = &m_descriptor;
++  AVDRMLayerDescriptor* layer = &descriptor->layers[0];
++
++  for (int i = 0; i < layer->nb_planes; i++)
++    planes[i] = static_cast<uint8_t*>(m_addr) + layer->planes[i].offset;
++}
++
++void CVideoBufferDumb::GetStrides(int(&strides)[YuvImage::MAX_PLANES])
++{
++  AVDRMFrameDescriptor* descriptor = &m_descriptor;
++  AVDRMLayerDescriptor* layer = &descriptor->layers[0];
++
++  for (int i = 0; i < layer->nb_planes; i++)
++    strides[i] = layer->planes[i].pitch;
++}
++
++void CVideoBufferDumb::Create(uint32_t width, uint32_t height)
++{
++  if (m_width == width && m_height == height)
++    return;
++
++  Destroy();
++
++  CLog::Log(LOGNOTICE, "CVideoBufferDumb::{} - id={} width={} height={}", __FUNCTION__, m_id, width, height);
++
++  CWinSystemGbm* winSystem = dynamic_cast<CWinSystemGbm*>(CServiceBroker::GetWinSystem());
++  int fd = winSystem->GetDrm()->GetFileDescriptor();
++
++  struct drm_mode_create_dumb create_dumb = { .height = height + (height >> 1), .width = width, .bpp = 8, .flags = 0x01 };
++  int ret = drmIoctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &create_dumb);
++  if (ret)
++    CLog::Log(LOGERROR, "CVideoBufferDumb::{} - ioctl DRM_IOCTL_MODE_CREATE_DUMB failed, ret={} errno={}", __FUNCTION__, ret, errno);
++  m_handle = create_dumb.handle;
++  m_size = create_dumb.size;
++
++  struct drm_mode_map_dumb map_dumb = { .handle = m_handle };
++  ret = drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &map_dumb);
++  if (ret)
++    CLog::Log(LOGERROR, "CVideoBufferDumb::{} - ioctl DRM_IOCTL_MODE_MAP_DUMB failed, ret={} errno={}", __FUNCTION__, ret, errno);
++  m_offset = map_dumb.offset;
++
++  m_addr = mmap(NULL, m_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, m_offset);
++  if (m_addr == MAP_FAILED)
++    CLog::Log(LOGERROR, "CVideoBufferDumb::{} - mmap failed, errno={}", __FUNCTION__, errno);
++
++  struct drm_prime_handle prime_handle = { .handle = m_handle };
++  ret = drmIoctl(fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &prime_handle);
++  if (ret)
++    CLog::Log(LOGERROR, "CVideoBufferDumb::{} - ioctl DRM_IOCTL_PRIME_HANDLE_TO_FD failed, ret={} errno={}", __FUNCTION__, ret, errno);
++  m_fd = prime_handle.fd;
++
++  m_width = width;
++  m_height = height;
++
++  AVDRMFrameDescriptor* descriptor = &m_descriptor;
++  descriptor->format = DRM_FORMAT_YUV420;
++  descriptor->nb_objects = 1;
++  descriptor->objects[0].fd = m_fd;
++  descriptor->objects[0].size = m_size;
++  descriptor->nb_layers = 1;
++  AVDRMLayerDescriptor* layer = &descriptor->layers[0];
++  layer->format = DRM_FORMAT_YUV420;
++  layer->nb_planes = 3;
++  layer->planes[0].offset = 0;
++  layer->planes[0].pitch = m_width;
++  layer->planes[1].offset = m_width * m_height;
++  layer->planes[1].pitch = m_width >> 1;
++  layer->planes[2].offset = layer->planes[1].offset + ((m_width * m_height) >> 2);
++  layer->planes[2].pitch = m_width >> 1;
++
++  // RK hack
++  descriptor->format = DRM_FORMAT_NV12;
++  layer->nb_planes = 2;
++  layer->planes[0].offset = 0;
++  layer->planes[0].pitch = m_width;
++  layer->planes[1].offset = m_width * m_height;
++  layer->planes[1].pitch = m_width;
++  layer->planes[2].offset = 0;
++  layer->planes[2].pitch = 0;
++
++  m_pFrame->data[0] = reinterpret_cast<uint8_t*>(descriptor);
++}
++
++void CVideoBufferDumb::Destroy()
++{
++  if (!m_width && !m_height)
++    return;
++
++  CLog::Log(LOGNOTICE, "CVideoBufferDumb::{} - id={} width={} height={} size={}", __FUNCTION__, m_id, m_width, m_height, m_size);
++
++  CWinSystemGbm* winSystem = dynamic_cast<CWinSystemGbm*>(CServiceBroker::GetWinSystem());
++
++  int ret = close(m_fd);
++  if (ret)
++    CLog::Log(LOGERROR, "CVideoBufferDumb::{} - close failed, errno={}", __FUNCTION__, errno);
++  m_fd = -1;
++
++  ret = munmap(m_addr, m_size);
++  if (ret)
++    CLog::Log(LOGERROR, "CVideoBufferDumb::{} - munmap failed, errno={}", __FUNCTION__, errno);
++  m_addr = nullptr;
++  m_offset = 0;
++  m_size = 0;
++
++  struct drm_mode_destroy_dumb destroy_dumb = { .handle = m_handle };
++  ret = drmIoctl(winSystem->GetDrm()->GetFileDescriptor(), DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_dumb);
++  if (ret)
++    CLog::Log(LOGERROR, "CVideoBufferDumb::{} - ioctl DRM_IOCTL_MODE_DESTROY_DUMB failed, ret={} errno={}", __FUNCTION__, ret, errno);
++  m_handle = 0;
++
++  m_width = 0;
++  m_height = 0;
++}
++
++void CVideoBufferDumb::SyncStart()
++{
++  CLog::Log(LOGDEBUG, "CVideoBufferDumb::{} - id:{}", __FUNCTION__, m_id);
++
++  struct dma_buf_sync sync = { .flags = DMA_BUF_SYNC_START | DMA_BUF_SYNC_RW };
++  int ret = drmIoctl(m_fd, DMA_BUF_IOCTL_SYNC, &sync);
++  if (ret)
++    CLog::Log(LOGERROR, "CVideoBufferDumb::{} - ioctl DMA_BUF_IOCTL_SYNC failed, ret={} errno={}", __FUNCTION__, ret, errno);
++}
++
++void CVideoBufferDumb::SyncEnd()
++{
++  CLog::Log(LOGDEBUG, "CVideoBufferDumb::{} - id:{}", __FUNCTION__, m_id);
++
++  struct dma_buf_sync sync = { .flags = DMA_BUF_SYNC_END | DMA_BUF_SYNC_RW };
++  int ret = drmIoctl(m_fd, DMA_BUF_IOCTL_SYNC, &sync);
++  if (ret)
++    CLog::Log(LOGERROR, "CVideoBufferDumb::{} - ioctl DMA_BUF_IOCTL_SYNC failed, ret={} errno={}", __FUNCTION__, ret, errno);
++}
++
++void CVideoBufferDumb::SetRef(const VideoPicture* picture)
++{
++  CLog::Log(LOGDEBUG, "CVideoBufferDumb::{} - id:{}", __FUNCTION__, m_id);
++
++  m_pFrame->width = picture->iWidth;
++  m_pFrame->height = picture->iHeight;
++  m_pFrame->color_range = picture->color_range ? AVCOL_RANGE_JPEG : AVCOL_RANGE_UNSPECIFIED;
++  m_pFrame->color_primaries = static_cast<AVColorPrimaries>(picture->color_primaries);
++  m_pFrame->color_trc = static_cast<AVColorTransferCharacteristic>(picture->color_transfer);
++  m_pFrame->colorspace = static_cast<AVColorSpace>(picture->color_space);
++}
++
++void CVideoBufferDumb::Unref()
++{
++  CLog::Log(LOGDEBUG, "CVideoBufferDumb::{} - id:{}", __FUNCTION__, m_id);
++}
++
++void CVideoBufferDumb::Alloc(AVFrame* frame)
++{
++  uint32_t width = (frame->width + 31) & -32;
++  uint32_t height = (frame->height + 15) & -16;
++
++  CLog::Log(LOGDEBUG, "CVideoBufferDumb::{} - id:{} width:{} height:{} width:{} height:{}", __FUNCTION__, m_id, frame->width, frame->height, width, height);
++
++  Create(width, height);
++}
++
++void CVideoBufferDumb::Import(AVFrame* frame)
++{
++  CLog::Log(LOGDEBUG, "CVideoBufferDumb::{} - id:{} width:{} height:{}", __FUNCTION__, m_id, m_width, m_height);
++
++  YuvImage image = {};
++  GetPlanes(image.plane);
++  GetStrides(image.stride);
++
++  if (image.stride[0] != frame->linesize[0])
++    return;
++
++  SyncStart();
++
++  memcpy(image.plane[0], frame->data[0], image.stride[0] * frame->height);
++  //memcpy(image.plane[1], frame->data[1], image.stride[1] * (frame->height >> 1));
++  //memcpy(image.plane[2], frame->data[2], image.stride[2] * (frame->height >> 1));
++
++  // RK hack
++  for (int y = 0, h = frame->height >> 1; y < h; y++)
++  {
++    uint8_t* dst = static_cast<uint8_t*>(image.plane[1]) + image.stride[1] * y;
++    uint8_t* src1 = frame->data[1] + frame->linesize[1] * y;
++    uint8_t* src2 = frame->data[2] + frame->linesize[2] * y;
++
++    for (int x = 0, w = image.stride[1]; x < w; x++)
++    {
++      *dst++ = *(src1 + x);
++      *dst++ = *(src2 + x);
++    }
++  }
++
++  SyncEnd();
++}
++
++CVideoBufferPoolDumb::~CVideoBufferPoolDumb()
++{
++  CLog::Log(LOGDEBUG, "CVideoBufferPoolDumb::{}", __FUNCTION__);
++  for (auto buf : m_all)
++    delete buf;
++}
++
++CVideoBuffer* CVideoBufferPoolDumb::Get()
++{
++  CSingleLock lock(m_critSection);
++
++  CVideoBufferDumb* buf = nullptr;
++  if (!m_free.empty())
++  {
++    int idx = m_free.front();
++    m_free.pop_front();
++    m_used.push_back(idx);
++    buf = m_all[idx];
++  }
++  else
++  {
++    int id = m_all.size();
++    buf = new CVideoBufferDumb(*this, id);
++    m_all.push_back(buf);
++    m_used.push_back(id);
++  }
++
++  CLog::Log(LOGDEBUG, "CVideoBufferPoolDumb::{} - id:{}", __FUNCTION__, buf->GetId());
++  buf->Acquire(GetPtr());
++  return buf;
++}
++
++void CVideoBufferPoolDumb::Return(int id)
++{
++  CSingleLock lock(m_critSection);
++
++  CLog::Log(LOGDEBUG, "CVideoBufferPoolDumb::{} - id:{}", __FUNCTION__, id);
++  m_all[id]->Unref();
++  auto it = m_used.begin();
++  while (it != m_used.end())
++  {
++    if (*it == id)
++    {
++      m_used.erase(it);
++      break;
++    }
++    else
++      ++it;
++  }
++  m_free.push_back(id);
++}
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.h b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.h
+new file mode 100644
+index 0000000000..3be3f117f5
+--- /dev/null
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.h
+@@ -0,0 +1,58 @@
++/*
++ *  Copyright (C) 2019 Team Kodi
++ *  This file is part of Kodi - https://kodi.tv
++ *
++ *  SPDX-License-Identifier: GPL-2.0-or-later
++ *  See LICENSES/README.md for more information.
++ */
++
++#pragma once
++
++#include "VideoBufferDRMPRIME.h"
++
++class VideoPicture;
++
++class CVideoBufferDumb
++  : public CVideoBufferDRMPRIME
++{
++public:
++  CVideoBufferDumb(IVideoBufferPool& pool, int id);
++  ~CVideoBufferDumb();
++  void GetPlanes(uint8_t*(&planes)[YuvImage::MAX_PLANES]) override;
++  void GetStrides(int(&strides)[YuvImage::MAX_PLANES]) override;
++  void SetRef(const VideoPicture* picture);
++  void Unref();
++
++  void Alloc(AVFrame* frame);
++  void Import(AVFrame* frame);
++
++private:
++  void Create(uint32_t width, uint32_t height);
++  void Destroy();
++  void SyncStart();
++  void SyncEnd();
++
++  AVDRMFrameDescriptor m_descriptor = {};
++  uint32_t m_width = 0;
++  uint32_t m_height = 0;
++  uint32_t m_handle = 0;
++  uint64_t m_size = 0;
++  uint64_t m_offset = 0;
++  void *m_addr = nullptr;
++  int m_fd = -1;
++};
++
++class CVideoBufferPoolDumb
++  : public IVideoBufferPool
++{
++public:
++  ~CVideoBufferPoolDumb();
++  void Return(int id) override;
++  CVideoBuffer* Get() override;
++
++protected:
++  CCriticalSection m_critSection;
++  std::vector<CVideoBufferDumb*> m_all;
++  std::deque<int> m_used;
++  std::deque<int> m_free;
++};
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DRMPRIMEEGL.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DRMPRIMEEGL.cpp
+index 17dd7e1e19..2144635051 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DRMPRIMEEGL.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DRMPRIMEEGL.cpp
+@@ -29,28 +29,49 @@ bool CDRMPRIMETexture::Map(IVideoBufferDRMPRIME* buffer)
+   AVDRMFrameDescriptor* descriptor = buffer->GetDescriptor();
+   if (descriptor && descriptor->nb_layers)
+   {
+-    AVDRMLayerDescriptor* layer = &descriptor->layers[0];
++    // get drm format of the frame
++    uint32_t format = descriptor->format;
++    if (!format && descriptor->nb_layers == 1)
++      format = descriptor->layers[0].format;
++    if (!format)
++    {
++      buffer->Unmap();
++      return false;
++    }
+ 
+     std::array<CEGLImage::EglPlane, CEGLImage::MAX_NUM_PLANES> planes;
+ 
+-    for (int i = 0; i < layer->nb_planes; i++)
++    int index = 0;
++    for (int i = 0; i < descriptor->nb_layers; i++)
+     {
+-      planes[i].fd = descriptor->objects[layer->planes[i].object_index].fd;
+-      planes[i].offset = layer->planes[i].offset;
+-      planes[i].pitch = layer->planes[i].pitch;
++      AVDRMLayerDescriptor* layer = &descriptor->layers[i];
++      for (int j = 0; j < layer->nb_planes; j++)
++      {
++        AVDRMPlaneDescriptor* plane = &layer->planes[j];
++        AVDRMObjectDescriptor* object = &descriptor->objects[plane->object_index];
++
++        planes[index].fd = object->fd;
++        planes[index].modifier = object->format_modifier;
++        planes[index].offset = plane->offset;
++        planes[index].pitch = plane->pitch;
++
++        index++;
++      }
+     }
+ 
+     CEGLImage::EglAttrs attribs;
+-
+     attribs.width = m_texWidth;
+     attribs.height = m_texHeight;
+-    attribs.format = layer->format;
++    attribs.format = format;
+     attribs.colorSpace = GetColorSpace(buffer->GetColorEncoding());
+     attribs.colorRange = GetColorRange(buffer->GetColorRange());
+     attribs.planes = planes;
+ 
+     if (!m_eglImage->CreateImage(attribs))
++    {
++      buffer->Unmap();
+       return false;
++    }
+ 
+     glGenTextures(1, &m_texture);
+     glBindTexture(m_textureTarget, m_texture);
+@@ -64,7 +85,6 @@ bool CDRMPRIMETexture::Map(IVideoBufferDRMPRIME* buffer)
+ 
+   m_primebuffer = buffer;
+   m_primebuffer->Acquire();
+-
+   return true;
+ }
+ 
+@@ -85,34 +105,26 @@ void CDRMPRIMETexture::Unmap()
+ 
+ int CDRMPRIMETexture::GetColorSpace(int colorSpace)
+ {
+-  switch(colorSpace)
++  switch (colorSpace)
+   {
+-    case DRM_COLOR_YCBCR_BT2020:
+-      return EGL_ITU_REC2020_EXT;
+-    case DRM_COLOR_YCBCR_BT601:
+-      return EGL_ITU_REC601_EXT;
+-    case DRM_COLOR_YCBCR_BT709:
+-      return EGL_ITU_REC709_EXT;
+-    default:
+-      CLog::Log(LOGERROR, "CEGLImage::%s - failed to get colorspace for: %d", __FUNCTION__, colorSpace);
+-      break;
++  case DRM_COLOR_YCBCR_BT2020:
++    return EGL_ITU_REC2020_EXT;
++  case DRM_COLOR_YCBCR_BT601:
++    return EGL_ITU_REC601_EXT;
++  case DRM_COLOR_YCBCR_BT709:
++  default:
++    return EGL_ITU_REC709_EXT;
+   }
+-
+-  return -1;
+ }
+ 
+ int CDRMPRIMETexture::GetColorRange(int colorRange)
+ {
+-  switch(colorRange)
++  switch (colorRange)
+   {
+-    case DRM_COLOR_YCBCR_FULL_RANGE:
+-      return EGL_YUV_FULL_RANGE_EXT;
+-    case DRM_COLOR_YCBCR_LIMITED_RANGE:
+-      return EGL_YUV_NARROW_RANGE_EXT;
+-    default:
+-      CLog::Log(LOGERROR, "CEGLImage::%s - failed to get colorrange for: %d", __FUNCTION__, colorRange);
+-      break;
++  case DRM_COLOR_YCBCR_FULL_RANGE:
++    return EGL_YUV_FULL_RANGE_EXT;
++  case DRM_COLOR_YCBCR_LIMITED_RANGE:
++  default:
++    return EGL_YUV_NARROW_RANGE_EXT;
+   }
+-
+-  return -1;
+ }
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.cpp
+index bbe8409cba..7d058faa9c 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.cpp
+@@ -8,19 +8,23 @@
+ 
+ #include "RendererDRMPRIMEGLES.h"
+ 
+-#include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
+ #include "ServiceBroker.h"
++#include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodec.h"
++#include "cores/VideoPlayer/VideoRenderers/RenderCapture.h"
++#include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
++#include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
++#include "rendering/gles/RenderSystemGLES.h"
+ #include "utils/EGLFence.h"
++#include "utils/GLUtils.h"
+ #include "utils/log.h"
+-#include "windowing/gbm/WinSystemGbmGLESContext.h"
++#include "windowing/gbm/WinSystemGbmEGLContext.h"
+ 
+ using namespace KODI::WINDOWING::GBM;
+ using namespace KODI::UTILS::EGL;
+ 
+ CRendererDRMPRIMEGLES::~CRendererDRMPRIMEGLES()
+ {
+-  for (int i = 0; i < NUM_BUFFERS; ++i)
+-    DeleteTexture(i);
++  Flush(false);
+ }
+ 
+ CBaseRenderer* CRendererDRMPRIMEGLES::Create(CVideoBuffer* buffer)
+@@ -33,32 +37,81 @@ CBaseRenderer* CRendererDRMPRIMEGLES::Create(CVideoBuffer* buffer)
+ 
+ void CRendererDRMPRIMEGLES::Register()
+ {
++  // EGL_EXT_image_dma_buf_import / EGL_EXT_image_dma_buf_import_modifiers
++  // GL_OES_EGL_image_external
+   VIDEOPLAYER::CRendererFactory::RegisterRenderer("drm_prime_gles", CRendererDRMPRIMEGLES::Create);
+ }
+ 
+-bool CRendererDRMPRIMEGLES::Configure(const VideoPicture &picture, float fps, unsigned int orientation)
++bool CRendererDRMPRIMEGLES::Configure(const VideoPicture& picture, float fps, unsigned int orientation)
+ {
+-  CWinSystemGbmGLESContext* winSystem = dynamic_cast<CWinSystemGbmGLESContext*>(CServiceBroker::GetWinSystem());
++  CWinSystemGbmEGLContext* winSystem = dynamic_cast<CWinSystemGbmEGLContext*>(CServiceBroker::GetWinSystem());
+   if (!winSystem)
+     return false;
+ 
+-  for (auto &texture : m_DRMPRIMETextures)
+-    texture.Init(winSystem->GetEGLDisplay());
++  for (auto& buffer : m_buffers)
++    buffer.primeTexture.Init(winSystem->GetEGLDisplay());
+ 
+   for (auto& fence : m_fences)
+-  {
+     fence.reset(new CEGLFence(winSystem->GetEGLDisplay()));
++
++  m_format = picture.videoBuffer->GetFormat();
++  m_sourceWidth = picture.iWidth;
++  m_sourceHeight = picture.iHeight;
++  m_renderOrientation = orientation;
++
++  m_iFlags = GetFlagsChromaPosition(picture.chroma_position) |
++             GetFlagsColorMatrix(picture.color_space, picture.iWidth, picture.iHeight) |
++             GetFlagsColorPrimaries(picture.color_primaries) |
++             GetFlagsStereoMode(picture.stereoMode);
++
++  // Calculate the input frame aspect ratio.
++  CalculateFrameAspectRatio(picture.iDisplayWidth, picture.iDisplayHeight);
++  SetViewMode(m_videoSettings.m_ViewMode);
++  ManageRenderArea();
++
++  Flush(false);
++
++  m_bConfigured = true;
++
++  m_clearColour = winSystem->UseLimitedColor() ? (16.0f / 0xff) : 0.0f;
++
++  return true;
++}
++
++void CRendererDRMPRIMEGLES::AddVideoPicture(const VideoPicture& picture, int index)
++{
++  BUFFER& buf = m_buffers[index];
++  if (buf.videoBuffer)
++  {
++    CLog::LogF(LOGERROR, "unreleased video buffer");
++    buf.videoBuffer->Release();
+   }
++  buf.videoBuffer = picture.videoBuffer;
++  buf.videoBuffer->Acquire();
++}
+ 
+-  return CLinuxRendererGLES::Configure(picture, fps, orientation);
++bool CRendererDRMPRIMEGLES::Flush(bool saveBuffers)
++{
++  if (!saveBuffers)
++    for (int i = 0; i < NUM_BUFFERS; i++)
++      ReleaseBuffer(i);
++
++  return saveBuffers;
+ }
+ 
+ void CRendererDRMPRIMEGLES::ReleaseBuffer(int index)
+ {
+   m_fences[index]->DestroyFence();
+ 
+-  m_DRMPRIMETextures[index].Unmap();
+-  CLinuxRendererGLES::ReleaseBuffer(index);
++  BUFFER& buf = m_buffers[index];
++
++  buf.primeTexture.Unmap();
++
++  if (buf.videoBuffer)
++  {
++    buf.videoBuffer->Release();
++    buf.videoBuffer = nullptr;
++  }
+ }
+ 
+ bool CRendererDRMPRIMEGLES::NeedBuffer(int index)
+@@ -66,87 +119,84 @@ bool CRendererDRMPRIMEGLES::NeedBuffer(int index)
+   return !m_fences[index]->IsSignaled();
+ }
+ 
+-bool CRendererDRMPRIMEGLES::CreateTexture(int index)
++CRenderInfo CRendererDRMPRIMEGLES::GetRenderInfo()
+ {
+-  CPictureBuffer &buf = m_buffers[index];
+-  YuvImage &im = buf.image;
+-  CYuvPlane &plane = buf.fields[0][0];
+-
+-  DeleteTexture(index);
+-
+-  im = {};
+-  plane = {};
+-
+-  im.height = m_sourceHeight;
+-  im.width  = m_sourceWidth;
+-  im.cshift_x = 1;
+-  im.cshift_y = 1;
+-
+-  plane.id = 1;
+-
+-  return true;
++  CRenderInfo info;
++  info.max_buffer_size = NUM_BUFFERS;
++  return info;
+ }
+ 
+-void CRendererDRMPRIMEGLES::DeleteTexture(int index)
++void CRendererDRMPRIMEGLES::Update()
+ {
+-  ReleaseBuffer(index);
++  if (!m_bConfigured)
++    return;
+ 
+-  CPictureBuffer &buf = m_buffers[index];
+-  buf.fields[0][0].id = 0;
++  ManageRenderArea();
+ }
+ 
+-bool CRendererDRMPRIMEGLES::UploadTexture(int index)
++void CRendererDRMPRIMEGLES::RenderUpdate(int index, int index2, bool clear, unsigned int flags, unsigned int alpha)
+ {
+-  CPictureBuffer &buf = m_buffers[index];
++  if (!m_bConfigured)
++    return;
+ 
+-  IVideoBufferDRMPRIME* buffer = dynamic_cast<IVideoBufferDRMPRIME*>(buf.videoBuffer);
+-
+-  if (!buffer || !buffer->IsValid())
++  if (clear)
+   {
+-    CLog::Log(LOGNOTICE, "CRendererDRMPRIMEGLES::%s - no buffer", __FUNCTION__);
+-    return false;
++    glClearColor(m_clearColour, m_clearColour, m_clearColour, 0);
++    glClear(GL_COLOR_BUFFER_BIT);
++    glClearColor(0,0,0,0);
+   }
+ 
+-  m_DRMPRIMETextures[index].Map(buffer);
+-
+-  CYuvPlane &plane = buf.fields[0][0];
+-
+-  auto size = m_DRMPRIMETextures[index].GetTextureSize();
+-  plane.texwidth  = size.Width();
+-  plane.texheight = size.Height();
+-  plane.pixpertex_x = 1;
+-  plane.pixpertex_y = 1;
++  if (alpha < 255)
++  {
++    glEnable(GL_BLEND);
++    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
++  }
++  else
++  {
++    glDisable(GL_BLEND);
++  }
+ 
+-  plane.id = m_DRMPRIMETextures[index].GetTexture();
++  Render(flags, index);
+ 
+-  CalculateTextureSourceRects(index, 1);
++  VerifyGLState();
++  glEnable(GL_BLEND);
++}
+ 
++bool CRendererDRMPRIMEGLES::RenderCapture(CRenderCapture* capture)
++{
++  capture->BeginRender();
++  capture->EndRender();
+   return true;
+ }
+ 
+-bool CRendererDRMPRIMEGLES::LoadShadersHook()
++bool CRendererDRMPRIMEGLES::ConfigChanged(const VideoPicture& picture)
+ {
+-  CLog::Log(LOGNOTICE, "Using DRMPRIMEGLES render method");
+-  m_textureTarget = GL_TEXTURE_2D;
+-  m_renderMethod = RENDER_CUSTOM;
+-  return true;
++  if (picture.videoBuffer->GetFormat() != m_format)
++    return true;
++
++  return false;
+ }
+ 
+-bool CRendererDRMPRIMEGLES::RenderHook(int index)
++void CRendererDRMPRIMEGLES::Render(unsigned int flags, int index)
+ {
+-  CRenderSystemGLES *renderSystem = dynamic_cast<CRenderSystemGLES*>(CServiceBroker::GetRenderSystem());
+-  assert(renderSystem);
++  BUFFER& buf = m_buffers[index];
++
++  IVideoBufferDRMPRIME* buffer = dynamic_cast<IVideoBufferDRMPRIME*>(buf.videoBuffer);
++  if (!buffer || !buffer->IsValid())
++    return;
+ 
+-  CYuvPlane &plane = m_buffers[index].fields[0][0];
++  CRenderSystemGLES* renderSystem = dynamic_cast<CRenderSystemGLES*>(CServiceBroker::GetRenderSystem());
++  if (!renderSystem)
++    return;
+ 
+-  glDisable(GL_DEPTH_TEST);
++  if (!buf.primeTexture.Map(buffer))
++    return;
+ 
+-  glActiveTexture(GL_TEXTURE0);
+-  glBindTexture(GL_TEXTURE_EXTERNAL_OES, plane.id);
++  glBindTexture(GL_TEXTURE_EXTERNAL_OES, buf.primeTexture.GetTexture());
+ 
+   renderSystem->EnableGUIShader(SM_TEXTURE_RGBA_OES);
+ 
+-  GLubyte idx[4] = {0, 1, 3, 2}; // Determines order of triangle strip
++  GLubyte idx[4] = {0, 1, 3, 2};
+   GLuint vertexVBO;
+   GLuint indexVBO;
+   struct PackedVertex
+@@ -164,29 +214,29 @@ bool CRendererDRMPRIMEGLES::RenderHook(int index)
+   vertex[0].x = m_rotatedDestCoords[0].x;
+   vertex[0].y = m_rotatedDestCoords[0].y;
+   vertex[0].z = 0.0f;
+-  vertex[0].u1 = plane.rect.x1;
+-  vertex[0].v1 = plane.rect.y1;
++  vertex[0].u1 = 0.0f;
++  vertex[0].v1 = 0.0f;
+ 
+   // top right
+   vertex[1].x = m_rotatedDestCoords[1].x;
+   vertex[1].y = m_rotatedDestCoords[1].y;
+   vertex[1].z = 0.0f;
+-  vertex[1].u1 = plane.rect.x2;
+-  vertex[1].v1 = plane.rect.y1;
++  vertex[1].u1 = 1.0f;
++  vertex[1].v1 = 0.0f;
+ 
+   // bottom right
+   vertex[2].x = m_rotatedDestCoords[2].x;
+   vertex[2].y = m_rotatedDestCoords[2].y;
+   vertex[2].z = 0.0f;
+-  vertex[2].u1 = plane.rect.x2;
+-  vertex[2].v1 = plane.rect.y2;
++  vertex[2].u1 = 1.0f;
++  vertex[2].v1 = 1.0f;
+ 
+   // bottom left
+   vertex[3].x = m_rotatedDestCoords[3].x;
+   vertex[3].y = m_rotatedDestCoords[3].y;
+   vertex[3].z = 0.0f;
+-  vertex[3].u1 = plane.rect.x1;
+-  vertex[3].v1 = plane.rect.y2;;
++  vertex[3].u1 = 0.0f;
++  vertex[3].v1 = 1.0f;
+ 
+   glGenBuffers(1, &vertexVBO);
+   glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
+@@ -216,11 +266,6 @@ bool CRendererDRMPRIMEGLES::RenderHook(int index)
+ 
+   glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
+ 
+-  return true;
+-}
+-
+-void CRendererDRMPRIMEGLES::AfterRenderHook(int index)
+-{
+   m_fences[index]->CreateFence();
+ }
+ 
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.h b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.h
+index e6ef033982..2640aba6ea 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.h
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIMEGLES.h
+@@ -8,7 +8,7 @@
+ 
+ #pragma once
+ 
+-#include "cores/VideoPlayer/VideoRenderers/LinuxRendererGLES.h"
++#include "cores/VideoPlayer/VideoRenderers/BaseRenderer.h"
+ #include "DRMPRIMEEGL.h"
+ 
+ #include <array>
+@@ -25,7 +25,7 @@ class CEGLFence;
+ }
+ }
+ 
+-class CRendererDRMPRIMEGLES : public CLinuxRendererGLES
++class CRendererDRMPRIMEGLES : public CBaseRenderer
+ {
+ public:
+   CRendererDRMPRIMEGLES() = default;
+@@ -35,23 +35,37 @@ public:
+   static CBaseRenderer* Create(CVideoBuffer* buffer);
+   static void Register();
+ 
+-  // CLinuxRendererGLES overrides
+-  bool Configure(const VideoPicture &picture, float fps, unsigned int orientation) override;
++  // Player functions
++  bool Configure(const VideoPicture& picture, float fps, unsigned int orientation) override;
++  bool IsConfigured() override { return m_bConfigured; }
++  void AddVideoPicture(const VideoPicture& picture, int index) override;
++  void UnInit() override {};
++  bool Flush(bool saveBuffers) override;
+   void ReleaseBuffer(int index) override;
+   bool NeedBuffer(int index) override;
++  CRenderInfo GetRenderInfo() override;
++  void Update() override;
++  void RenderUpdate(int index, int index2, bool clear, unsigned int flags, unsigned int alpha) override;
++  bool RenderCapture(CRenderCapture* capture) override;
++  bool ConfigChanged(const VideoPicture& picture) override;
+ 
++  // Feature support
++  bool SupportsMultiPassRendering() override { return false; };
+   bool Supports(ERENDERFEATURE feature) override;
+   bool Supports(ESCALINGMETHOD method) override;
+ 
+ protected:
+-  // CLinuxRendererGLES overrides
+-  bool LoadShadersHook() override;
+-  bool RenderHook(int index) override;
+-  void AfterRenderHook(int index) override;
+-  bool UploadTexture(int index) override;
+-  void DeleteTexture(int index) override;
+-  bool CreateTexture(int index) override;
++  bool UploadTexture(int index);
++  void Render(unsigned int flags, int index);
++
++  bool m_bConfigured = false;
++  float m_clearColour{0.0f};
+ 
+   std::array<std::unique_ptr<KODI::UTILS::EGL::CEGLFence>, NUM_BUFFERS> m_fences;
+-  CDRMPRIMETexture m_DRMPRIMETextures[NUM_BUFFERS];
++
++  struct BUFFER
++  {
++    CVideoBuffer* videoBuffer = nullptr;
++    CDRMPRIMETexture primeTexture;
++  } m_buffers[NUM_BUFFERS];
+ };
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp
+index 3277d3667c..45443c50a0 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp
+@@ -68,6 +68,13 @@ bool CVideoLayerBridgeDRMPRIME::Map(IVideoBufferDRMPRIME* buffer)
+   uint64_t modifier[4] = {0};
+   int ret;
+ 
++  // get drm format of the frame
++  uint32_t format = descriptor->format;
++  if (!format && descriptor->nb_layers == 1)
++    format = descriptor->layers[0].format;
++  if (!format)
++    return false;
++
+   // convert Prime FD to GEM handle
+   for (int object = 0; object < descriptor->nb_objects; object++)
+   {
+@@ -80,18 +87,21 @@ bool CVideoLayerBridgeDRMPRIME::Map(IVideoBufferDRMPRIME* buffer)
+     }
+   }
+ 
+-  AVDRMLayerDescriptor* layer = &descriptor->layers[0];
+-
+-  for (int plane = 0; plane < layer->nb_planes; plane++)
++  int index = 0;
++  for (int i = 0; i < descriptor->nb_layers; i++)
+   {
+-    int object = layer->planes[plane].object_index;
+-    uint32_t handle = buffer->m_handles[object];
+-    if (handle && layer->planes[plane].pitch)
++    AVDRMLayerDescriptor* layer = &descriptor->layers[i];
++    for (int j = 0; j < layer->nb_planes; j++)
+     {
+-      handles[plane] = handle;
+-      pitches[plane] = layer->planes[plane].pitch;
+-      offsets[plane] = layer->planes[plane].offset;
+-      modifier[plane] = descriptor->objects[object].format_modifier;
++      AVDRMPlaneDescriptor* plane = &layer->planes[j];
++      int object = plane->object_index;
++
++      handles[index] = buffer->m_handles[object];
++      pitches[index] = plane->pitch;
++      offsets[index] = plane->offset;
++      modifier[index] = descriptor->objects[object].format_modifier;
++
++      index++;
+     }
+   }
+ 
+@@ -99,7 +109,7 @@ bool CVideoLayerBridgeDRMPRIME::Map(IVideoBufferDRMPRIME* buffer)
+     flags = DRM_MODE_FB_MODIFIERS;
+ 
+   // add the video frame FB
+-  ret = drmModeAddFB2WithModifiers(m_DRM->GetFileDescriptor(), buffer->GetWidth(), buffer->GetHeight(), layer->format,
++  ret = drmModeAddFB2WithModifiers(m_DRM->GetFileDescriptor(), buffer->GetWidth(), buffer->GetHeight(), format,
+                                    handles, pitches, offsets, modifier, &buffer->m_fb_id, flags);
+   if (ret < 0)
+   {

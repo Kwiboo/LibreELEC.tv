@@ -24,8 +24,8 @@ case $KODI_VENDOR in
     PKG_SOURCE_NAME="kodi-$KODI_VENDOR-$PKG_VERSION.tar.gz"
     ;;
   *)
-    PKG_VERSION="18.2rc1-Leia"
-    PKG_SHA256="da9f4b9be427031665ac736319aa60d4463b9cb8b27daf35c11d91fb16761422"
+    PKG_VERSION="18204c0200675a62308a7155f5445e141dfe76c3"
+    PKG_SHA256="9f2bc14d3901734a57aaf47fbcfffd7abdb7ea648340d566a588b11022faf2d0"
     PKG_URL="https://github.com/xbmc/xbmc/archive/$PKG_VERSION.tar.gz"
     PKG_SOURCE_NAME="kodi-$PKG_VERSION.tar.gz"
     ;;

@@ -692,10 +692,10 @@ index 64d348e67df9..55cbe324b9fc 100644
  # V4L2 capability defines
  replace define V4L2_CAP_VIDEO_CAPTURE device-capabilities
 diff --git a/arch/arm64/boot/dts/rockchip/rk3328.dtsi b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
-index 97aa65455b4a..3c663ba5edeb 100644
+index dabef1a21649..ee7c80a27774 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
-@@ -274,6 +274,8 @@
+@@ -278,6 +278,8 @@
  			};
  			pd_vpu@RK3328_PD_VPU {
  				reg = <RK3328_PD_VPU>;
@@ -704,7 +704,7 @@ index 97aa65455b4a..3c663ba5edeb 100644
  			};
  		};
  
-@@ -580,17 +582,39 @@
+@@ -584,17 +586,39 @@
  		status = "disabled";
  	};
  
@@ -745,7 +745,7 @@ index 97aa65455b4a..3c663ba5edeb 100644
  	vpu_mmu: iommu@ff350800 {
  		compatible = "rockchip,iommu";
  		reg = <0x0 0xff350800 0x0 0x40>;
-@@ -599,7 +623,7 @@
+@@ -603,7 +627,7 @@
  		clocks = <&cru ACLK_VPU>, <&cru HCLK_VPU>;
  		clock-names = "aclk", "iface";
  		#iommu-cells = <0>;
@@ -754,7 +754,7 @@ index 97aa65455b4a..3c663ba5edeb 100644
  	};
  
  	rkvdec_mmu: iommu@ff360480 {
-@@ -903,6 +927,11 @@
+@@ -917,6 +941,11 @@
  		};
  	};
  
@@ -2097,7 +2097,7 @@ index 1ec2be483e27..3093821440c0 100644
 +
  #endif /* ROCKCHIP_VPU_H_ */
 diff --git a/drivers/staging/media/rockchip/vpu/rockchip_vpu_drv.c b/drivers/staging/media/rockchip/vpu/rockchip_vpu_drv.c
-index 57611464ad07..2e22009b6583 100644
+index 58721c46fba4..2e22009b6583 100644
 --- a/drivers/staging/media/rockchip/vpu/rockchip_vpu_drv.c
 +++ b/drivers/staging/media/rockchip/vpu/rockchip_vpu_drv.c
 @@ -24,7 +24,7 @@
@@ -2705,12 +2705,10 @@ index 57611464ad07..2e22009b6583 100644
  	if (vpu->variant->vepu_irq) {
  		int irq;
  
-@@ -462,33 +774,45 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
- 	}
+@@ -463,32 +775,44 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
  
  	vpu->mdev.dev = vpu->dev;
--	strlcpy(vpu->mdev.model, DRIVER_NAME, sizeof(vpu->mdev.model));
-+	strscpy(vpu->mdev.model, DRIVER_NAME, sizeof(vpu->mdev.model));
+ 	strscpy(vpu->mdev.model, DRIVER_NAME, sizeof(vpu->mdev.model));
 +	strscpy(vpu->mdev.bus_info, "platform: " DRIVER_NAME,
 +		sizeof(vpu->mdev.model));
  	media_device_init(&vpu->mdev);

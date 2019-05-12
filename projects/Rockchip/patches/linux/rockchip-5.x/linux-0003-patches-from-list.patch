@@ -1,4 +1,4 @@
-From ae85f92289509b44f291d2a95b858a36f7444aaa Mon Sep 17 00:00:00 2001
+From f57e8a91b7439a8cbfece3a81b34e9344fa3adf2 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 17 Feb 2019 22:14:38 +0000
 Subject: [PATCH] mmc: core: set initial signal voltage on power off
@@ -23,10 +23,10 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  1 file changed, 8 insertions(+)
 
 diff --git a/drivers/mmc/core/core.c b/drivers/mmc/core/core.c
-index 1e6b07c176dc..0cfc3593a363 100644
+index 6db36dc870b5..9840710a867d 100644
 --- a/drivers/mmc/core/core.c
 +++ b/drivers/mmc/core/core.c
-@@ -1684,6 +1684,14 @@ void mmc_power_off(struct mmc_host *host)
+@@ -1368,6 +1368,14 @@ void mmc_power_off(struct mmc_host *host)
  	if (host->ios.power_mode == MMC_POWER_OFF)
  		return;
  
@@ -42,7 +42,7 @@ index 1e6b07c176dc..0cfc3593a363 100644
  
  	host->ios.clock = 0;
 
-From b149e57dd5f3fb7e49bc77993a9d3d0dc8f75669 Mon Sep 17 00:00:00 2001
+From 40dd19f03153a7f8a3ca8e52d32be741637da0ca Mon Sep 17 00:00:00 2001
 From: Katsuhiro Suzuki <katsuhiro@katsuster.net>
 Date: Mon, 18 Feb 2019 02:34:07 +0900
 Subject: [PATCH] arm64: dts: rockchip: add HDMI sound node for rk3328-rock64

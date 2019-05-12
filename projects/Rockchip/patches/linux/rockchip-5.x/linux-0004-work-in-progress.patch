@@ -1,4 +1,4 @@
-From b12c3d84d490d1c409b26e17b46b004d928d7758 Mon Sep 17 00:00:00 2001
+From 93a0181b3fa42401f8f2f55203bcb0fd19e0bbc6 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 10 Mar 2019 19:18:36 +0000
 Subject: [PATCH] arm64: dts: rockchip: remove dc_12v regulator on
@@ -41,7 +41,7 @@ index 5d499c9086fb..e39c0803ae11 100644
  
  	vcc_phy: vcc-phy-regulator {
 
-From 0839b50c0ca63ab1bf93e2b8b124b3a9c20fcedb Mon Sep 17 00:00:00 2001
+From beb3969f4d8d75ffb2b9da234c460e5ba4803e8a Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 10 Mar 2019 19:23:58 +0000
 Subject: [PATCH] arm64: dts: rockchip: add ir-receiver node on rk3328-roc-cc
@@ -85,7 +85,7 @@ index e39c0803ae11..6c82324dea39 100644
  		pmic_int_l: pmic-int-l {
  			rockchip,pins = <1 RK_PD0 RK_FUNC_GPIO &pcfg_pull_up>;
 
-From 822b7f258f7a66b9dc33d3f044d5722b412c37c1 Mon Sep 17 00:00:00 2001
+From 88d252a89b273b1ff4141f0ee28f79fb21d98e83 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 24 Mar 2019 11:20:51 +0000
 Subject: [PATCH] arm64: dts: rockchip: set tshut mode and priority on
@@ -110,7 +110,7 @@ index 6c82324dea39..36e8eace2033 100644
  };
  
 
-From e69ed7a8b5d39a55b9800957569be1596030311c Mon Sep 17 00:00:00 2001
+From 8d63e88832b4f910073b862bf5288e9581c57be8 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 24 Mar 2019 11:22:06 +0000
 Subject: [PATCH] arm64: dts: rockchip: rename vcc_sdio regulator on
@@ -159,7 +159,7 @@ index 36e8eace2033..4020f8ad640d 100644
  };
  
 
-From 7cbd8b8b1898f20b2f29a9ecf39a17b246a6bac9 Mon Sep 17 00:00:00 2001
+From 748ec731141d4647110a728eaae4d44324188517 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 24 Mar 2019 11:23:10 +0000
 Subject: [PATCH] arm64: dts: rockchip: disable sd uhs support on rk3328-roc-cc
@@ -196,7 +196,7 @@ index 4020f8ad640d..9d79a26a5b74 100644
  };
  
 
-From da922579431786cfdfb830b9ffd3cca0b792ad7a Mon Sep 17 00:00:00 2001
+From b16adf4b70338b8787b3241c90478c1a5e814078 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 24 Mar 2019 17:18:39 +0000
 Subject: [PATCH] arm64: dts: rockchip: use recommended regulator limits on
@@ -236,7 +236,7 @@ index 9d79a26a5b74..452d9623e198 100644
  				regulator-boot-on;
  				regulator-state-mem {
 
-From 1ac5d10324f12e7927d5948953a358be68a771fd Mon Sep 17 00:00:00 2001
+From cdd7968585a4fa7114634e0ab398bed1108efbee Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 21 Apr 2019 10:28:27 +0000
 Subject: [PATCH] arm64: dts: rockchip: use recommended regulator limits on
@@ -274,7 +274,7 @@ index 77205683f9f5..2dc983f2fdfb 100644
  				regulator-always-on;
  				regulator-boot-on;
 
-From 3ea78c3a563749edc303a5125d9b59ceb08795c9 Mon Sep 17 00:00:00 2001
+From e681a6b2dbd8435f657919eda3b9c22c4576e8fe Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 25 Mar 2018 17:47:25 +0200
 Subject: [PATCH] arm64: dts: rockchip: fix usb regulator on rk3328-rock64
@@ -356,7 +356,7 @@ index 2dc983f2fdfb..34aaba37414b 100644
  
  &usb20_otg {
 
-From 8f27a19bfa77e4b07da8eb39b70a577093ac555f Mon Sep 17 00:00:00 2001
+From 656749151470c44973adefa04d4cdf269a3d19dc Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 17 Mar 2019 22:38:09 +0000
 Subject: [PATCH] arm64: dts: rockchip: update gpu node on rk3328
@@ -366,7 +366,7 @@ Subject: [PATCH] arm64: dts: rockchip: update gpu node on rk3328
  1 file changed, 7 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3328.dtsi b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
-index 95ea2727a2cf..f82e43ec247a 100644
+index 994468671b19..d728816a916b 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
 @@ -270,6 +270,10 @@
@@ -405,7 +405,7 @@ index 95ea2727a2cf..f82e43ec247a 100644
  	};
  
 
-From 7320549eb095ca545cfcf9d0ba272db1f0e1f72b Mon Sep 17 00:00:00 2001
+From b8e4c63979d02f97147a57d2acb68acc5e87c9e3 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 14 Apr 2019 21:24:50 +0000
 Subject: [PATCH] arm64: dts: rockchip: Enable HDMI audio on rk3399-rock-pi-4
@@ -430,7 +430,7 @@ index e030627159c6..7662caf644b4 100644
  	clock-frequency = <400000>;
  	i2c-scl-rising-time-ns = <168>;
 
-From c1bc2df12f0409c8fbf49d707739360e8ac31f8a Mon Sep 17 00:00:00 2001
+From c8bd17ba8ad55423525fb8048bec6fa58d81a91f Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 14 Apr 2019 21:25:11 +0000
 Subject: [PATCH] arm64: dts: rockchip: Enable HDMI audio on rk3399-nanopi4
@@ -466,7 +466,7 @@ index dd16c80d923e..5faff43d2d57 100644
  	bt656-supply = <&vcc_1v8>;
  	audio-supply = <&vcca1v8_codec>;
 
-From e302067262316f28440dc21d950e0deeba3a4e03 Mon Sep 17 00:00:00 2001
+From d33735b4df258f858d93965bfc15068f1167cff3 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 14 Apr 2019 21:25:34 +0000
 Subject: [PATCH] arm64: dts: rockchip: Fix HDMI audio on rk3399-orangepi
@@ -491,7 +491,7 @@ index 0541dfce924d..6b0034b72300 100644
  	status = "okay";
  	bt656-supply = <&vcc_3v0>;
 
-From c29f41e35fc7a81e57c68ccb32f50e870bc9efa1 Mon Sep 17 00:00:00 2001
+From 34863b6cd09cac1e7cd94f64d1e4f638ceff1d0b Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 14 Apr 2019 21:26:34 +0000
 Subject: [PATCH] arm64: dts: rockchip: Enable HDMI audio on rk3399-roc-pc
@@ -516,7 +516,7 @@ index 19f7732d728c..b5bbd4be881f 100644
  	clock-frequency = <400000>;
  	i2c-scl-rising-time-ns = <168>;
 
-From e6a5fcaaeaad9b7efd8b14cb95125acf5aac9a9e Mon Sep 17 00:00:00 2001
+From 0cef6f1cfc6bd194983d8763f8404cda771ba076 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 14 Apr 2019 21:27:20 +0000
 Subject: [PATCH] arm64: dts: rockchip: Enable gpu node on rk3399-roc-pc
@@ -542,7 +542,7 @@ index b5bbd4be881f..8af27b36737d 100644
  	clock-frequency = <400000>;
  	i2c-scl-rising-time-ns = <168>;
 
-From ed52b11cde9802c4f6793e76eea806a3f5130271 Mon Sep 17 00:00:00 2001
+From 188735a5e9e59e3812490ce9be80838d8fcc6d65 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 19 Mar 2019 22:18:47 +0000
 Subject: [PATCH] arm64: dts: rockchip: add sound node on rk3328-roc-cc
@@ -654,7 +654,7 @@ index 452d9623e198..860f6831de86 100644
  	rockchip,hw-tshut-mode = <0>;
  	rockchip,hw-tshut-polarity = <0>;
 
-From c7dd977478a072fd2a07f786382ef522cafc3316 Mon Sep 17 00:00:00 2001
+From 66b66f7697986995402009962ea4f8635fdcb43d Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 25 Mar 2018 23:36:02 +0200
 Subject: [PATCH] ASoC: rockchip: i2s: use closest clock rate
@@ -681,7 +681,7 @@ index 60d43d53a8f5..60440185970e 100644
  		regmap_update_bits(i2s->regmap, I2S_CKR,
  				   I2S_CKR_MDIV_MASK,
 
-From 2566ce0225879fbd5cbb443e739c01e178e03145 Mon Sep 17 00:00:00 2001
+From ccad3440ba8a9f5f38b3515dd71e39cf6fccf84f Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Thu, 7 Feb 2019 22:05:29 +0000
 Subject: [PATCH] ARM: dts: rockchip: enable sd ultra-high speeds on
@@ -707,35 +707,7 @@ index 293576869546..f22eb8a49da5 100644
  	vmmc-supply = <&vcc33_sd>;
  	vqmmc-supply = <&vccio_sd>;
 
-From 45332dac037972dc8f3fe50eec2158d4e0aded4a Mon Sep 17 00:00:00 2001
-From: Jonas Karlman <jonas@kwiboo.se>
-Date: Sun, 21 Apr 2019 09:48:44 +0000
-Subject: [PATCH] arm64: dts: rockchip: enable sd ultra-high speeds on
- rk3399-rock-pi-4
-
----
- arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts | 5 +++++
- 1 file changed, 5 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts b/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts
-index 7662caf644b4..83bafd7fb9d2 100644
---- a/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dts
-@@ -507,7 +507,12 @@
- 	max-frequency = <150000000>;
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&sdmmc_clk &sdmmc_cd &sdmmc_cmd &sdmmc_bus4>;
-+	sd-uhs-sdr12;
-+	sd-uhs-sdr25;
-+	sd-uhs-sdr50;
-+	sd-uhs-sdr104;
- 	status = "okay";
-+	vqmmc-supply = <&vcc_sdio>;
- };
- 
- &sdhci {
-
-From 4dd10918db2d11923ba6bbe1c33c66a2d340e3ad Mon Sep 17 00:00:00 2001
+From 5d989c77712fa85ac24bad77b708e6db274ba64c Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 24 Mar 2019 11:23:55 +0000
 Subject: [PATCH] arm64: dts: rockchip: fix vccio4-supply on rk3328-roc-cc
@@ -759,7 +731,7 @@ index 860f6831de86..79497b4aeedb 100644
  	vccio6-supply = <&vcc_io>;
  	pmuio-supply = <&vcc_io>;
 
-From 05ae9287cafdc5bd79d8f94274271fbdf1662230 Mon Sep 17 00:00:00 2001
+From c9b27b61d75c01fad6e612d5529c2f6e803aec91 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 21 Apr 2019 18:13:30 +0000
 Subject: [PATCH] arm64: dts: rockchip: fix vccio4-supply on rk3328-rock64
@@ -782,7 +754,7 @@ index 34aaba37414b..152c8af93dd5 100644
  	vccio6-supply = <&vcc_io>;
  	pmuio-supply = <&vcc_io>;
 
-From bcc70c598442960ea4ee09960cb1a13e846237ee Mon Sep 17 00:00:00 2001
+From 6b5c843e795ed130d831e5f1f41439a34ebb074a Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 21 Apr 2019 18:07:33 +0000
 Subject: [PATCH] arm64: dts: rockchip: fix vcc_sd gpio warning on rk3328
@@ -819,7 +791,7 @@ index 152c8af93dd5..23ab61d59c0d 100644
  		pinctrl-0 = <&sdmmc0m1_gpio>;
  		regulator-name = "vcc_sd";
 
-From 037ed23c3b5b7fc8a69fc5b60a4b3b4e6cb7a578 Mon Sep 17 00:00:00 2001
+From f4b6072e2caf1cd4f9bec6e0f7568ce0fed53ff5 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 16 Dec 2018 10:22:09 +0100
 Subject: [PATCH] drm: dw-hdmi: extract dw_hdmi_connector_update_edid()
@@ -833,10 +805,10 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  1 file changed, 9 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index fd1c319a4ee0..1e583fe0d54d 100644
+index ab7968c8f6a2..fb35ee984295 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-@@ -2058,7 +2058,8 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
+@@ -2059,7 +2059,8 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
  	return hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
  }
  
@@ -846,7 +818,7 @@ index fd1c319a4ee0..1e583fe0d54d 100644
  {
  	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
  					     connector);
-@@ -2077,7 +2078,8 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
+@@ -2078,7 +2079,8 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
  		hdmi->sink_has_audio = drm_detect_monitor_audio(edid);
  		drm_connector_update_edid_property(connector, edid);
  		cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
@@ -856,7 +828,7 @@ index fd1c319a4ee0..1e583fe0d54d 100644
  		kfree(edid);
  	} else {
  		dev_dbg(hdmi->dev, "failed to get edid\n");
-@@ -2086,6 +2088,11 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
+@@ -2087,6 +2089,11 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
  	return ret;
  }
  
@@ -869,7 +841,7 @@ index fd1c319a4ee0..1e583fe0d54d 100644
  {
  	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 
-From e8a8bcb7ae00eb20bd9dadfe6e211e64ffc11cd8 Mon Sep 17 00:00:00 2001
+From 0eede68f8671647231afcb731fe094f2ec4bcbbc Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 16 Dec 2018 11:38:43 +0100
 Subject: [PATCH] drm: dw-hdmi: move dw_hdmi_connector_detect()
@@ -882,10 +854,10 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  1 file changed, 15 insertions(+), 15 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index 1e583fe0d54d..3b95a198a853 100644
+index fb35ee984295..eb9e5d83cc0d 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-@@ -2043,21 +2043,6 @@ static void dw_hdmi_update_phy_mask(struct dw_hdmi *hdmi)
+@@ -2044,21 +2044,6 @@ static void dw_hdmi_update_phy_mask(struct dw_hdmi *hdmi)
  					  hdmi->rxsense);
  }
  
@@ -907,7 +879,7 @@ index 1e583fe0d54d..3b95a198a853 100644
  static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
  					  bool add_modes)
  {
-@@ -2088,6 +2073,21 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
+@@ -2089,6 +2074,21 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
  	return ret;
  }
  
@@ -930,7 +902,7 @@ index 1e583fe0d54d..3b95a198a853 100644
  {
  	return dw_hdmi_connector_update_edid(connector, true);
 
-From d59d40757609d692be68e416d79c923f0bb4e60f Mon Sep 17 00:00:00 2001
+From 7025a3dc99d985ac131077d5e1c39eb385475d40 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 16 Dec 2018 10:22:09 +0100
 Subject: [PATCH] drm: dw-hdmi: update CEC phys addr and EDID on HPD event
@@ -944,10 +916,10 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  1 file changed, 9 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index 3b95a198a853..e2d449b3c16e 100644
+index eb9e5d83cc0d..d079bdea20b7 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-@@ -2076,6 +2076,7 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
+@@ -2077,6 +2077,7 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
  static enum drm_connector_status
  dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
  {
@@ -955,7 +927,7 @@ index 3b95a198a853..e2d449b3c16e 100644
  	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
  					     connector);
  
-@@ -2085,7 +2086,14 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
+@@ -2086,7 +2087,14 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
  	dw_hdmi_update_phy_mask(hdmi);
  	mutex_unlock(&hdmi->mutex);
  
@@ -971,7 +943,7 @@ index 3b95a198a853..e2d449b3c16e 100644
  }
  
  static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
-@@ -2300,10 +2308,6 @@ static irqreturn_t dw_hdmi_irq(int irq, void *dev_id)
+@@ -2301,10 +2309,6 @@ static irqreturn_t dw_hdmi_irq(int irq, void *dev_id)
  		dw_hdmi_setup_rx_sense(hdmi,
  				       phy_stat & HDMI_PHY_HPD,
  				       phy_stat & HDMI_PHY_RX_SENSE);
@@ -983,7 +955,7 @@ index 3b95a198a853..e2d449b3c16e 100644
  
  	if (intr_stat & HDMI_IH_PHY_STAT0_HPD) {
 
-From acaa034e922133d6e19af65fc17c908682c0fcdd Mon Sep 17 00:00:00 2001
+From 7fc6ce3afa376fbdb5e55a1cc1a6b7ea0a5343fe Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 16 Dec 2018 10:22:09 +0100
 Subject: [PATCH] Revert "drm/edid: make drm_edid_to_eld() static"
@@ -999,10 +971,10 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  2 files changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
-index b506e3622b08..694336e678f9 100644
+index 990b1909f9d7..288534e98eb8 100644
 --- a/drivers/gpu/drm/drm_edid.c
 +++ b/drivers/gpu/drm/drm_edid.c
-@@ -3892,7 +3892,7 @@ static void clear_eld(struct drm_connector *connector)
+@@ -3906,7 +3906,7 @@ static void clear_eld(struct drm_connector *connector)
  	connector->audio_latency[1] = 0;
  }
  
@@ -1011,7 +983,7 @@ index b506e3622b08..694336e678f9 100644
   * drm_edid_to_eld - build ELD from EDID
   * @connector: connector corresponding to the HDMI/DP sink
   * @edid: EDID to parse
-@@ -3900,7 +3900,7 @@ static void clear_eld(struct drm_connector *connector)
+@@ -3914,7 +3914,7 @@ static void clear_eld(struct drm_connector *connector)
   * Fill the ELD (EDID-Like Data) buffer for passing to the audio driver. The
   * HDCP and Port_ID ELD fields are left for the graphics driver to fill in.
   */
@@ -1020,7 +992,7 @@ index b506e3622b08..694336e678f9 100644
  {
  	uint8_t *eld = connector->eld;
  	u8 *cea;
-@@ -3985,6 +3985,7 @@ static void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
+@@ -3999,6 +3999,7 @@ static void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
  	DRM_DEBUG_KMS("ELD size %d, SAD count %d\n",
  		      drm_eld_size(eld), total_sad_count);
  }
@@ -1029,7 +1001,7 @@ index b506e3622b08..694336e678f9 100644
  /**
   * drm_edid_to_sad - extracts SADs from EDID
 diff --git a/include/drm/drm_edid.h b/include/drm/drm_edid.h
-index e3c404833115..3942d551be67 100644
+index 8dc1a081fb36..47847847f2da 100644
 --- a/include/drm/drm_edid.h
 +++ b/include/drm/drm_edid.h
 @@ -333,6 +333,7 @@ struct drm_encoder;
@@ -1041,7 +1013,7 @@ index e3c404833115..3942d551be67 100644
  int drm_edid_to_speaker_allocation(struct edid *edid, u8 **sadb);
  int drm_av_sync_delay(struct drm_connector *connector,
 
-From 1684d6b1f734cb408effcaf8bd468f1eff590e47 Mon Sep 17 00:00:00 2001
+From 98c5fc0956b2a0404d9997ddbb5ed4a5af36c61d Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 16 Dec 2018 10:22:09 +0100
 Subject: [PATCH] drm: dw-hdmi: update ELD on HPD event
@@ -1055,10 +1027,10 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  1 file changed, 2 insertions(+)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index e2d449b3c16e..87728a280843 100644
+index d079bdea20b7..f13ac2c4ff32 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-@@ -2065,6 +2065,8 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
+@@ -2066,6 +2066,8 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
  		cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
  		if (add_modes)
  			ret = drm_add_edid_modes(connector, edid);
@@ -1068,7 +1040,7 @@ index e2d449b3c16e..87728a280843 100644
  	} else {
  		dev_dbg(hdmi->dev, "failed to get edid\n");
 
-From a0dd36daae4f39a8dd1d2c9a8804d76c31b07eae Mon Sep 17 00:00:00 2001
+From cee45aa6f99cd3a70475f64092328861edc74ae3 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 16 Dec 2018 10:22:09 +0100
 Subject: [PATCH] ASoC: hdmi-codec: add hdmi_codec_eld_notify()
@@ -1149,7 +1121,7 @@ index 35df73e42cbc..3d2921acbb41 100644
  static int hdmi_dai_probe(struct snd_soc_dai *dai)
  {
 
-From 141ad3b5ef1a98f2cea2520b94cf0d73fb788f0d Mon Sep 17 00:00:00 2001
+From af147753b13b46fe17f7e5de31fd6bdbe9faed4d Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 16 Dec 2018 12:56:33 +0100
 Subject: [PATCH] drm: dw-hdmi: add dw_hdmi_update_eld() callback
@@ -1161,7 +1133,7 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  2 files changed, 17 insertions(+)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index 87728a280843..fbe5cb4788f2 100644
+index f13ac2c4ff32..a7040c143131 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 @@ -188,6 +188,7 @@ struct dw_hdmi {
@@ -1192,7 +1164,7 @@ index 87728a280843..fbe5cb4788f2 100644
  static bool hdmi_bus_fmt_is_rgb(unsigned int bus_format)
  {
  	switch (bus_format) {
-@@ -2067,6 +2081,7 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
+@@ -2068,6 +2082,7 @@ static int dw_hdmi_connector_update_edid(struct drm_connector *connector,
  			ret = drm_add_edid_modes(connector, edid);
  		else
  			drm_edid_to_eld(connector, edid);
@@ -1214,7 +1186,7 @@ index 66e70770cce5..531213a59d6f 100644
  
  /* PHY configuration */
 
-From 717b3ad07e34f8408c3f52d2ecdb9411563c5d97 Mon Sep 17 00:00:00 2001
+From 2b5e6f49696500bc463c74275e7b099205d219cb Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 16 Dec 2018 10:22:09 +0100
 Subject: [PATCH] drm: dw-hdmi-i2s: add .get_eld callback for ALSA SoC
@@ -1317,7 +1289,7 @@ index 5cbb71a866d5..a397505ef47f 100644
  
  	return 0;
 
-From 33285c9b68a48bda1445fef498ff75b8b5f6691a Mon Sep 17 00:00:00 2001
+From d71ccf8588221134b36cf945eb0858960b94e1d2 Mon Sep 17 00:00:00 2001
 From: Neil Armstrong <narmstrong@baylibre.com>
 Date: Mon, 2 Jul 2018 12:21:55 +0200
 Subject: [PATCH] drm: bridge: dw-hdmi: Use AUTO CTS setup mode when non-AHB
@@ -1329,7 +1301,7 @@ Signed-off-by: Neil Armstrong <narmstrong@baylibre.com>
  1 file changed, 26 insertions(+), 15 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index fbe5cb4788f2..f620d6e7c855 100644
+index a7040c143131..3f465225821e 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 @@ -438,8 +438,12 @@ static void hdmi_set_cts_n(struct dw_hdmi *hdmi, unsigned int cts,
@@ -1393,7 +1365,7 @@ index fbe5cb4788f2..f620d6e7c855 100644
  	spin_lock_irq(&hdmi->audio_lock);
  	hdmi->audio_n = n;
 
-From b6949292adc636a9a5837cb808039ce9e7620d49 Mon Sep 17 00:00:00 2001
+From ccca1d149f9cbb31ab7a7e99dea1cd91bc341ff0 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 25 Mar 2018 22:17:06 +0200
 Subject: [PATCH] ASoC: hdmi-codec: reorder channel allocation list
@@ -1561,7 +1533,7 @@ index 3d2921acbb41..9a1da2fcb2a9 100644
  
  struct hdmi_codec_priv {
 
-From 31c745e8999faafdc0698086e55b08928b3a1bfc Mon Sep 17 00:00:00 2001
+From accc07270a8ecd0fd69b45949c025ca4b25c37c1 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 10 Jul 2018 20:54:33 +0200
 Subject: [PATCH] drm: dw-hdmi-i2s: add multi-channel lpcm support
@@ -1713,10 +1685,10 @@ index a397505ef47f..d0d32a9b7ba2 100644
  
  	memset(&pdevinfo, 0, sizeof(pdevinfo));
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index f620d6e7c855..9495edf4158c 100644
+index 3f465225821e..97184436dc42 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-@@ -2696,6 +2696,7 @@ __dw_hdmi_probe(struct platform_device *pdev,
+@@ -2697,6 +2697,7 @@ __dw_hdmi_probe(struct platform_device *pdev,
  		audio.hdmi	= hdmi;
  		audio.write	= hdmi_writeb;
  		audio.read	= hdmi_readb;
@@ -1788,7 +1760,7 @@ index 3f3c616eba97..26d2f1b16025 100644
  
  /* MC_FLOWCTRL field values */
 
-From 421bff90c614a787aa2f5338b49c28602c4a329f Mon Sep 17 00:00:00 2001
+From e965f51bd7f2caf098f204b01a6c8b1fe2368f12 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Mon, 9 Jul 2018 21:25:15 +0200
 Subject: [PATCH] drm: dw-hdmi: call hdmi_set_cts_n after clock is enabled
@@ -1798,7 +1770,7 @@ Subject: [PATCH] drm: dw-hdmi: call hdmi_set_cts_n after clock is enabled
  1 file changed, 5 insertions(+)
 
 diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-index 9495edf4158c..f4de27238aa7 100644
+index 97184436dc42..09fdc9f87651 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
 @@ -578,6 +578,11 @@ static void hdmi_enable_audio_clk(struct dw_hdmi *hdmi, bool enable)
@@ -1814,7 +1786,7 @@ index 9495edf4158c..f4de27238aa7 100644
  
  static void dw_hdmi_ahb_audio_enable(struct dw_hdmi *hdmi)
 
-From 5313b83e82341d5ceddc4de8d0220a8bfe4bd71c Mon Sep 17 00:00:00 2001
+From 64372f1b9dadf1c397adee322acf2d53400dc500 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 23 Dec 2018 02:24:38 +0100
 Subject: [PATCH] fix chmap_idx
@@ -1838,7 +1810,7 @@ index 9a1da2fcb2a9..400d30e29256 100644
  	for (i = 0; i < info->max_channels; i++) {
  		if (hcp->chmap_idx == HDMI_CODEC_CHMAP_IDX_UNKNOWN)
 
-From 7a6f42a20eba69e1c78d6efd65c5f46768907236 Mon Sep 17 00:00:00 2001
+From 2ffe97fd19caaf1e3cc276ff934f9bda8a84ce72 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Wed, 2 Jan 2019 23:08:59 +0100
 Subject: [PATCH] media: cec-notifier: debounce callback setting invalid phys
@@ -1907,7 +1879,7 @@ index dd2078b27a41..1fae6eb5aef3 100644
  	mutex_unlock(&n->lock);
  }
 
-From e4779ecf8449094edf1dd4171ba56e87aabbacfc Mon Sep 17 00:00:00 2001
+From b3ad58ffb6bb59938433aad3aa370d55e08b2739 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 26 Feb 2019 20:45:14 +0000
 Subject: [PATCH] WIP: dw-hdmi-cec: sleep 100ms on error
@@ -1967,7 +1939,7 @@ index 6c323510f128..b5a1a85c8700 100644
  	}
  	if (cec->rx_done) {
 
-From 481fd691fc5e92736a975aa4a91942451d6d7569 Mon Sep 17 00:00:00 2001
+From b5f14812fd50a6fbbd5c60128f8cf7f3798b7b0e Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Fri, 3 May 2019 01:34:16 +0000
 Subject: [PATCH] drm: dw-hdmi-i2s: add .digital_mute callback for ALSA SoC
@@ -2006,3 +1978,366 @@ index d0d32a9b7ba2..aa3b1a1bab24 100644
  	.get_eld	= dw_hdmi_i2s_get_eld,
  	.get_dai_id	= dw_hdmi_i2s_get_dai_id,
  };
+
+From c9219febee9cca82f5e91f59d9e97589b692ed3f Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 12 May 2019 12:40:00 +0000
+Subject: [PATCH] arm64: dts: rockchip: add rk3328-rockbox
+
+---
+ arch/arm64/boot/dts/rockchip/rk3328-rockbox.dts | 346 ++++++++++++++++++++++++
+ 1 file changed, 346 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/rockchip/rk3328-rockbox.dts
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3328-rockbox.dts b/arch/arm64/boot/dts/rockchip/rk3328-rockbox.dts
+new file mode 100644
+index 000000000000..e86a64e1a26c
+--- /dev/null
++++ b/arch/arm64/boot/dts/rockchip/rk3328-rockbox.dts
+@@ -0,0 +1,346 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Copyright (c) 2017 PINE64
++ */
++
++/dts-v1/;
++#include "rk3328.dtsi"
++
++/ {
++	model = "Popcorn Hour RockBox Basic";
++	compatible = "popcornhour,rockbox", "rockchip,rk3328";
++
++	chosen {
++		stdout-path = "serial2:1500000n8";
++	};
++
++	vcc_sd: sdmmc-regulator {
++		compatible = "regulator-fixed";
++		gpio = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&sdmmc0m1_gpio>;
++		regulator-name = "vcc_sd";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&vcc_io>;
++	};
++
++	vcc_host_5v: vcc_host1_5v: vcc_otg_5v: vcc-host-5v-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_host_5v";
++		regulator-always-on;
++		regulator-boot-on;
++		vin-supply = <&vcc_sys>;
++	};
++
++	vcc_sys: vcc-sys {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_sys";
++		regulator-always-on;
++		regulator-boot-on;
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++	};
++
++	ir-receiver {
++		compatible = "gpio-ir-receiver";
++		gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_LOW>;
++		pinctrl-0 = <&ir_int>;
++		pinctrl-names = "default";
++	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		power {
++			gpios = <&rk805 0 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "default-on";
++			default-state = "on";
++		};
++	};
++
++	sound {
++		compatible = "audio-graph-card";
++		label = "rockchip,rk3328";
++		dais = <&i2s0_p0
++			&spdif_p0>;
++	};
++
++	spdif-dit {
++		compatible = "linux,spdif-dit";
++		#sound-dai-cells = <0>;
++
++		port {
++			dit_p0_0: endpoint {
++				remote-endpoint = <&spdif_p0_0>;
++			};
++		};
++	};
++};
++
++&cpu0 {
++	cpu-supply = <&vdd_arm>;
++};
++
++&cpu1 {
++	cpu-supply = <&vdd_arm>;
++};
++
++&cpu2 {
++	cpu-supply = <&vdd_arm>;
++};
++
++&cpu3 {
++	cpu-supply = <&vdd_arm>;
++};
++
++&emmc {
++	bus-width = <8>;
++	cap-mmc-highspeed;
++	mmc-hs200-1_8v;
++	non-removable;
++	pinctrl-names = "default";
++	pinctrl-0 = <&emmc_clk &emmc_cmd &emmc_bus8>;
++	vmmc-supply = <&vcc_io>;
++	vqmmc-supply = <&vcc18_emmc>;
++	status = "okay";
++};
++
++&gmac2phy {
++	assigned-clocks = <&cru SCLK_MAC2PHY_SRC>;
++	assigned-clock-rate = <50000000>;
++	assigned-clocks = <&cru SCLK_MAC2PHY>;
++	assigned-clock-parents = <&cru SCLK_MAC2PHY_SRC>;
++	clock_in_out = "output";
++	phy-supply = <&vcc_io>;
++	status = "okay";
++};
++
++&hdmi {
++	status = "okay";
++
++	port@0 {
++		hdmi_p0_0: endpoint {
++			remote-endpoint = <&i2s0_p0_0>;
++		};
++	};
++};
++
++&hdmiphy {
++	status = "okay";
++};
++
++&i2c1 {
++	status = "okay";
++
++	rk805: rk805@18 {
++		compatible = "rockchip,rk805";
++		reg = <0x18>;
++		interrupt-parent = <&gpio2>;
++		interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
++		#clock-cells = <1>;
++		clock-output-names = "xin32k", "rk805-clkout2";
++		gpio-controller;
++		#gpio-cells = <2>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&pmic_int_l>;
++		rockchip,system-power-controller;
++		wakeup-source;
++
++		vcc1-supply = <&vcc_sys>;
++		vcc2-supply = <&vcc_sys>;
++		vcc3-supply = <&vcc_sys>;
++		vcc4-supply = <&vcc_sys>;
++		vcc5-supply = <&vcc_io>;
++		vcc6-supply = <&vcc_sys>;
++
++		regulators {
++			vdd_logic: DCDC_REG1 {
++				regulator-name = "vdd_logic";
++				regulator-min-microvolt = <900000>;
++				regulator-max-microvolt = <1150000>;
++				regulator-ramp-delay = <12500>;
++				regulator-always-on;
++				regulator-boot-on;
++				regulator-state-mem {
++					regulator-on-in-suspend;
++					regulator-suspend-microvolt = <1000000>;
++				};
++			};
++
++			vdd_arm: DCDC_REG2 {
++				regulator-name = "vdd_arm";
++				regulator-min-microvolt = <950000>;
++				regulator-max-microvolt = <1350000>;
++				regulator-ramp-delay = <12500>;
++				regulator-always-on;
++				regulator-boot-on;
++				regulator-state-mem {
++					regulator-on-in-suspend;
++					regulator-suspend-microvolt = <950000>;
++				};
++			};
++
++			vcc_ddr: DCDC_REG3 {
++				regulator-name = "vcc_ddr";
++				regulator-always-on;
++				regulator-boot-on;
++				regulator-state-mem {
++					regulator-on-in-suspend;
++				};
++			};
++
++			vcc_io: DCDC_REG4 {
++				regulator-name = "vcc_io";
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-always-on;
++				regulator-boot-on;
++				regulator-state-mem {
++					regulator-on-in-suspend;
++					regulator-suspend-microvolt = <3300000>;
++				};
++			};
++
++			vcc_18: LDO_REG1 {
++				regulator-name = "vcc_18";
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
++				regulator-always-on;
++				regulator-boot-on;
++				regulator-state-mem {
++					regulator-on-in-suspend;
++					regulator-suspend-microvolt = <1800000>;
++				};
++			};
++
++			vcc18_emmc: LDO_REG2 {
++				regulator-name = "vcc18_emmc";
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
++				regulator-always-on;
++				regulator-boot-on;
++				regulator-state-mem {
++					regulator-on-in-suspend;
++					regulator-suspend-microvolt = <1800000>;
++				};
++			};
++
++			vdd_10: LDO_REG3 {
++				regulator-name = "vdd_10";
++				regulator-min-microvolt = <1000000>;
++				regulator-max-microvolt = <1000000>;
++				regulator-always-on;
++				regulator-boot-on;
++				regulator-state-mem {
++					regulator-on-in-suspend;
++					regulator-suspend-microvolt = <1000000>;
++				};
++			};
++		};
++	};
++};
++
++&i2s0 {
++	status = "okay";
++
++	i2s0_p0: port {
++		i2s0_p0_0: endpoint {
++			dai-format = "i2s";
++			mclk-fs = <256>;
++			remote-endpoint = <&hdmi_p0_0>;
++		};
++	};
++};
++
++&io_domains {
++	status = "okay";
++
++	vccio1-supply = <&vcc_io>;
++	vccio2-supply = <&vcc18_emmc>;
++	vccio3-supply = <&vcc_io>;
++	vccio4-supply = <&vcc_io>;
++	vccio5-supply = <&vcc_io>;
++	vccio6-supply = <&vcc_io>;
++	pmuio-supply = <&vcc_io>;
++};
++
++&pinctrl {
++	ir {
++		ir_int: ir-int {
++			rockchip,pins = <2 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
++	pmic {
++		pmic_int_l: pmic-int-l {
++			rockchip,pins = <2 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++};
++
++&sdmmc {
++	bus-width = <4>;
++	cap-mmc-highspeed;
++	cap-sd-highspeed;
++	disable-wp;
++	max-frequency = <150000000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&sdmmc0_clk &sdmmc0_cmd &sdmmc0_dectn &sdmmc0_bus4>;
++	vmmc-supply = <&vcc_sd>;
++	status = "okay";
++};
++
++&spdif {
++	pinctrl-0 = <&spdifm0_tx>;
++	status = "okay";
++
++	spdif_p0: port {
++		spdif_p0_0: endpoint {
++			remote-endpoint = <&dit_p0_0>;
++		};
++	};
++};
++
++&tsadc {
++	rockchip,hw-tshut-mode = <0>;
++	rockchip,hw-tshut-polarity = <0>;
++	status = "okay";
++};
++
++&uart2 {
++	status = "okay";
++};
++
++&u2phy {
++	status = "okay";
++};
++
++&u2phy_host {
++	status = "okay";
++};
++
++&u2phy_otg {
++	status = "okay";
++};
++
++&usb20_otg {
++	dr_mode = "host";
++	status = "okay";
++};
++
++&usb_host0_ehci {
++	status = "okay";
++};
++
++&usb_host0_ohci {
++	status = "okay";
++};
++
++&vop {
++	status = "okay";
++};
++
++&vop_mmu {
++	status = "okay";
++};

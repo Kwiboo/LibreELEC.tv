@@ -23,8 +23,8 @@ case "$LINUX" in
     PKG_SOURCE_NAME="linux-$LINUX-$PKG_VERSION.tar.gz"
     ;;
   rockchip-5.x)
-    PKG_VERSION="5.0.13"
-    PKG_SHA256="bcfd52bf1faa24f5f712146a873959461e001656ad67717e80b947aa6ad53479"
+    PKG_VERSION="5.1"
+    PKG_SHA256="d06a7be6e73f97d1350677ad3bae0ce7daecb79c2c2902aaabe806f7fa94f041"
     PKG_URL="https://www.kernel.org/pub/linux/kernel/v5.x/$PKG_NAME-$PKG_VERSION.tar.xz"
     PKG_SOURCE_NAME="linux-$LINUX-$PKG_VERSION.tar.gz"
     ;;

@@ -1,4 +1,4 @@
-From 32ebcf49d57b7187114868af8cf8effac8b89892 Mon Sep 17 00:00:00 2001
+From 106a49c841fae4f4fecdf70f0d95115ca4f933df Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Sun, 10 Mar 2019 16:19:28 +0100
 Subject: [PATCH] ARM: dts: rockchip: remove disable-wp from rv1108-elgin-r1
@@ -28,7 +28,7 @@ index 1c4507b66fdd..b1db924710c8 100644
  	no-sdio;
  	non-removable;
 
-From 3d3a80c4d557a10290cdd4986437a81dd75e6de6 Mon Sep 17 00:00:00 2001
+From 0e3e344a6e634af0c14a4525224feec41a2ddb40 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 24 Feb 2019 20:10:06 +0000
 Subject: [PATCH] ARM: dts: rockchip: Enable HDMI CEC on rk3288-tinker-s
@@ -55,7 +55,7 @@ index d97da89bcd51..970e13859198 100644
 +	pinctrl-0 = <&hdmi_cec_c0>;
 +};
 
-From 0dd2e61bcbb461e7cef980f6f9dea1b3cc13ffc9 Mon Sep 17 00:00:00 2001
+From 087fc7b95dcafbff81ab9eaf4d85a9ffbb88370b Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 24 Feb 2019 21:52:00 +0000
 Subject: [PATCH] ARM: dts: rockchip: add grf reference in rk3288 tsadc node
@@ -89,7 +89,7 @@ index a024d1e7e74c..510d237f54ab 100644
  		status = "disabled";
  	};
 
-From 8978ae98bba9989bf1c43766c4311c0389806789 Mon Sep 17 00:00:00 2001
+From 9f37a553efe836de6c7527bf5dd56b21749ae26f Mon Sep 17 00:00:00 2001
 From: David Summers <beagleboard@davidjohnsummers.uk>
 Date: Sat, 9 Mar 2019 15:39:22 +0000
 Subject: [PATCH] ARM: dts: rockchip: Enable WiFi on rk3288-tinker
@@ -193,7 +193,7 @@ index ef653c3209bc..d93a48cfc966 100644
  	rockchip,hw-tshut-mode = <1>; /* tshut mode 0:CRU 1:GPIO */
  	rockchip,hw-tshut-polarity = <1>; /* tshut polarity 0:LOW 1:HIGH */
 
-From 8d94dfdacb2d82b5d500b80412bc3db6f03b3869 Mon Sep 17 00:00:00 2001
+From 604681fb2fa5008c2db274a3896c9aa152c8d0cc Mon Sep 17 00:00:00 2001
 From: Marc Zyngier <marc.zyngier@arm.com>
 Date: Sat, 2 Mar 2019 13:10:30 +0000
 Subject: [PATCH] arm64: dts: rockchip: Add capacity-dmips-mhz attributes to
@@ -220,11 +220,11 @@ Signed-off-by: Heiko Stuebner <heiko@sntech.de>
  1 file changed, 6 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3399.dtsi b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
-index 6cc1c9fa4ea6..f5fb051eeb1a 100644
+index db9d948c0b03..0301e3e01b38 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 @@ -71,6 +71,7 @@
- 			compatible = "arm,cortex-a53", "arm,armv8";
+ 			compatible = "arm,cortex-a53";
  			reg = <0x0 0x0>;
  			enable-method = "psci";
 +			capacity-dmips-mhz = <485>;
@@ -232,7 +232,7 @@ index 6cc1c9fa4ea6..f5fb051eeb1a 100644
  			#cooling-cells = <2>; /* min followed by max */
  			dynamic-power-coefficient = <100>;
 @@ -82,6 +83,7 @@
- 			compatible = "arm,cortex-a53", "arm,armv8";
+ 			compatible = "arm,cortex-a53";
  			reg = <0x0 0x1>;
  			enable-method = "psci";
 +			capacity-dmips-mhz = <485>;
@@ -240,7 +240,7 @@ index 6cc1c9fa4ea6..f5fb051eeb1a 100644
  			#cooling-cells = <2>; /* min followed by max */
  			dynamic-power-coefficient = <100>;
 @@ -93,6 +95,7 @@
- 			compatible = "arm,cortex-a53", "arm,armv8";
+ 			compatible = "arm,cortex-a53";
  			reg = <0x0 0x2>;
  			enable-method = "psci";
 +			capacity-dmips-mhz = <485>;
@@ -248,7 +248,7 @@ index 6cc1c9fa4ea6..f5fb051eeb1a 100644
  			#cooling-cells = <2>; /* min followed by max */
  			dynamic-power-coefficient = <100>;
 @@ -104,6 +107,7 @@
- 			compatible = "arm,cortex-a53", "arm,armv8";
+ 			compatible = "arm,cortex-a53";
  			reg = <0x0 0x3>;
  			enable-method = "psci";
 +			capacity-dmips-mhz = <485>;
@@ -256,7 +256,7 @@ index 6cc1c9fa4ea6..f5fb051eeb1a 100644
  			#cooling-cells = <2>; /* min followed by max */
  			dynamic-power-coefficient = <100>;
 @@ -115,6 +119,7 @@
- 			compatible = "arm,cortex-a72", "arm,armv8";
+ 			compatible = "arm,cortex-a72";
  			reg = <0x0 0x100>;
  			enable-method = "psci";
 +			capacity-dmips-mhz = <1024>;
@@ -264,7 +264,7 @@ index 6cc1c9fa4ea6..f5fb051eeb1a 100644
  			#cooling-cells = <2>; /* min followed by max */
  			dynamic-power-coefficient = <436>;
 @@ -126,6 +131,7 @@
- 			compatible = "arm,cortex-a72", "arm,armv8";
+ 			compatible = "arm,cortex-a72";
  			reg = <0x0 0x101>;
  			enable-method = "psci";
 +			capacity-dmips-mhz = <1024>;
@@ -272,7 +272,7 @@ index 6cc1c9fa4ea6..f5fb051eeb1a 100644
  			#cooling-cells = <2>; /* min followed by max */
  			dynamic-power-coefficient = <436>;
 
-From ff67b65d80738485a0df8fa64a6302a342cf3114 Mon Sep 17 00:00:00 2001
+From 4d7e8f4153f10eb76af279bdfa0f148c3d27bffb Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 2 Mar 2019 16:37:09 +0000
 Subject: [PATCH] arm64: dts: rockchip: enable HDMI CEC on rk3328
@@ -288,7 +288,7 @@ Signed-off-by: Heiko Stuebner <heiko@sntech.de>
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3328.dtsi b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
-index f1f54193adaa..53a758d02bdc 100644
+index dabef1a21649..876cc8365074 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
 @@ -657,9 +657,11 @@
@@ -306,7 +306,7 @@ index f1f54193adaa..53a758d02bdc 100644
  		phy-names = "hdmi";
  		pinctrl-names = "default";
 
-From 1ca182ff620f46890516c257d60d07dbacd234e1 Mon Sep 17 00:00:00 2001
+From f38e598e3944c4cc22b0f6fd33d6575fa343d011 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 2 Mar 2019 16:56:57 +0000
 Subject: [PATCH] arm64: dts: rockchip: fix regulator name on rk3328-rock64
@@ -342,7 +342,7 @@ index 79b4d1d4b5d6..2fbde045c2a9 100644
  				regulator-max-microvolt = <1800000>;
  				regulator-always-on;
 
-From 998561db4ea687301fbdb09764d837c3f6c4ae94 Mon Sep 17 00:00:00 2001
+From a8e37a87f124cd598bdf47421e0d390311247087 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 2 Mar 2019 17:00:25 +0000
 Subject: [PATCH] arm64: dts: rockchip: add leds node on rk3328-rock64
@@ -392,7 +392,7 @@ index 2fbde045c2a9..2fe2d91d7f31 100644
  		pinctrl-0 = <&pmic_int_l>;
  		rockchip,system-power-controller;
 
-From 3ca04f9c92dbc01dbc1abd4c07a75df7ef691b03 Mon Sep 17 00:00:00 2001
+From d2f15d3cb78a40a2b39ebe7d08af76f2875434ea Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sat, 2 Mar 2019 17:03:14 +0000
 Subject: [PATCH] arm64: dts: rockchip: add ir-receiver node on rk3328-rock64
@@ -437,7 +437,7 @@ index 2fe2d91d7f31..7cfd5ca6cc85 100644
  		pmic_int_l: pmic-int-l {
  			rockchip,pins = <2 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;
 
-From 1aca840245e971a73ab32c383f7144b46bf612c6 Mon Sep 17 00:00:00 2001
+From 2dd601e88a2504aade989b725809bfb746995e08 Mon Sep 17 00:00:00 2001
 From: Katsuhiro Suzuki <katsuhiro@katsuster.net>
 Date: Mon, 18 Feb 2019 02:34:06 +0900
 Subject: [PATCH] arm64: dts: rockchip: add #sound-dai-cells to HDMI of rk3328
@@ -452,7 +452,7 @@ Signed-off-by: Heiko Stuebner <heiko@sntech.de>
  1 file changed, 1 insertion(+)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3328.dtsi b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
-index 53a758d02bdc..95ea2727a2cf 100644
+index 876cc8365074..994468671b19 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3328.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3328.dtsi
 @@ -667,6 +667,7 @@
@@ -464,7 +464,7 @@ index 53a758d02bdc..95ea2727a2cf 100644
  
  		ports {
 
-From cd8509c5d5487958ffa67bf9daf9f091452dd806 Mon Sep 17 00:00:00 2001
+From 56b45c14a2de72f6b4f80c377f914e725ed73ff2 Mon Sep 17 00:00:00 2001
 From: "Leonidas P. Papadakos" <papadakospan@gmail.com>
 Date: Sun, 3 Mar 2019 01:18:33 +0200
 Subject: [PATCH] arm64: dts: rockchip: give some life to the rk3328-roc-cc
@@ -513,7 +513,7 @@ index 0e34354b2092..9cbd3028da14 100644
  
  &cpu0 {
 
-From e4e8755e75b2ed08788df3362681d5a55e6d8b1b Mon Sep 17 00:00:00 2001
+From b3eefedd67fcfa8596c79458066f870c66707603 Mon Sep 17 00:00:00 2001
 From: "Leonidas P. Papadakos" <papadakospan@gmail.com>
 Date: Fri, 1 Mar 2019 20:07:21 +0200
 Subject: [PATCH] arm64: dts: rockchip: add rk3328-roc-cc cpu-supply entries
@@ -552,7 +552,7 @@ index 9cbd3028da14..c213ad74d51d 100644
  	bus-width = <8>;
  	cap-mmc-highspeed;
 
-From 798e8735613e1ebc9a2e090893ed9076862b7cda Mon Sep 17 00:00:00 2001
+From 35224771991c8d29e8e22aca30b9c5726da2fac7 Mon Sep 17 00:00:00 2001
 From: Ezequiel Garcia <ezequiel@collabora.com>
 Date: Mon, 18 Feb 2019 07:05:55 -0300
 Subject: [PATCH] arm64: dts: rockchip: enable mali on Rock Pi 4
@@ -582,7 +582,7 @@ index 844eac939a97..e030627159c6 100644
  	ddc-i2c-bus = <&i2c3>;
  	pinctrl-names = "default";
 
-From 3408e3235d878a1e963ecb52b3472fb81f6fc1b6 Mon Sep 17 00:00:00 2001
+From 80a095c24a3bd46054a2fd985b94cad7819cd67c Mon Sep 17 00:00:00 2001
 From: Ezequiel Garcia <ezequiel@collabora.com>
 Date: Mon, 18 Feb 2019 06:58:57 -0300
 Subject: [PATCH] arm64: dts: rockchip: enable mali on rock960 boards
@@ -612,7 +612,7 @@ index 2927db4dda9d..d1248065fe14 100644
  	ddc-i2c-bus = <&i2c3>;
  	pinctrl-names = "default";
 
-From 839f1386b949ad95a595ce8263d2aba6c1ff38cc Mon Sep 17 00:00:00 2001
+From ef0993707dc23fdbe5d193165120e7727bb50486 Mon Sep 17 00:00:00 2001
 From: Alexis Ballier <aballier@gentoo.org>
 Date: Fri, 22 Feb 2019 19:44:19 +0100
 Subject: [PATCH] arm64: dts: rockchip: Add support for the Orange Pi RK3399
@@ -1445,7 +1445,7 @@ index 000000000000..cf37b96a6b77
 +	status = "okay";
 +};
 
-From 51f52b50632ec17707d0cc7371ee78a0fd8bc683 Mon Sep 17 00:00:00 2001
+From 5d004fb7804172adc81059013e0e578562022000 Mon Sep 17 00:00:00 2001
 From: Katsuhiro Suzuki <katsuhiro@katsuster.net>
 Date: Thu, 21 Feb 2019 00:12:26 +0900
 Subject: [PATCH] arm64: dts: rockchip: enable hdmi audio out for
@@ -1476,7 +1476,7 @@ index 1f2394e0587d..791fb0ee9722 100644
  	mali-supply = <&vdd_gpu>;
  	status = "okay";
 
-From a1767a2c977853fa03912a8913d0d156d7707cfc Mon Sep 17 00:00:00 2001
+From 0b901c6d322bab1055e2bed83cd5147e60b796f2 Mon Sep 17 00:00:00 2001
 From: Jagan Teki <jagan@amarulasolutions.com>
 Date: Fri, 8 Mar 2019 23:42:02 +0530
 Subject: [PATCH] arm64: dts: rockchip: Add Nanopi NEO4 initial support
@@ -1584,7 +1584,7 @@ index 000000000000..195410b089b9
 +	vin-supply = <&vdd_5v>;
 +};
 
-From 6489b906de91469719af36de6d34ab988e6999e4 Mon Sep 17 00:00:00 2001
+From 1ff43e12a610aad8d4039d6f15f38c3be92749a3 Mon Sep 17 00:00:00 2001
 From: Jagan Teki <jagan@amarulasolutions.com>
 Date: Mon, 11 Mar 2019 20:33:30 +0530
 Subject: [PATCH] arm64: dts: rockchip: Rename vcc_sys into vcc5v0_sys on
@@ -1682,7 +1682,7 @@ index d1248065fe14..1c13a70a7295 100644
  		vddio-supply = <&vcc_1v8>;
  
 
-From 352f3d7d9be1038dc9d9eefa690b5e0ae66863e7 Mon Sep 17 00:00:00 2001
+From 7c55b559a87c1b6832002a647ed1ee6416187424 Mon Sep 17 00:00:00 2001
 From: Jagan Teki <jagan@amarulasolutions.com>
 Date: Mon, 11 Mar 2019 20:33:31 +0530
 Subject: [PATCH] arm64: dts: rockchip: Add 12V DCIN regulator to rk3399-ficus
@@ -1728,7 +1728,7 @@ index 1c13a70a7295..5ba2aeca0fa8 100644
  
  	vcc3v3_sys: vcc3v3-sys {
 
-From 611bd5afd025a6c112314381246d9a066fc05245 Mon Sep 17 00:00:00 2001
+From 416900ca3e031fc45f8101deaf4d47ac833ba17f Mon Sep 17 00:00:00 2001
 From: Alexis Ballier <aballier@gentoo.org>
 Date: Fri, 15 Mar 2019 15:58:17 +0100
 Subject: [PATCH] arm64: dts: rockchip: Fix clock names and add missing
@@ -1763,7 +1763,7 @@ index cf37b96a6b77..6bc2e545f2fb 100644
  };
  
 
-From 84918c9d74c69c9aca703b79ab324437f634b8f7 Mon Sep 17 00:00:00 2001
+From f70b5aab1ae064194ff7c5a381aab80e8063da33 Mon Sep 17 00:00:00 2001
 From: Alexis Ballier <aballier@gentoo.org>
 Date: Fri, 15 Mar 2019 15:58:19 +0100
 Subject: [PATCH] arm64: dts: rockchip: Specify vid supply for the
@@ -1791,7 +1791,7 @@ index 6bc2e545f2fb..96ccbe5c4f0c 100644
  
  	mpu6500@68 {
 
-From 111ae640d43b080f6a56ac3190d29277bb31b12b Mon Sep 17 00:00:00 2001
+From 77f56ebbaed32eb8b9bccee829e6705f87d558c2 Mon Sep 17 00:00:00 2001
 From: Alexis Ballier <aballier@gentoo.org>
 Date: Fri, 15 Mar 2019 15:58:21 +0100
 Subject: [PATCH] arm64: dts: rockchip: Add the fusb typec manager to
@@ -1875,7 +1875,7 @@ index 96ccbe5c4f0c..2166be171df8 100644
  	};
  
 
-From c8fb51527c9ce8a9393ae27a1d544da63d4373bb Mon Sep 17 00:00:00 2001
+From f87ef48f1bece7f4893a030f1ecdd6701176f67d Mon Sep 17 00:00:00 2001
 From: Robin Murphy <robin.murphy@arm.com>
 Date: Fri, 15 Mar 2019 01:05:53 +0000
 Subject: [PATCH] arm64: dts: rockchip: Add PWM fan for NanoPC-T4
@@ -1975,7 +1975,7 @@ index 84433cf02be9..931c3dbf1b7d 100644
  
  &pinctrl {
 
-From e8732c40cdecbb9184baca1021b5d80bbdf1491c Mon Sep 17 00:00:00 2001
+From 7fd4d06dc99c4a3a545d05f2783d223fd97d5a8d Mon Sep 17 00:00:00 2001
 From: Robin Murphy <robin.murphy@arm.com>
 Date: Fri, 15 Mar 2019 01:05:30 +0000
 Subject: [PATCH] arm64: dts: rockchip: Add nanopi4 ethernet phy
@@ -2044,7 +2044,7 @@ index d325e117287b..dd16c80d923e 100644
  		cpu_b_sleep: cpu-b-sleep {
  			rockchip,pins = <1 RK_PC1 RK_FUNC_GPIO &pcfg_pull_down>;
 
-From 771318a09ed6a17309c7d09c2291a9a9ff96fc4c Mon Sep 17 00:00:00 2001
+From 3cb8ecb8fe9929078e6262eb2647b27c8090dc67 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 10 Mar 2019 12:00:45 +0000
 Subject: [PATCH] clk: rockchip: fix wrong clock definitions for rk3328
@@ -2134,7 +2134,7 @@ index 65ab5c2f48b0..f12142d9cea2 100644
  
  	rockchip_register_restart_notifier(ctx, RK3328_GLB_SRST_FST, NULL);
 
-From 606c93ab8a9fad4c2f4c2dddc9edd7798fbe5b47 Mon Sep 17 00:00:00 2001
+From 399268c83ef42bc72d0512c0c92df664e4cbc496 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Wed, 20 Mar 2019 13:13:59 -0700
 Subject: [PATCH] ARM: dts: rockchip: Fix gic/efuse sort ordering for rk3288
@@ -2192,7 +2192,7 @@ index 510d237f54ab..8bce2fc49b24 100644
  		compatible = "rockchip,rk3288-pinctrl";
  		rockchip,grf = <&grf>;
 
-From d5b5b79657ed87033573570bab841a9c4eed3912 Mon Sep 17 00:00:00 2001
+From ec56f594109e19b1f2c95a2cd342d7e74aa45905 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Fri, 22 Mar 2019 12:59:23 -0700
 Subject: [PATCH] dt-bindings: ARM: dts: rockchip: Add rk3288-veyron-jerry rev
@@ -2237,7 +2237,7 @@ index 0161b4a66586..864ee1fddcb0 100644
            - const: google,veyron-jerry-rev6
            - const: google,veyron-jerry-rev5
 
-From c8fca6ed339ed40c9c41a5f361501caed98c2ca9 Mon Sep 17 00:00:00 2001
+From 337d203c1d664c61c1878006c1189aeaa58b9a00 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Fri, 22 Mar 2019 12:59:24 -0700
 Subject: [PATCH] ARM: dts: rockchip: Add rk3288-veyron-jerry rev 10-15
@@ -2279,7 +2279,7 @@ index 2ba89895c33a..517c6999a978 100644
  		     "google,veyron-jerry-rev3", "google,veyron-jerry",
  		     "google,veyron", "rockchip,rk3288";
 
-From 8c79b7989abfdd89d4afe663735db9d629d024cd Mon Sep 17 00:00:00 2001
+From f9d00ea78fdd92cb0b1f98f76f14e1b4e6b74ee0 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Fri, 22 Mar 2019 09:52:09 -0700
 Subject: [PATCH] ARM: dts: rockchip: Add dvs-gpios to rk3288-veyron-jerry
@@ -2320,7 +2320,7 @@ index 517c6999a978..3e8f700a0d64 100644
  	regulators {
  		mic_vcc: LDO_REG2 {
 
-From 92c3ad68ccd1a657e388d634d2c3e2f2921096a4 Mon Sep 17 00:00:00 2001
+From 563b02c21b3e55af806e666a676f9784cffdae88 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Thu, 21 Mar 2019 13:19:44 -0700
 Subject: [PATCH] ARM: dts: rockchip: Add vdd_logic to rk3288-veyron
@@ -2443,7 +2443,7 @@ index 192dbc089ade..77d8f39cf2a3 100644
  
  &cpu0 {
 
-From 889733b443a202fcb4244b92dc88d15fe28ef126 Mon Sep 17 00:00:00 2001
+From 4fdb1c9bd313ae01090814bb34543aef3d01b05c Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Mon, 25 Mar 2019 09:20:04 -0700
 Subject: [PATCH] dt-bindings: ARM: dts: rockchip: Add bindings for
@@ -2493,7 +2493,7 @@ index 864ee1fddcb0..5c6bbf10abc9 100644
          items:
            - const: google,veyron-minnie-rev4
 
-From 0c2979483d6ac292e0b57cd1c20f8976cd3fbf66 Mon Sep 17 00:00:00 2001
+From 5ba42e8cd888f882050eb1b65c588c35daceb27f Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Mon, 25 Mar 2019 09:20:05 -0700
 Subject: [PATCH] ARM: dts: rockchip: Add device tree for rk3288-veyron-mighty
@@ -2516,10 +2516,10 @@ Signed-off-by: Heiko Stuebner <heiko@sntech.de>
  create mode 100644 arch/arm/boot/dts/rk3288-veyron-mighty.dts
 
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-index d9a5649b322b..98cf90d1bb42 100644
+index f4f5aeaf3298..48282ebfb3da 100644
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -898,6 +898,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
+@@ -909,6 +909,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
  	rk3288-veyron-jaq.dtb \
  	rk3288-veyron-jerry.dtb \
  	rk3288-veyron-mickey.dtb \
@@ -2568,7 +2568,7 @@ index 000000000000..f640857cbdae
 +	};
 +};
 
-From 1b05180eec6f6c5551d3c30a29f765b8f3472e07 Mon Sep 17 00:00:00 2001
+From 6e34de4a834be1a35c2baf8132d938c63c959af4 Mon Sep 17 00:00:00 2001
 From: Christoph Muellner <christoph.muellner@theobroma-systems.com>
 Date: Fri, 22 Mar 2019 12:38:06 +0100
 Subject: [PATCH] arm64: dts: rockchip: Disable DCMDs on RK3399's eMMC
@@ -2637,7 +2637,7 @@ Signed-off-by: Heiko Stuebner <heiko@sntech.de>
  1 file changed, 1 insertion(+)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3399.dtsi b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
-index f5fb051eeb1a..380cd94f1017 100644
+index 0301e3e01b38..ce6f9de5caae 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 @@ -339,6 +339,7 @@
@@ -2649,7 +2649,7 @@ index f5fb051eeb1a..380cd94f1017 100644
  	};
  
 
-From ed000a30e69a0db20236021b3de4f1ea0a2fa3d1 Mon Sep 17 00:00:00 2001
+From a354c0f9c38c0d633091e66d1acc5f20a4fc3b72 Mon Sep 17 00:00:00 2001
 From: Christoph Muellner <christoph.muellner@theobroma-systems.com>
 Date: Fri, 22 Mar 2019 12:34:52 +0100
 Subject: [PATCH] arm64: dts: rockchip: Define drive-impedance-ohm for RK3399's
@@ -2667,7 +2667,7 @@ Signed-off-by: Heiko Stuebner <heiko@sntech.de>
  1 file changed, 1 insertion(+)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3399.dtsi b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
-index 380cd94f1017..10e5a53fee9f 100644
+index ce6f9de5caae..382297ecfefa 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 @@ -1457,6 +1457,7 @@
@@ -2679,7 +2679,7 @@ index 380cd94f1017..10e5a53fee9f 100644
  			status = "disabled";
  		};
 
-From 2670bd2955b8448bfe3a67fe1b31c2112b84c0f9 Mon Sep 17 00:00:00 2001
+From 921cbfb1b65071951a39e1a97064a46f80143a89 Mon Sep 17 00:00:00 2001
 From: Christoph Muellner <christoph.muellner@theobroma-systems.com>
 Date: Fri, 22 Mar 2019 12:34:53 +0100
 Subject: [PATCH] arm64: dts: rockchip: Decrease emmc-phy's drive impedance on
@@ -2714,7 +2714,7 @@ index 0130b9f98c9d..4f75bb6b2f14 100644
  
  &gmac {
 
-From ed27d2d5d05f0204d488cdd5ef8e8ff4ebc5fa25 Mon Sep 17 00:00:00 2001
+From 8f0222dcfc96bcca03dba38ae65a1ff38fcdf7b0 Mon Sep 17 00:00:00 2001
 From: Zheng Yang <zhengyang@rock-chips.com>
 Date: Sat, 30 Mar 2019 10:56:37 +0100
 Subject: [PATCH] ARM: dts: rockchip: add rk3066 hdmi nodes
@@ -2813,7 +2813,7 @@ index 653127a377fa..d9504fd456a7 100644
  			i2c0_xfer: i2c0-xfer {
  				rockchip,pins = <RK_GPIO2 28 RK_FUNC_1 &pcfg_pull_none>,
 
-From 470623344d204299e0c4033c97305d6f4b112afa Mon Sep 17 00:00:00 2001
+From 5f14d06d72843364befbae824a4c17f9ed81600c Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Sat, 30 Mar 2019 10:56:38 +0100
 Subject: [PATCH] ARM: dts: rockchip: enable vop0 and hdmi nodes to
@@ -2883,7 +2883,7 @@ index 9d2216d71f70..8bc259d3e450 100644
  	status = "okay";
  };
 
-From b31bc102713913bd163abcd609c89e3e68e6df7d Mon Sep 17 00:00:00 2001
+From 8271b5a584287a72cd573ec484ca8c34bb2facb1 Mon Sep 17 00:00:00 2001
 From: Matthias Kaehlcke <mka@chromium.org>
 Date: Wed, 10 Apr 2019 11:30:10 -0700
 Subject: [PATCH] ARM: dts: rockchip: Remove unnecessary setting of UART0 SCLK
@@ -2921,7 +2921,7 @@ index 77d8f39cf2a3..1a753243bdbc 100644
  	pinctrl-names = "default";
  	pinctrl-0 = <&uart0_xfer &uart0_cts &uart0_rts>;
 
-From ca4c2576c7b7a4cb1f8f85fdf1c9867e34f5a3b2 Mon Sep 17 00:00:00 2001
+From 1309ee574fcb165c06bb030bd1c3473c86ab3ac3 Mon Sep 17 00:00:00 2001
 From: Matthias Kaehlcke <mka@chromium.org>
 Date: Tue, 9 Apr 2019 16:14:05 -0700
 Subject: [PATCH] ARM: dts: rockchip: Add BT_EN to the power sequence for
@@ -2969,7 +2969,7 @@ index 1a753243bdbc..92ad639e2c20 100644
  
  	vcc_5v: vcc-5v {
 
-From 60a7a28510a280f275f518d0fad8592f2fe6e875 Mon Sep 17 00:00:00 2001
+From 85ee9b45a9a8a45cc3eb485c1071aab081383b4d Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Tue, 9 Apr 2019 13:49:05 -0700
 Subject: [PATCH] soc: rockchip: Set the proper PWM for rk3288
@@ -3019,7 +3019,7 @@ index 96882ffde67e..3b81e1d75a97 100644
  
  static const struct rockchip_grf_info rk3288_grf __initconst = {
 
-From b861f37f44c426622d72ec2b877a1440b9469e70 Mon Sep 17 00:00:00 2001
+From 657494196a4c94ab36fc67bec2bdd513dec29a86 Mon Sep 17 00:00:00 2001
 From: "Leonidas P. Papadakos" <papadakospan@gmail.com>
 Date: Thu, 4 Apr 2019 14:23:29 +0300
 Subject: [PATCH] arm64: dts: rockchip: eMMC additions for rk3328-roc-cc
@@ -3062,7 +3062,7 @@ index c213ad74d51d..b08f630265e8 100644
  };
  
 
-From 3479ee8be898f73f1cb291f6c656b34f6c7a04ef Mon Sep 17 00:00:00 2001
+From 91f17960efdc61e4e5c30b7e11c1ff18641af889 Mon Sep 17 00:00:00 2001
 From: "Leonidas P. Papadakos" <papadakospan@gmail.com>
 Date: Wed, 3 Apr 2019 21:22:48 +0300
 Subject: [PATCH] arm64: dts: rockchip: enable display nodes on rk3328-roc-cc
@@ -3109,7 +3109,7 @@ index b08f630265e8..5d499c9086fb 100644
 +	status = "okay";
 +};
 
-From fa56f056fb80fa11c2fbfd949e0eb75816ffeaa7 Mon Sep 17 00:00:00 2001
+From 7e205aac2b09648741921324a19db513764728fb Mon Sep 17 00:00:00 2001
 From: Heiko Stuebner <heiko@sntech.de>
 Date: Tue, 2 Apr 2019 13:56:24 +0200
 Subject: [PATCH] arm64: dts: rockchip: bulk convert gpios to their constant
@@ -3634,7 +3634,7 @@ index d34064c65f10..006a1fb6a816 100644
  	};
  };
 diff --git a/arch/arm64/boot/dts/rockchip/rk3368.dtsi b/arch/arm64/boot/dts/rockchip/rk3368.dtsi
-index 7014d10b954c..d70deff90414 100644
+index 06e7c31d7d07..fd86188010b2 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3368.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3368.dtsi
 @@ -881,345 +881,345 @@
@@ -4869,7 +4869,7 @@ index 946d3589575a..04623e52ac5d 100644
  	};
  
 diff --git a/arch/arm64/boot/dts/rockchip/rk3399.dtsi b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
-index 10e5a53fee9f..b8f7cf13e83b 100644
+index 382297ecfefa..f54c855f8cdf 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 @@ -2053,14 +2053,14 @@
@@ -5618,7 +5618,7 @@ index 10e5a53fee9f..b8f7cf13e83b 100644
  		};
  
 
-From 1d5c392644fc3b8d75e0a398ce3b08b3c661af36 Mon Sep 17 00:00:00 2001
+From 00e489a888112ae16cc17a7eeb658bf8443f8057 Mon Sep 17 00:00:00 2001
 From: Heiko Stuebner <heiko@sntech.de>
 Date: Tue, 2 Apr 2019 14:08:57 +0200
 Subject: [PATCH] ARM: dts: rockchip: bulk convert gpios to their constant
@@ -9778,7 +9778,7 @@ index f47ac86d2852..5876690ee09e 100644
  		};
  	};
 
-From 6a3c773bdf086f4ebd59fda36f44ec50705036b2 Mon Sep 17 00:00:00 2001
+From 55314e7913f7181ce6bb00f9b055c598f599dc72 Mon Sep 17 00:00:00 2001
 From: Katsuhiro Suzuki <katsuhiro@katsuster.net>
 Date: Sun, 7 Apr 2019 00:35:57 +0900
 Subject: [PATCH] arm64: dts: rockchip: fix cts, rts pin assign of UART3 for
@@ -9799,7 +9799,7 @@ Signed-off-by: Heiko Stuebner <heiko@sntech.de>
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3399.dtsi b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
-index b8f7cf13e83b..39591c755f72 100644
+index f54c855f8cdf..196ac9b78076 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3399.dtsi
 @@ -2543,12 +2543,12 @@
@@ -9818,7 +9818,7 @@ index b8f7cf13e83b..39591c755f72 100644
  		};
  
 
-From 0b0d5180541afc3c05f930fffd489bfd2e9b31ba Mon Sep 17 00:00:00 2001
+From 1a9c152584104e940bef16175d60ff77eab6b423 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Tue, 9 Apr 2019 13:47:06 -0700
 Subject: [PATCH] clk: rockchip: Make rkpwm a critical clock on rk3288
@@ -9867,7 +9867,7 @@ index 5a67b7869960..f47d514cba36 100644
  
  static void __iomem *rk3288_cru_base;
 
-From 5b2bc96d1975690ac53eed69cde9f4125cf08198 Mon Sep 17 00:00:00 2001
+From c7f64b66d16a21bb5769f8cd65b1d40049b3a5e0 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Thu, 11 Apr 2019 06:55:55 -0700
 Subject: [PATCH] clk: rockchip: Fix video codec clocks on rk3288
@@ -9945,7 +9945,7 @@ index f47d514cba36..94cbcb0aa49f 100644
  	GATE(ACLK_VCODEC, "aclk_vcodec", "aclk_vcodec_pre", 0,
  		RK3288_CLKGATE_CON(9), 0, GFLAGS),
 
-From 2c57b329adafcbf343cbe319454e138f6aaef9c5 Mon Sep 17 00:00:00 2001
+From c189ff130f3f1046d1f27ad7a22fa4a4a20c678f Mon Sep 17 00:00:00 2001
 From: Matthias Kaehlcke <mka@chromium.org>
 Date: Thu, 11 Apr 2019 10:59:17 -0700
 Subject: [PATCH] clk: rockchip: Limit use of USB PHY clock to USB on rk3288
@@ -9980,7 +9980,7 @@ index 94cbcb0aa49f..961d4ee86b75 100644
  PNAME(mux_mmc_src_p)	= { "cpll", "gpll", "xin24m", "xin24m" };
  PNAME(mux_i2s_pre_p)	= { "i2s_src", "i2s_frac", "ext_i2s", "xin12m" };
 
-From e4bb1d25b738e3dcdb779cd0f9674add84e5752a Mon Sep 17 00:00:00 2001
+From 3c876ef22eefa8cae46de4adefc1584aa9649538 Mon Sep 17 00:00:00 2001
 From: Matthias Kaehlcke <mka@chromium.org>
 Date: Thu, 11 Apr 2019 17:01:58 -0700
 Subject: [PATCH] ARM: dts: rockchip: Add dynamic-power-coefficient for rk3288
@@ -10064,7 +10064,7 @@ index 2e604f0afa98..74c9517c4f92 100644
  	};
  
 
-From 842e8055ffb851f1a98fa3f1dfc9870f327a770b Mon Sep 17 00:00:00 2001
+From 26b7cf0fcc0e65bd8d3c4ee4d71f6b53aea8c76c Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Thu, 11 Apr 2019 16:21:54 -0700
 Subject: [PATCH] ARM: rockchip: Mark pm-init functions __init
@@ -10102,7 +10102,7 @@ index 0592534e0b88..065b09e6f1eb 100644
  	struct device_node *sram_np;
  	struct resource res;
 
-From 0a124b3df5ec74bdd2fecf7b3fb024153bddceb5 Mon Sep 17 00:00:00 2001
+From 8ecc8a5bc347ca1ec3c8e59e54533b7ccfe496db Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Thu, 11 Apr 2019 16:21:55 -0700
 Subject: [PATCH] ARM: dts: rockchip: Add DDR retention/poweroff to
@@ -10162,7 +10162,7 @@ index 5c67acc3e6d8..279d7f4ecce0 100644
  	>;
  
 
-From 5daa9cb4e3fb276c0b5090305bfc96a3169053f6 Mon Sep 17 00:00:00 2001
+From 8415f88569e527a6f50d7f74e91b6d7c6015ec84 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Thu, 11 Apr 2019 16:21:56 -0700
 Subject: [PATCH] ARM: dts: rockchip: vcc33_ccd off in suspend for
@@ -10204,7 +10204,7 @@ index b9cc90f0f25c..fbef34578100 100644
  		};
  	};
 
-From fc5d44738e55f7e8e24e66eaaf47d69c1ebbbe9c Mon Sep 17 00:00:00 2001
+From b0cc653888a7b8b7410d14c5997c7884c65376a4 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Thu, 11 Apr 2019 16:21:57 -0700
 Subject: [PATCH] ARM: dts: rockchip: vdd_gpu off in suspend for rk3288-veyron
@@ -10242,7 +10242,7 @@ index 279d7f4ecce0..1252522392c7 100644
  			};
  
 
-From 3c8b340dc2fa7d388e0242b0e14f3af0e279e1c7 Mon Sep 17 00:00:00 2001
+From c055ef4c0563eef6fc1373fcb2ffab87bc1d7684 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Thu, 11 Apr 2019 16:21:53 -0700
 Subject: [PATCH] clk: rockchip: Turn on "aclk_dmac1" for suspend on rk3288
@@ -10326,7 +10326,7 @@ index 961d4ee86b75..e8b5a6bfcc8a 100644
  	 * Switch PLLs other than DPLL (for SDRAM) to slow mode to
  	 * avoid crashes on resume. The Mask ROM on the system will
 
-From e6f1ca5dff515326832a21740ea68e4efdd66f98 Mon Sep 17 00:00:00 2001
+From 7f197c0e90d008832d316788bed49b593da1daf8 Mon Sep 17 00:00:00 2001
 From: Finley Xiao <finley.xiao@rock-chips.com>
 Date: Wed, 3 Apr 2019 17:42:26 +0800
 Subject: [PATCH] clk: rockchip: add a COMPOSITE_DIV_OFFSET clock-type
@@ -10419,7 +10419,7 @@ index 6b53fff4cc96..1b5270755431 100644
  			go, gs, gf)				\
  	{							\
 
-From b2fbb28ade208cdd29a803f8a337db7a3dc40804 Mon Sep 17 00:00:00 2001
+From 95dc0cdb92dde56fc7e4d1102e47033ddd1e1fc7 Mon Sep 17 00:00:00 2001
 From: Douglas Anderson <dianders@chromium.org>
 Date: Fri, 12 Apr 2019 09:17:47 -0700
 Subject: [PATCH] clk: rockchip: undo several noc and special clocks as
@@ -10535,7 +10535,7 @@ index e8b5a6bfcc8a..24baeb56a1b3 100644
  	/* pwm-regulators on some boards, so handoff-critical later */
  	"pclk_rkpwm",
 
-From 8aa6edc84591632a80dfe03024561aac2e73e600 Mon Sep 17 00:00:00 2001
+From 72a366b8a5f803bcf325dd0e8cef85eefc8b023f Mon Sep 17 00:00:00 2001
 From: Wen Yang <wen.yang99@zte.com.cn>
 Date: Tue, 5 Mar 2019 19:32:56 +0800
 Subject: [PATCH] ARM: rockchip: add missing of_node_put in
@@ -10574,7 +10574,7 @@ index 51984a40b097..4675d9202000 100644
  		pr_err("%s: could not map pmu registers\n", __func__);
  		return -ENOMEM;
 
-From a2b048e2ffb37f0c798a9be350c16ba569d39fdb Mon Sep 17 00:00:00 2001
+From a8d4eaedeaf901c231039387cf682555ad7841c5 Mon Sep 17 00:00:00 2001
 From: Katsuhiro Suzuki <katsuhiro@katsuster.net>
 Date: Wed, 27 Mar 2019 21:03:17 +0900
 Subject: [PATCH] arm64: dts: rockchip: fix IO domain voltage setting of APIO5

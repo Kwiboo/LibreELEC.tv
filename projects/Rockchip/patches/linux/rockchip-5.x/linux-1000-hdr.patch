@@ -1,0 +1,1380 @@
+From 548802b313a9b4f761f4cbf0e43f38d25ce35d46 Mon Sep 17 00:00:00 2001
+From: Uma Shankar <uma.shankar@intel.com>
+Date: Thu, 9 May 2019 00:08:41 +0530
+Subject: [PATCH] drm: Add HDR source metadata property
+
+This patch adds a blob property to get HDR metadata
+information from userspace. This will be send as part
+of AVI Infoframe to panel.
+
+It also implements get() and set() functions for HDR output
+metadata property.The blob data is received from userspace and
+saved in connector state, the same is returned as blob in get
+property call to userspace.
+
+v2: Rebase and modified the metadata structure elements
+as per Ville's POC changes.
+
+v3: No Change
+
+v4: Addressed Shashank's review comments
+
+v5: Rebase.
+
+v6: Addressed Brian Starkey's review comments, defined
+new structure with header for dynamic metadata scalability.
+Merge get/set property functions for metadata in this patch.
+
+v7: Addressed Jonas Karlman review comments and defined separate
+structure for infoframe to better align with CTA 861.G spec. Added
+Shashank's RB.
+
+v8: Addressed Ville's review comments. Moved sink metadata structure
+out of uapi headers as suggested by Jonas Karlman.
+
+Signed-off-by: Uma Shankar <uma.shankar@intel.com>
+Reviewed-by: Shashank Sharma <shashank.sharma@intel.com>
+---
+ drivers/gpu/drm/drm_atomic.c      |  2 ++
+ drivers/gpu/drm/drm_atomic_uapi.c | 13 +++++++++++++
+ drivers/gpu/drm/drm_connector.c   |  6 ++++++
+ include/drm/drm_connector.h       | 11 +++++++++++
+ include/drm/drm_mode_config.h     |  6 ++++++
+ include/linux/hdmi.h              | 26 ++++++++++++++++++++++++++
+ include/uapi/drm/drm_mode.h       | 23 +++++++++++++++++++++++
+ 7 files changed, 87 insertions(+)
+
+diff --git a/drivers/gpu/drm/drm_atomic.c b/drivers/gpu/drm/drm_atomic.c
+index 5eb40130fafb..8b9c1265e1bc 100644
+--- a/drivers/gpu/drm/drm_atomic.c
++++ b/drivers/gpu/drm/drm_atomic.c
+@@ -881,6 +881,8 @@ static void drm_atomic_connector_print_state(struct drm_printer *p,
+ 
+ 	drm_printf(p, "connector[%u]: %s\n", connector->base.id, connector->name);
+ 	drm_printf(p, "\tcrtc=%s\n", state->crtc ? state->crtc->name : "(null)");
++	drm_printf(p, "\thdr_metadata_changed=%d\n",
++		   state->hdr_metadata_changed);
+ 
+ 	if (connector->connector_type == DRM_MODE_CONNECTOR_WRITEBACK)
+ 		if (state->writeback_job && state->writeback_job->fb)
+diff --git a/drivers/gpu/drm/drm_atomic_uapi.c b/drivers/gpu/drm/drm_atomic_uapi.c
+index 0aabd401d3ca..920248f7d992 100644
+--- a/drivers/gpu/drm/drm_atomic_uapi.c
++++ b/drivers/gpu/drm/drm_atomic_uapi.c
+@@ -686,6 +686,8 @@ static int drm_atomic_connector_set_property(struct drm_connector *connector,
+ {
+ 	struct drm_device *dev = connector->dev;
+ 	struct drm_mode_config *config = &dev->mode_config;
++	bool replaced = false;
++	int ret;
+ 
+ 	if (property == config->prop_crtc_id) {
+ 		struct drm_crtc *crtc = drm_crtc_find(dev, NULL, val);
+@@ -734,6 +736,14 @@ static int drm_atomic_connector_set_property(struct drm_connector *connector,
+ 		 */
+ 		if (state->link_status != DRM_LINK_STATUS_GOOD)
+ 			state->link_status = val;
++	} else if (property == config->hdr_output_metadata_property) {
++		ret = drm_atomic_replace_property_blob_from_id(dev,
++				&state->hdr_output_metadata,
++				val,
++				-1, sizeof(struct hdr_output_metadata),
++				&replaced);
++		state->hdr_metadata_changed |= replaced;
++		return ret;
+ 	} else if (property == config->aspect_ratio_property) {
+ 		state->picture_aspect_ratio = val;
+ 	} else if (property == config->content_type_property) {
+@@ -816,6 +826,9 @@ drm_atomic_connector_get_property(struct drm_connector *connector,
+ 		*val = state->content_type;
+ 	} else if (property == connector->scaling_mode_property) {
+ 		*val = state->scaling_mode;
++	} else if (property == config->hdr_output_metadata_property) {
++		*val = state->hdr_output_metadata ?
++			state->hdr_output_metadata->base.id : 0;
+ 	} else if (property == connector->content_protection_property) {
+ 		*val = state->content_protection;
+ 	} else if (property == config->writeback_fb_id_property) {
+diff --git a/drivers/gpu/drm/drm_connector.c b/drivers/gpu/drm/drm_connector.c
+index dd40eff0911c..e596dade2141 100644
+--- a/drivers/gpu/drm/drm_connector.c
++++ b/drivers/gpu/drm/drm_connector.c
+@@ -1027,6 +1027,12 @@ int drm_connector_create_standard_properties(struct drm_device *dev)
+ 		return -ENOMEM;
+ 	dev->mode_config.non_desktop_property = prop;
+ 
++	prop = drm_property_create(dev, DRM_MODE_PROP_BLOB,
++				   "HDR_OUTPUT_METADATA", 0);
++	if (!prop)
++		return -ENOMEM;
++	dev->mode_config.hdr_output_metadata_property = prop;
++
+ 	return 0;
+ }
+ 
+diff --git a/include/drm/drm_connector.h b/include/drm/drm_connector.h
+index 8fe22abb1e10..6c6e7d94d7bb 100644
+--- a/include/drm/drm_connector.h
++++ b/include/drm/drm_connector.h
+@@ -526,6 +526,13 @@ struct drm_connector_state {
+ 	 * and the connector bpc limitations obtained from edid.
+ 	 */
+ 	u8 max_bpc;
++
++	/**
++	 * @metadata_blob_ptr:
++	 * DRM blob property for HDR output metadata
++	 */
++	struct drm_property_blob *hdr_output_metadata;
++	u8 hdr_metadata_changed : 1;
+ };
+ 
+ /**
+@@ -1160,6 +1167,10 @@ struct drm_connector {
+ 	 * &drm_mode_config.connector_free_work.
+ 	 */
+ 	struct llist_node free_node;
++
++	/* HDR metdata */
++	struct hdr_output_metadata hdr_output_metadata;
++	struct hdr_sink_metadata hdr_sink_metadata;
+ };
+ 
+ #define obj_to_connector(x) container_of(x, struct drm_connector, base)
+diff --git a/include/drm/drm_mode_config.h b/include/drm/drm_mode_config.h
+index 7f60e8eb269a..ef2656b64824 100644
+--- a/include/drm/drm_mode_config.h
++++ b/include/drm/drm_mode_config.h
+@@ -836,6 +836,12 @@ struct drm_mode_config {
+ 	 */
+ 	struct drm_property *writeback_out_fence_ptr_property;
+ 
++	/*
++	 * hdr_metadata_property: Connector property containing hdr metatda
++	 * This will be provided by userspace compositors based on HDR content
++	 */
++	struct drm_property *hdr_output_metadata_property;
++
+ 	/* dumb ioctl parameters */
+ 	uint32_t preferred_depth, prefer_shadow;
+ 
+diff --git a/include/linux/hdmi.h b/include/linux/hdmi.h
+index 927ad6451105..6780476dcbff 100644
+--- a/include/linux/hdmi.h
++++ b/include/linux/hdmi.h
+@@ -152,6 +152,16 @@ enum hdmi_content_type {
+ 	HDMI_CONTENT_TYPE_GAME,
+ };
+ 
++enum hdmi_metadata_type {
++	HDMI_STATIC_METADATA_TYPE1 = 1,
++};
++
++enum hdmi_eotf {
++	HDMI_EOTF_TRADITIONAL_GAMMA_SDR,
++	HDMI_EOTF_TRADITIONAL_GAMMA_HDR,
++	HDMI_EOTF_SMPTE_ST2084,
++};
++
+ struct hdmi_avi_infoframe {
+ 	enum hdmi_infoframe_type type;
+ 	unsigned char version;
+@@ -320,6 +330,22 @@ struct hdmi_vendor_infoframe {
+ 	unsigned int s3d_ext_data;
+ };
+ 
++/* HDR Metadata as per 861.G spec */
++struct hdr_static_metadata {
++	__u8 eotf;
++	__u8 metadata_type;
++	__u16 max_cll;
++	__u16 max_fall;
++	__u16 min_cll;
++};
++
++struct hdr_sink_metadata {
++	__u32 metadata_type;
++	union {
++		struct hdr_static_metadata hdmi_type1;
++	};
++};
++
+ int hdmi_vendor_infoframe_init(struct hdmi_vendor_infoframe *frame);
+ ssize_t hdmi_vendor_infoframe_pack(struct hdmi_vendor_infoframe *frame,
+ 				   void *buffer, size_t size);
+diff --git a/include/uapi/drm/drm_mode.h b/include/uapi/drm/drm_mode.h
+index a439c2e67896..51eb8dd39dfe 100644
+--- a/include/uapi/drm/drm_mode.h
++++ b/include/uapi/drm/drm_mode.h
+@@ -630,6 +630,29 @@ struct drm_color_lut {
+ 	__u16 reserved;
+ };
+ 
++/* HDR Metadata Infoframe as per 861.G spec */
++struct hdr_metadata_infoframe {
++	__u8 eotf;
++	__u8 metadata_type;
++	struct {
++		__u16 x, y;
++		} display_primaries[3];
++	struct {
++		__u16 x, y;
++		} white_point;
++	__u16 max_display_mastering_luminance;
++	__u16 min_display_mastering_luminance;
++	__u16 max_cll;
++	__u16 max_fall;
++};
++
++struct hdr_output_metadata {
++	__u32 metadata_type;
++	union {
++		struct hdr_metadata_infoframe hdmi_metadata_type1;
++	};
++};
++
+ #define DRM_MODE_PAGE_FLIP_EVENT 0x01
+ #define DRM_MODE_PAGE_FLIP_ASYNC 0x02
+ #define DRM_MODE_PAGE_FLIP_TARGET_ABSOLUTE 0x4
+
+From 2cc2d3269a9525687f1fd93c4f98e494722505a1 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Thu, 9 May 2019 00:08:42 +0530
+Subject: [PATCH] drm: Add reference counting on HDR metadata blob
+
+This adds reference count for HDR metadata blob,
+handled as part of duplicate and destroy connector
+state functions.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+Signed-off-by: Uma Shankar <uma.shankar@intel.com>
+---
+ drivers/gpu/drm/drm_atomic_state_helper.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/gpu/drm/drm_atomic_state_helper.c b/drivers/gpu/drm/drm_atomic_state_helper.c
+index 4985384e51f6..b73e803c4a83 100644
+--- a/drivers/gpu/drm/drm_atomic_state_helper.c
++++ b/drivers/gpu/drm/drm_atomic_state_helper.c
+@@ -368,6 +368,10 @@ __drm_atomic_helper_connector_duplicate_state(struct drm_connector *connector,
+ 		drm_connector_get(connector);
+ 	state->commit = NULL;
+ 
++	if (state->hdr_output_metadata)
++		drm_property_blob_get(state->hdr_output_metadata);
++	state->hdr_metadata_changed = false;
++
+ 	/* Don't copy over a writeback job, they are used only once */
+ 	state->writeback_job = NULL;
+ }
+@@ -412,6 +416,8 @@ __drm_atomic_helper_connector_destroy_state(struct drm_connector_state *state)
+ 
+ 	if (state->commit)
+ 		drm_crtc_commit_put(state->commit);
++
++	drm_property_blob_put(state->hdr_output_metadata);
+ }
+ EXPORT_SYMBOL(__drm_atomic_helper_connector_destroy_state);
+ 
+
+From d0be23d7a1cbc4cbe0202f4a58714a9be8f4ad36 Mon Sep 17 00:00:00 2001
+From: Uma Shankar <uma.shankar@intel.com>
+Date: Thu, 9 May 2019 00:08:43 +0530
+Subject: [PATCH] drm: Parse HDR metadata info from EDID
+
+HDR metadata block is introduced in CEA-861.3 spec.
+Parsing the same to get the panel's HDR metadata.
+
+v2: Rebase and added Ville's POC changes to the patch.
+
+v3: No Change
+
+v4: Addressed Shashank's review comments
+
+v5: Addressed Shashank's comment and added his RB.
+
+v6: Addressed Jonas Karlman review comments.
+
+Signed-off-by: Uma Shankar <uma.shankar@intel.com>
+Reviewed-by: Shashank Sharma <shashank.sharma@intel.com>
+---
+ drivers/gpu/drm/drm_edid.c | 52 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index 288534e98eb8..ab2986f78cc4 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -2834,6 +2834,7 @@ add_detailed_modes(struct drm_connector *connector, struct edid *edid,
+ #define VIDEO_BLOCK     0x02
+ #define VENDOR_BLOCK    0x03
+ #define SPEAKER_BLOCK	0x04
++#define HDR_STATIC_METADATA_BLOCK	0x6
+ #define USE_EXTENDED_TAG 0x07
+ #define EXT_VIDEO_CAPABILITY_BLOCK 0x00
+ #define EXT_VIDEO_DATA_BLOCK_420	0x0E
+@@ -3580,6 +3581,12 @@ cea_db_payload_len(const u8 *db)
+ 	return db[0] & 0x1f;
+ }
+ 
++static int
++cea_db_payload_len_ext(const u8 *db)
++{
++	return (db[0] & 0x1f) - 1;
++}
++
+ static int
+ cea_db_extended_tag(const u8 *db)
+ {
+@@ -3816,6 +3823,49 @@ static void fixup_detailed_cea_mode_clock(struct drm_display_mode *mode)
+ 	mode->clock = clock;
+ }
+ 
++static bool cea_db_is_hdmi_hdr_metadata_block(const u8 *db)
++{
++	if (cea_db_tag(db) != USE_EXTENDED_TAG)
++		return false;
++
++	if (db[1] != HDR_STATIC_METADATA_BLOCK)
++		return false;
++
++	return true;
++}
++
++static uint8_t eotf_supported(const u8 *edid_ext)
++{
++	return edid_ext[2] &
++		(BIT(HDMI_EOTF_TRADITIONAL_GAMMA_SDR) |
++		 BIT(HDMI_EOTF_TRADITIONAL_GAMMA_HDR) |
++		 BIT(HDMI_EOTF_SMPTE_ST2084));
++}
++
++static uint8_t hdr_metadata_type(const u8 *edid_ext)
++{
++	return edid_ext[3] &
++		BIT(HDMI_STATIC_METADATA_TYPE1);
++}
++
++static void
++drm_parse_hdr_metadata_block(struct drm_connector *connector, const u8 *db)
++{
++	u16 len;
++
++	len = cea_db_payload_len_ext(db);
++	connector->hdr_sink_metadata.hdmi_type1.eotf = eotf_supported(db);
++	connector->hdr_sink_metadata.hdmi_type1.metadata_type =
++					hdr_metadata_type(db);
++
++	if (len >= 4)
++		connector->hdr_sink_metadata.hdmi_type1.max_cll = db[4];
++	if (len >= 5)
++		connector->hdr_sink_metadata.hdmi_type1.max_fall = db[5];
++	if (len >= 6)
++		connector->hdr_sink_metadata.hdmi_type1.min_cll = db[6];
++}
++
+ static void
+ drm_parse_hdmi_vsdb_audio(struct drm_connector *connector, const u8 *db)
+ {
+@@ -4444,6 +4494,8 @@ static void drm_parse_cea_ext(struct drm_connector *connector,
+ 			drm_parse_y420cmdb_bitmap(connector, db);
+ 		if (cea_db_is_vcdb(db))
+ 			drm_parse_vcdb(connector, db);
++		if (cea_db_is_hdmi_hdr_metadata_block(db))
++			drm_parse_hdr_metadata_block(connector, db);
+ 	}
+ }
+ 
+
+From 8e66bc5a33b26ed6c7ecfa6e03fd8146092d5e6c Mon Sep 17 00:00:00 2001
+From: Uma Shankar <uma.shankar@intel.com>
+Date: Thu, 9 May 2019 00:08:44 +0530
+Subject: [PATCH] drm: Enable HDR infoframe support
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Enable Dynamic Range and Mastering Infoframe for HDR
+content, which is defined in CEA 861.3 spec.
+
+The metadata will be computed based on blending
+policy in userspace compositors and passed as a connector
+property blob to driver. The same will be sent as infoframe
+to panel which support HDR.
+
+Added the const version of infoframe for DRM metadata
+for HDR.
+
+v2: Rebase and added Ville's POC changes.
+
+v3: No Change
+
+v4: Addressed Shashank's review comments and merged the
+patch making drm infoframe function arguments as constant.
+
+v5: Rebase
+
+v6: Fixed checkpatch warnings with --strict option. Addressed
+Shashank's review comments and added his RB.
+
+v7: Addressed Brian Starkey's review comments. Merged 2 patches
+into one.
+
+v8: Addressed Jonas Karlman review comments.
+
+Signed-off-by: Uma Shankar <uma.shankar@intel.com>
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Reviewed-by: Shashank Sharma <shashank.sharma@intel.com>
+---
+ drivers/gpu/drm/drm_edid.c |  48 ++++++++++++
+ drivers/video/hdmi.c       | 186 +++++++++++++++++++++++++++++++++++++++++++++
+ include/drm/drm_edid.h     |   5 ++
+ include/linux/hdmi.h       |  27 +++++++
+ 4 files changed, 266 insertions(+)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index ab2986f78cc4..c4773dbed2fc 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -4888,6 +4888,54 @@ static bool is_hdmi2_sink(struct drm_connector *connector)
+ 		connector->display_info.color_formats & DRM_COLOR_FORMAT_YCRCB420;
+ }
+ 
++/**
++ * drm_hdmi_infoframe_set_hdr_metadata() - fill an HDMI AVI infoframe with
++ *                                         HDR metadata from userspace
++ * @frame: HDMI AVI infoframe
++ * @hdr_source_metadata: hdr_source_metadata info from userspace
++ *
++ * Return: 0 on success or a negative error code on failure.
++ */
++int
++drm_hdmi_infoframe_set_hdr_metadata(struct hdmi_drm_infoframe *frame,
++				    struct hdr_output_metadata *hdr_metadata)
++{
++	int err;
++
++	if (!frame || !hdr_metadata)
++		return true;
++
++	err = hdmi_drm_infoframe_init(frame);
++	if (err < 0)
++		return err;
++
++	DRM_DEBUG_KMS("type = %x\n", frame->type);
++
++	frame->length = sizeof(struct hdr_metadata_infoframe);
++
++	frame->eotf = hdr_metadata->hdmi_metadata_type1.eotf;
++	frame->metadata_type = hdr_metadata->hdmi_metadata_type1.metadata_type;
++
++	memcpy(&frame->display_primaries,
++	       &hdr_metadata->hdmi_metadata_type1.display_primaries, 12);
++
++	memcpy(&frame->white_point,
++	       &hdr_metadata->hdmi_metadata_type1.white_point, 4);
++
++	frame->max_display_mastering_luminance =
++		hdr_metadata->hdmi_metadata_type1.max_display_mastering_luminance;
++	frame->min_display_mastering_luminance =
++		hdr_metadata->hdmi_metadata_type1.min_display_mastering_luminance;
++	frame->max_fall = hdr_metadata->hdmi_metadata_type1.max_fall;
++	frame->max_cll = hdr_metadata->hdmi_metadata_type1.max_cll;
++
++	hdmi_infoframe_log(KERN_CRIT, NULL,
++			   (union hdmi_infoframe *)frame);
++
++	return 0;
++}
++EXPORT_SYMBOL(drm_hdmi_infoframe_set_hdr_metadata);
++
+ /**
+  * drm_hdmi_avi_infoframe_from_display_mode() - fill an HDMI AVI infoframe with
+  *                                              data from a DRM display mode
+diff --git a/drivers/video/hdmi.c b/drivers/video/hdmi.c
+index 799ae49774f5..717ed7fb73bf 100644
+--- a/drivers/video/hdmi.c
++++ b/drivers/video/hdmi.c
+@@ -650,6 +650,146 @@ hdmi_vendor_any_infoframe_check_only(const union hdmi_vendor_any_infoframe *fram
+ 	return 0;
+ }
+ 
++/**
++ * hdmi_drm_infoframe_init() - initialize an HDMI Dynaminc Range and
++ * mastering infoframe
++ * @frame: HDMI DRM infoframe
++ *
++ * Returns 0 on success or a negative error code on failure.
++ */
++int hdmi_drm_infoframe_init(struct hdmi_drm_infoframe *frame)
++{
++	memset(frame, 0, sizeof(*frame));
++
++	frame->type = HDMI_INFOFRAME_TYPE_DRM;
++	frame->version = 1;
++
++	return 0;
++}
++EXPORT_SYMBOL(hdmi_drm_infoframe_init);
++
++static int hdmi_drm_infoframe_check_only(const struct hdmi_drm_infoframe *frame)
++{
++	if (frame->type != HDMI_INFOFRAME_TYPE_DRM ||
++	    frame->version != 1)
++		return -EINVAL;
++
++	return 0;
++}
++
++/**
++ * hdmi_drm_infoframe_check() - check a HDMI DRM infoframe
++ * @frame: HDMI DRM infoframe
++ *
++ * Validates that the infoframe is consistent.
++ * Returns 0 on success or a negative error code on failure.
++ */
++int hdmi_drm_infoframe_check(struct hdmi_drm_infoframe *frame)
++{
++	return hdmi_drm_infoframe_check_only(frame);
++}
++EXPORT_SYMBOL(hdmi_drm_infoframe_check);
++
++/**
++ * hdmi_drm_infoframe_pack() - write HDMI DRM infoframe to binary buffer
++ * @frame: HDMI DRM infoframe
++ * @buffer: destination buffer
++ * @size: size of buffer
++ *
++ * Packs the information contained in the @frame structure into a binary
++ * representation that can be written into the corresponding controller
++ * registers. Also computes the checksum as required by section 5.3.5 of
++ * the HDMI 1.4 specification.
++ *
++ * Returns the number of bytes packed into the binary buffer or a negative
++ * error code on failure.
++ */
++ssize_t hdmi_drm_infoframe_pack_only(const struct hdmi_drm_infoframe *frame,
++				     void *buffer, size_t size)
++{
++	u8 *ptr = buffer;
++	size_t length;
++	int i;
++
++	length = HDMI_INFOFRAME_HEADER_SIZE + frame->length;
++
++	if (size < length)
++		return -ENOSPC;
++
++	memset(buffer, 0, size);
++
++	ptr[0] = frame->type;
++	ptr[1] = frame->version;
++	ptr[2] = frame->length;
++	ptr[3] = 0; /* checksum */
++
++	/* start infoframe payload */
++	ptr += HDMI_INFOFRAME_HEADER_SIZE;
++
++	*ptr++ = frame->eotf;
++	*ptr++ = frame->metadata_type;
++
++	for (i = 0; i < 3; i++) {
++		*ptr++ = frame->display_primaries[i].x;
++		*ptr++ = frame->display_primaries[i].x >> 8;
++		*ptr++ = frame->display_primaries[i].y;
++		*ptr++ = frame->display_primaries[i].y >> 8;
++	}
++
++	*ptr++ = frame->white_point.x;
++	*ptr++ = frame->white_point.x >> 8;
++
++	*ptr++ = frame->white_point.y;
++	*ptr++ = frame->white_point.y >> 8;
++
++	*ptr++ = frame->max_display_mastering_luminance;
++	*ptr++ = frame->max_display_mastering_luminance >> 8;
++
++	*ptr++ = frame->min_display_mastering_luminance;
++	*ptr++ = frame->min_display_mastering_luminance >> 8;
++
++	*ptr++ = frame->max_cll;
++	*ptr++ = frame->max_cll >> 8;
++
++	*ptr++ = frame->max_fall;
++	*ptr++ = frame->max_fall >> 8;
++
++	hdmi_infoframe_set_checksum(buffer, length);
++
++	return length;
++}
++EXPORT_SYMBOL(hdmi_drm_infoframe_pack_only);
++
++/**
++ * hdmi_drm_infoframe_pack() - check a HDMI DRM infoframe,
++ *                             and write it to binary buffer
++ * @frame: HDMI DRM infoframe
++ * @buffer: destination buffer
++ * @size: size of buffer
++ *
++ * Validates that the infoframe is consistent and updates derived fields
++ * (eg. length) based on other fields, after which it packs the information
++ * contained in the @frame structure into a binary representation that
++ * can be written into the corresponding controller registers. This function
++ * also computes the checksum as required by section 5.3.5 of the HDMI 1.4
++ * specification.
++ *
++ * Returns the number of bytes packed into the binary buffer or a negative
++ * error code on failure.
++ */
++ssize_t hdmi_drm_infoframe_pack(struct hdmi_drm_infoframe *frame,
++				void *buffer, size_t size)
++{
++	int ret;
++
++	ret = hdmi_drm_infoframe_check(frame);
++	if (ret)
++		return ret;
++
++	return hdmi_drm_infoframe_pack_only(frame, buffer, size);
++}
++EXPORT_SYMBOL(hdmi_drm_infoframe_pack);
++
+ /*
+  * hdmi_vendor_any_infoframe_check() - check a vendor infoframe
+  */
+@@ -758,6 +898,10 @@ hdmi_infoframe_pack_only(const union hdmi_infoframe *frame, void *buffer, size_t
+ 		length = hdmi_avi_infoframe_pack_only(&frame->avi,
+ 						      buffer, size);
+ 		break;
++	case HDMI_INFOFRAME_TYPE_DRM:
++		length = hdmi_drm_infoframe_pack_only(&frame->drm,
++						      buffer, size);
++		break;
+ 	case HDMI_INFOFRAME_TYPE_SPD:
+ 		length = hdmi_spd_infoframe_pack_only(&frame->spd,
+ 						      buffer, size);
+@@ -806,6 +950,9 @@ hdmi_infoframe_pack(union hdmi_infoframe *frame,
+ 	case HDMI_INFOFRAME_TYPE_AVI:
+ 		length = hdmi_avi_infoframe_pack(&frame->avi, buffer, size);
+ 		break;
++	case HDMI_INFOFRAME_TYPE_DRM:
++		length = hdmi_drm_infoframe_pack(&frame->drm, buffer, size);
++		break;
+ 	case HDMI_INFOFRAME_TYPE_SPD:
+ 		length = hdmi_spd_infoframe_pack(&frame->spd, buffer, size);
+ 		break;
+@@ -838,6 +985,8 @@ static const char *hdmi_infoframe_type_get_name(enum hdmi_infoframe_type type)
+ 		return "Source Product Description (SPD)";
+ 	case HDMI_INFOFRAME_TYPE_AUDIO:
+ 		return "Audio";
++	case HDMI_INFOFRAME_TYPE_DRM:
++		return "Dynamic Range and Mastering";
+ 	}
+ 	return "Reserved";
+ }
+@@ -1284,6 +1433,40 @@ static void hdmi_audio_infoframe_log(const char *level,
+ 			frame->downmix_inhibit ? "Yes" : "No");
+ }
+ 
++/**
++ * hdmi_drm_infoframe_log() - log info of HDMI DRM infoframe
++ * @level: logging level
++ * @dev: device
++ * @frame: HDMI DRM infoframe
++ */
++static void hdmi_drm_infoframe_log(const char *level,
++				   struct device *dev,
++				   const struct hdmi_drm_infoframe *frame)
++{
++	int i;
++
++	hdmi_infoframe_log_header(level, dev,
++				  (struct hdmi_any_infoframe *)frame);
++	hdmi_log("length: %d\n", frame->length);
++	hdmi_log("metadata type: %d\n", frame->metadata_type);
++	hdmi_log("eotf: %d\n", frame->eotf);
++	for (i = 0; i < 3; i++) {
++		hdmi_log("x[%d]: %d\n", i, frame->display_primaries[i].x);
++		hdmi_log("y[%d]: %d\n", i, frame->display_primaries[i].y);
++	}
++
++	hdmi_log("white point x: %d\n", frame->white_point.x);
++	hdmi_log("white point y: %d\n", frame->white_point.y);
++
++	hdmi_log("max_display_mastering_luminance: %d\n",
++		 frame->max_display_mastering_luminance);
++	hdmi_log("min_display_mastering_luminance: %d\n",
++		 frame->min_display_mastering_luminance);
++
++	hdmi_log("max_cll: %d\n", frame->max_cll);
++	hdmi_log("max_fall: %d\n", frame->max_fall);
++}
++
+ static const char *
+ hdmi_3d_structure_get_name(enum hdmi_3d_structure s3d_struct)
+ {
+@@ -1372,6 +1555,9 @@ void hdmi_infoframe_log(const char *level,
+ 	case HDMI_INFOFRAME_TYPE_VENDOR:
+ 		hdmi_vendor_any_infoframe_log(level, dev, &frame->vendor);
+ 		break;
++	case HDMI_INFOFRAME_TYPE_DRM:
++		hdmi_drm_infoframe_log(level, dev, &frame->drm);
++		break;
+ 	}
+ }
+ EXPORT_SYMBOL(hdmi_infoframe_log);
+diff --git a/include/drm/drm_edid.h b/include/drm/drm_edid.h
+index 47847847f2da..3483fcf07b86 100644
+--- a/include/drm/drm_edid.h
++++ b/include/drm/drm_edid.h
+@@ -25,6 +25,7 @@
+ 
+ #include <linux/types.h>
+ #include <linux/hdmi.h>
++#include <drm/drm_mode.h>
+ 
+ struct drm_device;
+ struct i2c_adapter;
+@@ -374,6 +375,10 @@ static inline int drm_eld_mnl(const uint8_t *eld)
+ 	return (eld[DRM_ELD_CEA_EDID_VER_MNL] & DRM_ELD_MNL_MASK) >> DRM_ELD_MNL_SHIFT;
+ }
+ 
++int
++drm_hdmi_infoframe_set_hdr_metadata(struct hdmi_drm_infoframe *frame,
++				    struct hdr_output_metadata *hdr_metadata);
++
+ /**
+  * drm_eld_sad - Get ELD SAD structures.
+  * @eld: pointer to an eld memory structure with sad_count set
+diff --git a/include/linux/hdmi.h b/include/linux/hdmi.h
+index 6780476dcbff..7edafcf2d021 100644
+--- a/include/linux/hdmi.h
++++ b/include/linux/hdmi.h
+@@ -47,6 +47,7 @@ enum hdmi_infoframe_type {
+ 	HDMI_INFOFRAME_TYPE_AVI = 0x82,
+ 	HDMI_INFOFRAME_TYPE_SPD = 0x83,
+ 	HDMI_INFOFRAME_TYPE_AUDIO = 0x84,
++	HDMI_INFOFRAME_TYPE_DRM = 0x87,
+ };
+ 
+ #define HDMI_IEEE_OUI 0x000c03
+@@ -185,12 +186,37 @@ struct hdmi_avi_infoframe {
+ 	unsigned short right_bar;
+ };
+ 
++/* DRM Infoframe as per CTA 861.G spec */
++struct hdmi_drm_infoframe {
++	enum hdmi_infoframe_type type;
++	unsigned char version;
++	unsigned char length;
++	enum hdmi_eotf eotf;
++	enum hdmi_metadata_type metadata_type;
++	struct {
++		u16 x, y;
++	} display_primaries[3];
++	struct {
++		u16 x, y;
++	} white_point;
++	u16 max_display_mastering_luminance;
++	u16 min_display_mastering_luminance;
++	u16 max_cll;
++	u16 max_fall;
++};
++
+ int hdmi_avi_infoframe_init(struct hdmi_avi_infoframe *frame);
+ ssize_t hdmi_avi_infoframe_pack(struct hdmi_avi_infoframe *frame, void *buffer,
+ 				size_t size);
+ ssize_t hdmi_avi_infoframe_pack_only(const struct hdmi_avi_infoframe *frame,
+ 				     void *buffer, size_t size);
+ int hdmi_avi_infoframe_check(struct hdmi_avi_infoframe *frame);
++int hdmi_drm_infoframe_init(struct hdmi_drm_infoframe *frame);
++ssize_t hdmi_drm_infoframe_pack(struct hdmi_drm_infoframe *frame, void *buffer,
++				size_t size);
++ssize_t hdmi_drm_infoframe_pack_only(const struct hdmi_drm_infoframe *frame,
++				     void *buffer, size_t size);
++int hdmi_drm_infoframe_check(struct hdmi_drm_infoframe *frame);
+ 
+ enum hdmi_spd_sdi {
+ 	HDMI_SPD_SDI_UNKNOWN,
+@@ -381,6 +407,7 @@ union hdmi_infoframe {
+ 	struct hdmi_spd_infoframe spd;
+ 	union hdmi_vendor_any_infoframe vendor;
+ 	struct hdmi_audio_infoframe audio;
++	struct hdmi_drm_infoframe drm;
+ };
+ 
+ ssize_t hdmi_infoframe_pack(union hdmi_infoframe *frame, void *buffer,
+
+From 177fdcae132a222b624ea0eff501cc5d08e417e4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Thu, 9 May 2019 00:08:47 +0530
+Subject: [PATCH] drm: Add HLG EOTF
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+ADD HLG EOTF to the list of EOTF transfer functions supported.
+Hybrid Log-Gamma (HLG) is a high dynamic range (HDR) standard.
+HLG defines a nonlinear transfer function in which the lower
+half of the signal values use a gamma curve and the upper half
+of the signal values use a logarithmic curve.
+
+v2: Rebase
+
+v3: Fixed a warning message
+
+v4: Addressed Shashank's review comments
+
+v5: Addressed Jonas Karlman's review comment and dropped the i915
+tag from header.
+
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Signed-off-by: Uma Shankar <uma.shankar@intel.com>
+Reviewed-by: Shashank Sharma <shashank.sharma@intel.com>
+---
+ drivers/gpu/drm/drm_edid.c | 3 ++-
+ include/linux/hdmi.h       | 1 +
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index c4773dbed2fc..283f456bcb46 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -3839,7 +3839,8 @@ static uint8_t eotf_supported(const u8 *edid_ext)
+ 	return edid_ext[2] &
+ 		(BIT(HDMI_EOTF_TRADITIONAL_GAMMA_SDR) |
+ 		 BIT(HDMI_EOTF_TRADITIONAL_GAMMA_HDR) |
+-		 BIT(HDMI_EOTF_SMPTE_ST2084));
++		 BIT(HDMI_EOTF_SMPTE_ST2084) |
++		 BIT(HDMI_EOTF_BT_2100_HLG));
+ }
+ 
+ static uint8_t hdr_metadata_type(const u8 *edid_ext)
+diff --git a/include/linux/hdmi.h b/include/linux/hdmi.h
+index 7edafcf2d021..3d7f10ff6125 100644
+--- a/include/linux/hdmi.h
++++ b/include/linux/hdmi.h
+@@ -161,6 +161,7 @@ enum hdmi_eotf {
+ 	HDMI_EOTF_TRADITIONAL_GAMMA_SDR,
+ 	HDMI_EOTF_TRADITIONAL_GAMMA_HDR,
+ 	HDMI_EOTF_SMPTE_ST2084,
++	HDMI_EOTF_BT_2100_HLG,
+ };
+ 
+ struct hdmi_avi_infoframe {
+
+From 6fe24bc05a6b414e09ca51d5b3c4cb156f3279ef Mon Sep 17 00:00:00 2001
+From: Uma Shankar <uma.shankar@intel.com>
+Date: Thu, 9 May 2019 00:08:52 +0530
+Subject: [PATCH] video/hdmi: Add Unpack function for DRM infoframe
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Added unpack function for DRM infoframe for dynamic
+range and mastering infoframe readout.
+
+Suggested-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Signed-off-by: Uma Shankar <uma.shankar@intel.com>
+---
+ drivers/video/hdmi.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/hdmi.h |  1 +
+ 2 files changed, 55 insertions(+)
+
+diff --git a/drivers/video/hdmi.c b/drivers/video/hdmi.c
+index 717ed7fb73bf..110d40529561 100644
+--- a/drivers/video/hdmi.c
++++ b/drivers/video/hdmi.c
+@@ -1800,6 +1800,57 @@ hdmi_vendor_any_infoframe_unpack(union hdmi_vendor_any_infoframe *frame,
+ 	return 0;
+ }
+ 
++/**
++ * hdmi_drm_infoframe_unpack() - unpack binary buffer to a HDMI DRM infoframe
++ * @frame: HDMI DRM infoframe
++ * @buffer: source buffer
++ * @size: size of buffer
++ *
++ * Unpacks the information contained in binary @buffer into a structured
++ * @frame of the HDMI Dynamic Range and Mastering (DRM) information frame.
++ * Also verifies the checksum as required by section 5.3.5 of the HDMI 1.4
++ * specification.
++ *
++ * Returns 0 on success or a negative error code on failure.
++ */
++static int hdmi_drm_infoframe_unpack(struct hdmi_drm_infoframe *frame,
++				     const void *buffer, size_t size)
++{
++	const u8 *ptr = buffer;
++	int ret;
++
++	if (size < HDMI_INFOFRAME_SIZE(DRM))
++		return -EINVAL;
++
++	if (ptr[0] != HDMI_INFOFRAME_TYPE_DRM ||
++	    ptr[1] != 1 ||
++	    ptr[2] != HDMI_DRM_INFOFRAME_SIZE)
++		return -EINVAL;
++
++	if (hdmi_infoframe_checksum(buffer, HDMI_INFOFRAME_SIZE(DRM)) != 0)
++		return -EINVAL;
++
++	ret = hdmi_drm_infoframe_init(frame);
++	if (ret)
++		return ret;
++
++	frame->length = ptr[2];
++	ptr += HDMI_INFOFRAME_HEADER_SIZE;
++
++	frame->eotf = ptr[0] & 0x7;
++	frame->metadata_type = ptr[1] & 0x7;
++
++	memcpy(&frame->display_primaries, &ptr[2], 12);
++	memcpy(&frame->white_point, &ptr[14], 4);
++
++	frame->max_display_mastering_luminance = (ptr[19] << 8) | ptr[18];
++	frame->min_display_mastering_luminance = (ptr[21] << 8) | ptr[20];
++	frame->max_cll = (ptr[23] << 8) | ptr[22];
++	frame->max_fall = (ptr[25] << 8) | ptr[24];
++
++	return 0;
++}
++
+ /**
+  * hdmi_infoframe_unpack() - unpack binary buffer to a HDMI infoframe
+  * @frame: HDMI infoframe
+@@ -1826,6 +1877,9 @@ int hdmi_infoframe_unpack(union hdmi_infoframe *frame,
+ 	case HDMI_INFOFRAME_TYPE_AVI:
+ 		ret = hdmi_avi_infoframe_unpack(&frame->avi, buffer, size);
+ 		break;
++	case HDMI_INFOFRAME_TYPE_DRM:
++		ret = hdmi_drm_infoframe_unpack(&frame->drm, buffer, size);
++		break;
+ 	case HDMI_INFOFRAME_TYPE_SPD:
+ 		ret = hdmi_spd_infoframe_unpack(&frame->spd, buffer, size);
+ 		break;
+diff --git a/include/linux/hdmi.h b/include/linux/hdmi.h
+index 3d7f10ff6125..ee55ba589cdc 100644
+--- a/include/linux/hdmi.h
++++ b/include/linux/hdmi.h
+@@ -56,6 +56,7 @@ enum hdmi_infoframe_type {
+ #define HDMI_AVI_INFOFRAME_SIZE    13
+ #define HDMI_SPD_INFOFRAME_SIZE    25
+ #define HDMI_AUDIO_INFOFRAME_SIZE  10
++#define HDMI_DRM_INFOFRAME_SIZE    26
+ 
+ #define HDMI_INFOFRAME_SIZE(type)	\
+ 	(HDMI_INFOFRAME_HEADER_SIZE + HDMI_ ## type ## _INFOFRAME_SIZE)
+
+From de263ccaed21430e7dc6cebecbe1c963c6fc3c5a Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 11 May 2019 11:07:29 +0000
+Subject: [PATCH] WIP: drm/bridge/synopsys: dw-hdmi: set drm infoframe
+
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c   | 110 ++++++++++++++++++++++++++++
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.h   |  37 ++++++++++
+ drivers/gpu/drm/meson/meson_dw_hdmi.c       |   4 +
+ drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c |   2 +
+ drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c       |   2 +
+ drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h       |   1 +
+ include/drm/bridge/dw_hdmi.h                |   1 +
+ 7 files changed, 157 insertions(+)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 992b65b24b45..db0e518c380c 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -24,6 +24,7 @@
+ 
+ #include <drm/drm_of.h>
+ #include <drm/drmP.h>
++#include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
+ #include <drm/drm_edid.h>
+ #include <drm/drm_encoder_slave.h>
+@@ -1622,6 +1623,92 @@ static void hdmi_config_vendor_specific_infoframe(struct dw_hdmi *hdmi,
+ 			HDMI_FC_DATAUTO0_VSD_MASK);
+ }
+ 
++#define HDR_LSB(n) ((n) & 0xff)
++#define HDR_MSB(n) (((n) & 0xff00) >> 8)
++
++static void hdmi_config_drm_infoframe(struct dw_hdmi *hdmi)
++{
++	struct hdmi_drm_infoframe frame;
++	struct hdr_output_metadata *hdr_metadata;
++	struct drm_connector_state *conn_state = hdmi->connector.state;
++	struct drm_connector *connector = conn_state->connector;
++	int ret;
++
++	if (hdmi->version < 0x200a || !hdmi->plat_data->drm_infoframe)
++		return;
++
++	hdmi_modb(hdmi, HDMI_FC_PACKET_TX_EN_DRM_DISABLE,
++		  HDMI_FC_PACKET_TX_EN_DRM_MASK, HDMI_FC_PACKET_TX_EN);
++
++	if (!conn_state->hdr_output_metadata ||
++	    conn_state->hdr_output_metadata->length == 0)
++		return;
++
++	hdr_metadata = (struct hdr_output_metadata *)
++			conn_state->hdr_output_metadata->data;
++
++	/* Sink EOTF is Bit map while infoframe is absolute values */
++	if (!(connector->hdr_sink_metadata.hdmi_type1.eotf &
++	      BIT(hdr_metadata->hdmi_metadata_type1.eotf))) {
++		DRM_ERROR("EOTF Not supported by sink\n");
++		return;
++	}
++
++	ret = drm_hdmi_infoframe_set_hdr_metadata(&frame, hdr_metadata);
++	if (ret < 0) {
++		DRM_ERROR("couldn't set HDR metadata in infoframe\n");
++		return;
++	}
++
++	hdmi_writeb(hdmi, frame.version, HDMI_FC_DRM_HB0);
++	hdmi_writeb(hdmi, frame.length, HDMI_FC_DRM_HB1);
++	hdmi_writeb(hdmi, frame.eotf, HDMI_FC_DRM_PB0);
++	hdmi_writeb(hdmi, frame.metadata_type, HDMI_FC_DRM_PB1);
++	hdmi_writeb(hdmi, HDR_LSB(frame.display_primaries[0].x),
++		    HDMI_FC_DRM_PB2);
++	hdmi_writeb(hdmi, HDR_MSB(frame.display_primaries[0].x),
++		    HDMI_FC_DRM_PB3);
++	hdmi_writeb(hdmi, HDR_LSB(frame.display_primaries[0].y),
++		    HDMI_FC_DRM_PB4);
++	hdmi_writeb(hdmi, HDR_MSB(frame.display_primaries[0].y),
++		    HDMI_FC_DRM_PB5);
++	hdmi_writeb(hdmi, HDR_LSB(frame.display_primaries[1].x),
++		    HDMI_FC_DRM_PB6);
++	hdmi_writeb(hdmi, HDR_MSB(frame.display_primaries[1].x),
++		    HDMI_FC_DRM_PB7);
++	hdmi_writeb(hdmi, HDR_LSB(frame.display_primaries[1].y),
++		    HDMI_FC_DRM_PB8);
++	hdmi_writeb(hdmi, HDR_MSB(frame.display_primaries[1].y),
++		    HDMI_FC_DRM_PB9);
++	hdmi_writeb(hdmi, HDR_LSB(frame.display_primaries[2].x),
++		    HDMI_FC_DRM_PB10);
++	hdmi_writeb(hdmi, HDR_MSB(frame.display_primaries[2].x),
++		    HDMI_FC_DRM_PB11);
++	hdmi_writeb(hdmi, HDR_LSB(frame.display_primaries[2].y),
++		    HDMI_FC_DRM_PB12);
++	hdmi_writeb(hdmi, HDR_MSB(frame.display_primaries[2].y),
++		    HDMI_FC_DRM_PB13);
++	hdmi_writeb(hdmi, HDR_LSB(frame.white_point.x), HDMI_FC_DRM_PB14);
++	hdmi_writeb(hdmi, HDR_MSB(frame.white_point.x), HDMI_FC_DRM_PB15);
++	hdmi_writeb(hdmi, HDR_LSB(frame.white_point.y), HDMI_FC_DRM_PB16);
++	hdmi_writeb(hdmi, HDR_MSB(frame.white_point.y), HDMI_FC_DRM_PB17);
++	hdmi_writeb(hdmi, HDR_LSB(frame.max_display_mastering_luminance),
++		    HDMI_FC_DRM_PB18);
++	hdmi_writeb(hdmi, HDR_MSB(frame.max_display_mastering_luminance),
++		    HDMI_FC_DRM_PB19);
++	hdmi_writeb(hdmi, HDR_LSB(frame.min_display_mastering_luminance),
++		    HDMI_FC_DRM_PB20);
++	hdmi_writeb(hdmi, HDR_MSB(frame.min_display_mastering_luminance),
++		    HDMI_FC_DRM_PB21);
++	hdmi_writeb(hdmi, HDR_LSB(frame.max_cll), HDMI_FC_DRM_PB22);
++	hdmi_writeb(hdmi, HDR_MSB(frame.max_cll), HDMI_FC_DRM_PB23);
++	hdmi_writeb(hdmi, HDR_LSB(frame.max_fall), HDMI_FC_DRM_PB24);
++	hdmi_writeb(hdmi, HDR_MSB(frame.max_fall), HDMI_FC_DRM_PB25);
++	hdmi_writeb(hdmi, 1, HDMI_FC_DRM_UP);
++	hdmi_modb(hdmi, HDMI_FC_PACKET_TX_EN_DRM_ENABLE,
++		  HDMI_FC_PACKET_TX_EN_DRM_MASK, HDMI_FC_PACKET_TX_EN);
++}
++
+ static void hdmi_av_composer(struct dw_hdmi *hdmi,
+ 			     const struct drm_display_mode *mode)
+ {
+@@ -1943,6 +2030,7 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
+ 		/* HDMI Initialization Step F - Configure AVI InfoFrame */
+ 		hdmi_config_AVI(hdmi, mode);
+ 		hdmi_config_vendor_specific_infoframe(hdmi, mode);
++		hdmi_config_drm_infoframe(hdmi);
+ 	} else {
+ 		dev_dbg(hdmi->dev, "%s DVI mode\n", __func__);
+ 	}
+@@ -2137,6 +2225,23 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
+ 	return dw_hdmi_connector_update_edid(connector, true);
+ }
+ 
++static int dw_hdmi_connector_atomic_check(struct drm_connector *conn,
++	struct drm_connector_state *new_state)
++{
++	struct drm_crtc_state *crtc_state;
++
++	if (!new_state->crtc)
++		return 0;
++
++	crtc_state = drm_atomic_get_new_crtc_state(new_state->state,
++						   new_state->crtc);
++
++	if (new_state->hdr_metadata_changed)
++		crtc_state->mode_changed = true;
++
++	return 0;
++}
++
+ static void dw_hdmi_connector_force(struct drm_connector *connector)
+ {
+ 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+@@ -2161,6 +2266,7 @@ static const struct drm_connector_funcs dw_hdmi_connector_funcs = {
+ 
+ static const struct drm_connector_helper_funcs dw_hdmi_connector_helper_funcs = {
+ 	.get_modes = dw_hdmi_connector_get_modes,
++	.atomic_check = dw_hdmi_connector_atomic_check,
+ };
+ 
+ static int dw_hdmi_bridge_attach(struct drm_bridge *bridge)
+@@ -2177,6 +2283,10 @@ static int dw_hdmi_bridge_attach(struct drm_bridge *bridge)
+ 	drm_connector_init(bridge->dev, connector, &dw_hdmi_connector_funcs,
+ 			   DRM_MODE_CONNECTOR_HDMIA);
+ 
++	if (hdmi->version >= 0x200a && hdmi->plat_data->drm_infoframe)
++		drm_object_attach_property(&connector->base,
++			connector->dev->mode_config.hdr_output_metadata_property, 0);
++
+ 	drm_connector_attach_encoder(connector, encoder);
+ 
+ 	return 0;
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.h b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.h
+index 26d2f1b16025..5d0325e891a9 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.h
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.h
+@@ -265,6 +265,7 @@
+ #define HDMI_FC_POL2                            0x10DB
+ #define HDMI_FC_PRCONF                          0x10E0
+ #define HDMI_FC_SCRAMBLER_CTRL                  0x10E1
++#define HDMI_FC_PACKET_TX_EN                    0x10E3
+ 
+ #define HDMI_FC_GMD_STAT                        0x1100
+ #define HDMI_FC_GMD_EN                          0x1101
+@@ -300,6 +301,37 @@
+ #define HDMI_FC_GMD_PB26                        0x111F
+ #define HDMI_FC_GMD_PB27                        0x1120
+ 
++#define HDMI_FC_DRM_UP                          0x1167
++#define HDMI_FC_DRM_HB0                         0x1168
++#define HDMI_FC_DRM_HB1                         0x1169
++#define HDMI_FC_DRM_PB0                         0x116A
++#define HDMI_FC_DRM_PB1                         0x116B
++#define HDMI_FC_DRM_PB2                         0x116C
++#define HDMI_FC_DRM_PB3                         0x116D
++#define HDMI_FC_DRM_PB4                         0x116E
++#define HDMI_FC_DRM_PB5                         0x116F
++#define HDMI_FC_DRM_PB6                         0x1170
++#define HDMI_FC_DRM_PB7                         0x1171
++#define HDMI_FC_DRM_PB8                         0x1172
++#define HDMI_FC_DRM_PB9                         0x1173
++#define HDMI_FC_DRM_PB10                        0x1174
++#define HDMI_FC_DRM_PB11                        0x1175
++#define HDMI_FC_DRM_PB12                        0x1176
++#define HDMI_FC_DRM_PB13                        0x1177
++#define HDMI_FC_DRM_PB14                        0x1178
++#define HDMI_FC_DRM_PB15                        0x1179
++#define HDMI_FC_DRM_PB16                        0x117A
++#define HDMI_FC_DRM_PB17                        0x117B
++#define HDMI_FC_DRM_PB18                        0x117C
++#define HDMI_FC_DRM_PB19                        0x117D
++#define HDMI_FC_DRM_PB20                        0x117E
++#define HDMI_FC_DRM_PB21                        0x117F
++#define HDMI_FC_DRM_PB22                        0x1180
++#define HDMI_FC_DRM_PB23                        0x1181
++#define HDMI_FC_DRM_PB24                        0x1182
++#define HDMI_FC_DRM_PB25                        0x1183
++#define HDMI_FC_DRM_PB26                        0x1184
++
+ #define HDMI_FC_DBGFORCE                        0x1200
+ #define HDMI_FC_DBGAUD0CH0                      0x1201
+ #define HDMI_FC_DBGAUD1CH0                      0x1202
+@@ -766,6 +798,11 @@ enum {
+ 	HDMI_FC_PRCONF_OUTPUT_PR_FACTOR_MASK = 0x0F,
+ 	HDMI_FC_PRCONF_OUTPUT_PR_FACTOR_OFFSET = 0,
+ 
++/* FC_PACKET_TX_EN field values */
++	HDMI_FC_PACKET_TX_EN_DRM_MASK = 0x80,
++	HDMI_FC_PACKET_TX_EN_DRM_ENABLE = 0x80,
++	HDMI_FC_PACKET_TX_EN_DRM_DISABLE = 0x00,
++
+ /* FC_AVICONF0-FC_AVICONF3 field values */
+ 	HDMI_FC_AVICONF0_PIX_FMT_MASK = 0x03,
+ 	HDMI_FC_AVICONF0_PIX_FMT_RGB = 0x00,
+diff --git a/drivers/gpu/drm/meson/meson_dw_hdmi.c b/drivers/gpu/drm/meson/meson_dw_hdmi.c
+index 563953ec6ad0..35a8e42bc5a4 100644
+--- a/drivers/gpu/drm/meson/meson_dw_hdmi.c
++++ b/drivers/gpu/drm/meson/meson_dw_hdmi.c
+@@ -886,6 +886,10 @@ static int meson_dw_hdmi_bind(struct device *dev, struct device *master,
+ 	dw_plat_data->input_bus_format = MEDIA_BUS_FMT_YUV8_1X24;
+ 	dw_plat_data->input_bus_encoding = V4L2_YCBCR_ENC_709;
+ 
++	if (dw_hdmi_is_compatible(meson_dw_hdmi, "amlogic,meson-gxl-dw-hdmi") ||
++	    dw_hdmi_is_compatible(meson_dw_hdmi, "amlogic,meson-gxm-dw-hdmi"))
++		dw_plat_data->drm_infoframe = true;
++
+ 	platform_set_drvdata(pdev, meson_dw_hdmi);
+ 
+ 	meson_dw_hdmi->hdmi = dw_hdmi_bind(pdev, encoder,
+diff --git a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+index 4cdc9f86c2e5..1f31f3726f04 100644
+--- a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+@@ -405,6 +405,7 @@ static const struct dw_hdmi_plat_data rk3328_hdmi_drv_data = {
+ 	.phy_ops = &rk3328_hdmi_phy_ops,
+ 	.phy_name = "inno_dw_hdmi_phy2",
+ 	.phy_force_vendor = true,
++	.drm_infoframe = true,
+ };
+ 
+ static struct rockchip_hdmi_chip_data rk3399_chip_data = {
+@@ -419,6 +420,7 @@ static const struct dw_hdmi_plat_data rk3399_hdmi_drv_data = {
+ 	.cur_ctr    = rockchip_cur_ctr,
+ 	.phy_config = rockchip_phy_config,
+ 	.phy_data = &rk3399_chip_data,
++	.drm_infoframe = true,
+ };
+ 
+ static const struct of_device_id dw_hdmi_rockchip_dt_ids[] = {
+diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
+index 39d8509d96a0..b80164dd8ad8 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
++++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
+@@ -189,6 +189,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+ 	sun8i_hdmi_phy_init(hdmi->phy);
+ 
+ 	plat_data->mode_valid = hdmi->quirks->mode_valid;
++	plat_data->drm_infoframe = hdmi->quirks->drm_infoframe;
+ 	sun8i_hdmi_phy_set_ops(hdmi->phy, plat_data);
+ 
+ 	platform_set_drvdata(pdev, hdmi);
+@@ -255,6 +256,7 @@ static const struct sun8i_dw_hdmi_quirks sun8i_a83t_quirks = {
+ 
+ static const struct sun8i_dw_hdmi_quirks sun50i_h6_quirks = {
+ 	.mode_valid = sun8i_dw_hdmi_mode_valid_h6,
++	.drm_infoframe = true,
+ };
+ 
+ static const struct of_device_id sun8i_dw_hdmi_dt_ids[] = {
+diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h
+index 720c5aa8adc1..2a0ec08ee236 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h
++++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h
+@@ -178,6 +178,7 @@ struct sun8i_dw_hdmi_quirks {
+ 	enum drm_mode_status (*mode_valid)(struct drm_connector *connector,
+ 					   const struct drm_display_mode *mode);
+ 	unsigned int set_rate : 1;
++	unsigned int drm_infoframe : 1;
+ };
+ 
+ struct sun8i_dw_hdmi {
+diff --git a/include/drm/bridge/dw_hdmi.h b/include/drm/bridge/dw_hdmi.h
+index 531213a59d6f..83ad1a35a9e5 100644
+--- a/include/drm/bridge/dw_hdmi.h
++++ b/include/drm/bridge/dw_hdmi.h
+@@ -130,6 +130,7 @@ struct dw_hdmi_plat_data {
+ 					   const struct drm_display_mode *mode);
+ 	unsigned long input_bus_format;
+ 	unsigned long input_bus_encoding;
++	bool drm_infoframe;
+ 
+ 	/* Vendor PHY support */
+ 	const struct dw_hdmi_phy_ops *phy_ops;
+
+From 9180d2a42939b92fe0f41c5524f02be2953a7aff Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 11 May 2019 11:34:28 +0000
+Subject: [PATCH] fixup! drm: Add HDR source metadata property
+
+---
+ include/drm/drm_connector.h   | 2 +-
+ include/drm/drm_mode_config.h | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/include/drm/drm_connector.h b/include/drm/drm_connector.h
+index 6c6e7d94d7bb..3a49ead7c2b6 100644
+--- a/include/drm/drm_connector.h
++++ b/include/drm/drm_connector.h
+@@ -528,7 +528,7 @@ struct drm_connector_state {
+ 	u8 max_bpc;
+ 
+ 	/**
+-	 * @metadata_blob_ptr:
++	 * @hdr_output_metadata:
+ 	 * DRM blob property for HDR output metadata
+ 	 */
+ 	struct drm_property_blob *hdr_output_metadata;
+diff --git a/include/drm/drm_mode_config.h b/include/drm/drm_mode_config.h
+index ef2656b64824..758366e9123c 100644
+--- a/include/drm/drm_mode_config.h
++++ b/include/drm/drm_mode_config.h
+@@ -836,8 +836,8 @@ struct drm_mode_config {
+ 	 */
+ 	struct drm_property *writeback_out_fence_ptr_property;
+ 
+-	/*
+-	 * hdr_metadata_property: Connector property containing hdr metatda
++	/**
++	 * @hdr_output_metadata_property: Connector property containing hdr metatda
+ 	 * This will be provided by userspace compositors based on HDR content
+ 	 */
+ 	struct drm_property *hdr_output_metadata_property;
+
+From 05ea82ae6c030acc43dcb24ca547fab17b30c547 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 11 May 2019 11:34:28 +0000
+Subject: [PATCH] fixup! drm: Parse HDR metadata info from EDID
+
+---
+ drivers/gpu/drm/drm_edid.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index 283f456bcb46..fc6d7b34ef19 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -4890,10 +4890,10 @@ static bool is_hdmi2_sink(struct drm_connector *connector)
+ }
+ 
+ /**
+- * drm_hdmi_infoframe_set_hdr_metadata() - fill an HDMI AVI infoframe with
++ * drm_hdmi_infoframe_set_hdr_metadata() - fill an HDMI DRM infoframe with
+  *                                         HDR metadata from userspace
+- * @frame: HDMI AVI infoframe
+- * @hdr_source_metadata: hdr_source_metadata info from userspace
++ * @frame: HDMI DRM infoframe
++ * @hdr_metadata: hdr_source_metadata info from userspace
+  *
+  * Return: 0 on success or a negative error code on failure.
+  */
+@@ -4930,9 +4930,6 @@ drm_hdmi_infoframe_set_hdr_metadata(struct hdmi_drm_infoframe *frame,
+ 	frame->max_fall = hdr_metadata->hdmi_metadata_type1.max_fall;
+ 	frame->max_cll = hdr_metadata->hdmi_metadata_type1.max_cll;
+ 
+-	hdmi_infoframe_log(KERN_CRIT, NULL,
+-			   (union hdmi_infoframe *)frame);
+-
+ 	return 0;
+ }
+ EXPORT_SYMBOL(drm_hdmi_infoframe_set_hdr_metadata);
+
+From 05f7ab2ea0046ade6917b49a8402743f92250876 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 11 May 2019 11:34:29 +0000
+Subject: [PATCH] fixup! drm: Enable HDR infoframe support
+
+---
+ drivers/video/hdmi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/video/hdmi.c b/drivers/video/hdmi.c
+index 110d40529561..f347433ba756 100644
+--- a/drivers/video/hdmi.c
++++ b/drivers/video/hdmi.c
+@@ -691,7 +691,7 @@ int hdmi_drm_infoframe_check(struct hdmi_drm_infoframe *frame)
+ EXPORT_SYMBOL(hdmi_drm_infoframe_check);
+ 
+ /**
+- * hdmi_drm_infoframe_pack() - write HDMI DRM infoframe to binary buffer
++ * hdmi_drm_infoframe_pack_only() - write HDMI DRM infoframe to binary buffer
+  * @frame: HDMI DRM infoframe
+  * @buffer: destination buffer
+  * @size: size of buffer

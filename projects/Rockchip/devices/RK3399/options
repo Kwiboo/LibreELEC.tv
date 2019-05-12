@@ -33,6 +33,15 @@
 
     if [ "$LINUX" = "rockchip-4.4" ]; then
       KERNEL_MAKE_EXTRACMD+=" rockchip/rk3399-khadas-edge.dtb"
+    elif [ "$LINUX" = "rockchip-5.x" ]; then
+      KERNEL_MAKE_EXTRACMD+=" rockchip/rk3399-ficus.dtb"
+      KERNEL_MAKE_EXTRACMD+=" rockchip/rk3399-firefly.dtb"
+      KERNEL_MAKE_EXTRACMD+=" rockchip/rk3399-nanopc-t4.dtb"
+      KERNEL_MAKE_EXTRACMD+=" rockchip/rk3399-nanopi-m4.dtb"
+      KERNEL_MAKE_EXTRACMD+=" rockchip/rk3399-nanopi-neo4.dtb"
+      KERNEL_MAKE_EXTRACMD+=" rockchip/rk3399-orangepi.dtb"
+      KERNEL_MAKE_EXTRACMD+=" rockchip/rk3399-roc-pc.dtb"
+      KERNEL_MAKE_EXTRACMD+=" rockchip/rk3399-sapphire-excavator.dtb"
     fi
 
   # Mali GPU family

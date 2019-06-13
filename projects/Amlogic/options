@@ -34,25 +34,14 @@
   # Windowmanager to use (ratpoison / fluxbox / none)
     WINDOWMANAGER="none"
 
-  # Xorg Graphic drivers to use (all / i915,i965,r200,r300,r600,nvidia)
-  # Space separated list is supported,
-  # e.g. GRAPHIC_DRIVERS="i915 i965 r300 r600 radeonsi nvidia"
-    GRAPHIC_DRIVERS=""
-
   # additional Firmware to use (dvb-firmware, misc-firmware, wlan-firmware)
     FIRMWARE="brcmfmac_sdio-firmware meson-firmware"
-
-  # build and install ATV IR remote support (yes / no)
-    ATVCLIENT_SUPPORT="no"
-
-  # build and install iSCSI support - iscsistart (yes / no)
-    ISCSI_SUPPORT="no"
 
   # build with installer (yes / no)
     INSTALLER_SUPPORT="no"
 
   # build and install driver addons (yes / no)
-    DRIVER_ADDONS_SUPPORT="no"
+    DRIVER_ADDONS_SUPPORT="yes"
 
   # driver addons to install:
     DRIVER_ADDONS="crazycat dvb-latest"

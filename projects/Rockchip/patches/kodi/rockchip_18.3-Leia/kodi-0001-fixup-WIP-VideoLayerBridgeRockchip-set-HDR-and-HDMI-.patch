@@ -1,0 +1,203 @@
+From 6beb573e3de1a6db747687468cca7fdd6866e3a9 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 22 Jun 2019 16:20:26 +0000
+Subject: [PATCH] fixup! WIP: VideoLayerBridgeRockchip: set HDR and HDMI output
+ properties
+
+---
+ .../Process/gbm/VideoBufferDRMPRIME.cpp       | 26 ++++++++
+ .../Process/gbm/VideoBufferDRMPRIME.h         | 28 +++++++++
+ .../HwDecRender/VideoLayerBridgeRockchip.cpp  | 62 +++++++++++--------
+ 3 files changed, 91 insertions(+), 25 deletions(-)
+
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
+index 719f0185bc..4232251858 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
+@@ -78,6 +78,32 @@ int CVideoBufferDRMPRIME::GetColorRange() const
+   }
+ }
+ 
++uint8_t CVideoBufferDRMPRIME::GetEOTF() const
++{
++  switch (m_pFrame->color_trc)
++  {
++  case AVCOL_TRC_SMPTE2084:
++    return HDMI_EOTF_SMPTE_ST2084;
++  case AVCOL_TRC_ARIB_STD_B67:
++  case AVCOL_TRC_BT2020_10:
++    return HDMI_EOTF_BT_2100_HLG;
++  default:
++    return HDMI_EOTF_TRADITIONAL_GAMMA_SDR;
++  }
++}
++
++AVMasteringDisplayMetadata* CVideoBufferDRMPRIME::GetMasteringDisplayMetadata() const
++{
++  AVFrameSideData* sd = av_frame_get_side_data(m_pFrame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
++  return (sd && sd->data) ? reinterpret_cast<AVMasteringDisplayMetadata*>(sd->data) : nullptr;
++}
++
++AVContentLightMetadata* CVideoBufferDRMPRIME::GetContentLightMetadata() const
++{
++  AVFrameSideData* sd = av_frame_get_side_data(m_pFrame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
++  return (sd && sd->data) ? reinterpret_cast<AVContentLightMetadata*>(sd->data) : nullptr;
++}
++
+ bool CVideoBufferDRMPRIME::IsValid() const
+ {
+   AVDRMFrameDescriptor* descriptor = GetDescriptor();
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h
+index eaa20a42e0..a796cd341e 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h
+@@ -14,6 +14,7 @@ extern "C"
+ {
+ #include <libavutil/frame.h>
+ #include <libavutil/hwcontext_drm.h>
++#include <libavutil/mastering_display_metadata.h>
+ }
+ 
+ // Color enums is copied from linux include/drm/drm_color_mgmt.h (strangely not part of uapi)
+@@ -28,6 +29,18 @@ enum drm_color_range
+   DRM_COLOR_YCBCR_LIMITED_RANGE,
+   DRM_COLOR_YCBCR_FULL_RANGE,
+ };
++// HDR enums is copied from linux include/linux/hdmi.h (strangely not part of uapi)
++enum hdmi_metadata_type
++{
++  HDMI_STATIC_METADATA_TYPE1 = 1,
++};
++enum hdmi_eotf
++{
++  HDMI_EOTF_TRADITIONAL_GAMMA_SDR,
++  HDMI_EOTF_TRADITIONAL_GAMMA_HDR,
++  HDMI_EOTF_SMPTE_ST2084,
++  HDMI_EOTF_BT_2100_HLG,
++};
+ 
+ class IVideoBufferDRMPRIME : public CVideoBuffer
+ {
+@@ -46,6 +59,18 @@ public:
+   {
+     return DRM_COLOR_YCBCR_LIMITED_RANGE;
+   };
++  virtual uint8_t GetEOTF() const
++  {
++    return HDMI_EOTF_TRADITIONAL_GAMMA_SDR;
++  };
++  virtual AVMasteringDisplayMetadata* GetMasteringDisplayMetadata() const
++  {
++    return nullptr;
++  };
++  virtual AVContentLightMetadata* GetContentLightMetadata() const
++  {
++    return nullptr;
++  };
+ 
+   virtual bool IsValid() const
+   {
+@@ -86,6 +111,9 @@ public:
+   }
+   int GetColorEncoding() const override;
+   int GetColorRange() const override;
++  uint8_t GetEOTF() const override;
++  AVMasteringDisplayMetadata* GetMasteringDisplayMetadata() const override;
++  AVContentLightMetadata* GetContentLightMetadata() const override;
+   AVFrame* GetFrame() const
+   {
+     return m_pFrame;
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeRockchip.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeRockchip.cpp
+index 10879cf751..0c7ad8aefd 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeRockchip.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeRockchip.cpp
+@@ -38,17 +38,6 @@ enum hdmi_extended_colorimetry {
+ 
+ #define RK_HDMI_COLORIMETRY_BT2020 (HDMI_COLORIMETRY_EXTENDED + HDMI_EXTENDED_COLORIMETRY_BT2020)
+ 
+-enum hdmi_metadata_type {
+-	HDMI_STATIC_METADATA_TYPE1 = 1,
+-};
+-
+-enum hdmi_eotf {
+-	HDMI_EOTF_TRADITIONAL_GAMMA_SDR,
+-	HDMI_EOTF_TRADITIONAL_GAMMA_HDR,
+-	HDMI_EOTF_SMPTE_ST2084,
+-	HDMI_EOTF_BT_2100_HLG,
+-};
+-
+ static int GetColorSpace(bool is10bit, AVFrame* frame)
+ {
+   if (is10bit && frame->color_primaries != AVCOL_PRI_BT709)
+@@ -58,19 +47,6 @@ static int GetColorSpace(bool is10bit, AVFrame* frame)
+   return V4L2_COLORSPACE_REC709;
+ }
+ 
+-static int GetEOTF(bool is10bit, AVFrame* frame)
+-{
+-  if (is10bit)
+-  {
+-    if (frame->color_trc == AVCOL_TRC_SMPTE2084)
+-      return HDMI_EOTF_SMPTE_ST2084;
+-    if (frame->color_trc == AVCOL_TRC_ARIB_STD_B67 ||
+-        frame->color_trc == AVCOL_TRC_BT2020_10)
+-      return HDMI_EOTF_BT_2100_HLG;
+-  }
+-  return HDMI_EOTF_TRADITIONAL_GAMMA_SDR;
+-}
+-
+ void CVideoLayerBridgeRockchip::Configure(IVideoBufferDRMPRIME* buffer)
+ {
+   AVDRMFrameDescriptor* descriptor = buffer->GetDescriptor();
+@@ -79,14 +55,50 @@ void CVideoLayerBridgeRockchip::Configure(IVideoBufferDRMPRIME* buffer)
+   AVFrame* frame = dynamic_cast<CVideoBufferDRMPRIME*>(buffer)->GetFrame();
+ 
+   m_hdr_metadata.type = HDMI_STATIC_METADATA_TYPE1;
+-  m_hdr_metadata.eotf = GetEOTF(is10bit, frame);
++  m_hdr_metadata.eotf = buffer->GetEOTF();
+ 
+   if (m_hdr_blob_id)
+     drmModeDestroyPropertyBlob(m_DRM->GetFileDescriptor(), m_hdr_blob_id);
+   m_hdr_blob_id = 0;
+ 
+   if (m_hdr_metadata.eotf)
++  {
++    AVMasteringDisplayMetadata* mdmd = buffer->GetMasteringDisplayMetadata();
++    if (mdmd && mdmd->has_primaries)
++    {
++      for (int i = 0; i < 3; i++)
++      {
++        m_hdr_metadata.display_primaries_x[i] = std::round(av_q2d(mdmd->display_primaries[i][0]) * 50000.0);
++        m_hdr_metadata.display_primaries_y[i] = std::round(av_q2d(mdmd->display_primaries[i][1]) * 50000.0);
++      }
++      m_hdr_metadata.white_point_x = std::round(av_q2d(mdmd->white_point[0]) * 50000.0);
++      m_hdr_metadata.white_point_y = std::round(av_q2d(mdmd->white_point[1]) * 50000.0);
++
++      CLog::Log(LOGNOTICE, "CVideoLayerBridgeRockchip::{} - r({},{}) g({},{}) b({},{}) wp({},{})", __FUNCTION__,
++                av_q2d(mdmd->display_primaries[0][0]), av_q2d(mdmd->display_primaries[0][1]),
++                av_q2d(mdmd->display_primaries[1][0]), av_q2d(mdmd->display_primaries[1][1]),
++                av_q2d(mdmd->display_primaries[2][0]), av_q2d(mdmd->display_primaries[2][1]),
++                av_q2d(mdmd->white_point[0]), av_q2d(mdmd->white_point[1]));
++    }
++    if (mdmd && mdmd->has_luminance)
++    {
++      m_hdr_metadata.max_mastering_display_luminance = std::round(av_q2d(mdmd->max_luminance));
++      m_hdr_metadata.min_mastering_display_luminance = std::round(av_q2d(mdmd->min_luminance) * 10000.0);
++
++      CLog::Log(LOGNOTICE, "CVideoLayerBridgeRockchip::{} - min_luminance={}, max_luminance={}", __FUNCTION__, av_q2d(mdmd->min_luminance), av_q2d(mdmd->max_luminance));
++    }
++
++    AVContentLightMetadata* clmd = buffer->GetContentLightMetadata();
++    if (clmd)
++    {
++      m_hdr_metadata.max_cll = clmd->MaxCLL;
++      m_hdr_metadata.max_fall = clmd->MaxFALL;
++
++      CLog::Log(LOGNOTICE, "CVideoLayerBridgeRockchip::{} - MaxCLL={}, MaxFALL={}", __FUNCTION__, clmd->MaxCLL, clmd->MaxFALL);
++    }
++
+     drmModeCreatePropertyBlob(m_DRM->GetFileDescriptor(), &m_hdr_metadata, sizeof(m_hdr_metadata), &m_hdr_blob_id);
++  }
+ 
+   CLog::Log(LOGNOTICE, "CVideoLayerBridgeRockchip::{} - format={} is10bit={} width={} height={} colorspace={} color_primaries={} color_trc={} color_range={} eotf={} blob_id={}",
+             __FUNCTION__, layer->format, is10bit, frame->width, frame->height, frame->colorspace, frame->color_primaries, frame->color_trc, frame->color_range, m_hdr_metadata.eotf, m_hdr_blob_id);

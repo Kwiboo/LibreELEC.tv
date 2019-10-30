@@ -54,7 +54,7 @@
 
   # Kernel to use. values can be:
   # default:  default mainline kernel
-    LINUX="raspberrypi"
+    LINUX="${LINUX:-raspberrypi}"
 
 ################################################################################
 # setup build defaults

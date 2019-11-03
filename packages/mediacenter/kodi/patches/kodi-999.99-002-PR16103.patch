@@ -1,0 +1,320 @@
+From 13a74ebb1e88e8803cfe4803b070bc2b2cac3237 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Thu, 17 Oct 2019 21:50:20 +0000
+Subject: [PATCH 1/2] windowing/gbm: add GetConnector method
+
+---
+ xbmc/windowing/gbm/DRMUtils.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/xbmc/windowing/gbm/DRMUtils.h b/xbmc/windowing/gbm/DRMUtils.h
+index 4ff5b7862436..9d3dbba80d35 100644
+--- a/xbmc/windowing/gbm/DRMUtils.h
++++ b/xbmc/windowing/gbm/DRMUtils.h
+@@ -111,6 +111,7 @@ class CDRMUtils
+   std::vector<uint64_t> *GetVideoPlaneModifiersForFormat(uint32_t format) { return &m_video_plane->modifiers_map[format]; }
+   std::vector<uint64_t> *GetGuiPlaneModifiersForFormat(uint32_t format) { return &m_gui_plane->modifiers_map[format]; }
+   struct crtc* GetCrtc() const { return m_crtc; }
++  struct connector* GetConnector() const { return m_connector; }
+ 
+   virtual RESOLUTION_INFO GetCurrentMode();
+   virtual std::vector<RESOLUTION_INFO> GetModes();
+
+From 9124e687c79807ae1cafb6448b659317cf49a8ca Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Fri, 25 Oct 2019 20:59:57 +0000
+Subject: [PATCH 2/2] VideoLayerBridgeDRMPRIME: set HDR metadata
+
+---
+ cmake/modules/FindLibDRM.cmake                | 15 ++++
+ .../DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp | 26 +++++++
+ .../Process/gbm/VideoBufferDRMPRIME.cpp       | 24 +++++++
+ .../Process/gbm/VideoBufferDRMPRIME.h         | 17 +++++
+ .../HwDecRender/VideoLayerBridgeDRMPRIME.cpp  | 72 +++++++++++++++++++
+ .../HwDecRender/VideoLayerBridgeDRMPRIME.h    | 33 +++++++++
+ 6 files changed, 187 insertions(+)
+
+diff --git a/cmake/modules/FindLibDRM.cmake b/cmake/modules/FindLibDRM.cmake
+index 4b39de31e9b4..0d680f2b9920 100644
+--- a/cmake/modules/FindLibDRM.cmake
++++ b/cmake/modules/FindLibDRM.cmake
+@@ -8,6 +8,7 @@
+ # LIBDRM_FOUND - system has LibDRM
+ # LIBDRM_INCLUDE_DIRS - the LibDRM include directory
+ # LIBDRM_LIBRARIES - the LibDRM libraries
++# LIBDRM_DEFINITIONS  - the LibDRM definitions
+ #
+ # and the following imported targets::
+ #
+@@ -30,9 +31,23 @@ find_package_handle_standard_args(LibDRM
+                                   REQUIRED_VARS LIBDRM_LIBRARY LIBDRM_INCLUDE_DIR
+                                   VERSION_VAR LIBDRM_VERSION)
+ 
++include(CheckCSourceCompiles)
++set(CMAKE_REQUIRED_INCLUDES ${LIBDRM_INCLUDE_DIR})
++check_c_source_compiles("#include <drm_mode.h>
++
++                         int main()
++                         {
++                           struct hdr_output_metadata test;
++                           return test.metadata_type;
++                         }
++                         " LIBDRM_HAS_HDR_OUTPUT_METADATA)
++
+ if(LIBDRM_FOUND)
+   set(LIBDRM_LIBRARIES ${LIBDRM_LIBRARY})
+   set(LIBDRM_INCLUDE_DIRS ${LIBDRM_INCLUDE_DIR})
++  if(LIBDRM_HAS_HDR_OUTPUT_METADATA)
++    set(LIBDRM_DEFINITIONS -DHAVE_HDR_OUTPUT_METADATA=1)
++  endif()
+ 
+   if(NOT TARGET LIBDRM::LIBDRM)
+     add_library(LIBDRM::LIBDRM UNKNOWN IMPORTED)
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+index ddf2b50f761d..c26567035604 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+@@ -295,6 +295,32 @@ void CDVDVideoCodecDRMPRIME::SetPictureParams(VideoPicture* pVideoPicture)
+             m_pCodecContext->profile == FF_PROFILE_H264_HIGH_10_INTRA))
+     pVideoPicture->colorBits = 10;
+ 
++  pVideoPicture->hasDisplayMetadata = false;
++  AVFrameSideData* sd = av_frame_get_side_data(m_pFrame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
++  if (sd)
++  {
++    pVideoPicture->displayMetadata = *reinterpret_cast<AVMasteringDisplayMetadata*>(sd->data);
++    pVideoPicture->hasDisplayMetadata = true;
++  }
++  else if (m_hints.masteringMetadata)
++  {
++    pVideoPicture->displayMetadata = *m_hints.masteringMetadata.get();
++    pVideoPicture->hasDisplayMetadata = true;
++  }
++
++  pVideoPicture->hasLightMetadata = false;
++  sd = av_frame_get_side_data(m_pFrame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
++  if (sd)
++  {
++    pVideoPicture->lightMetadata = *reinterpret_cast<AVContentLightMetadata*>(sd->data);
++    pVideoPicture->hasLightMetadata = true;
++  }
++  else if (m_hints.contentLightMetadata)
++  {
++    pVideoPicture->lightMetadata = *m_hints.contentLightMetadata.get();
++    pVideoPicture->hasLightMetadata = true;
++  }
++
+   pVideoPicture->iRepeatPicture = 0;
+   pVideoPicture->iFlags = 0;
+   pVideoPicture->iFlags |= m_pFrame->interlaced_frame ? DVP_FLAG_INTERLACED : 0;
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
+index 309e9aff710f..c1069dc4b435 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
+@@ -49,6 +49,30 @@ int GetColorRange(const VideoPicture& picture)
+   return DRM_COLOR_YCBCR_LIMITED_RANGE;
+ }
+ 
++uint8_t GetEOTF(const VideoPicture& picture)
++{
++  switch (picture.color_transfer)
++  {
++    case AVCOL_TRC_SMPTE2084:
++      return HDMI_EOTF_SMPTE_ST2084;
++    case AVCOL_TRC_ARIB_STD_B67:
++    case AVCOL_TRC_BT2020_10:
++      return HDMI_EOTF_BT_2100_HLG;
++    default:
++      return HDMI_EOTF_TRADITIONAL_GAMMA_SDR;
++  }
++}
++
++const AVMasteringDisplayMetadata* GetMasteringDisplayMetadata(const VideoPicture& picture)
++{
++  return picture.hasDisplayMetadata ? &picture.displayMetadata : nullptr;
++}
++
++const AVContentLightMetadata* GetContentLightMetadata(const VideoPicture& picture)
++{
++  return picture.hasLightMetadata ? &picture.lightMetadata : nullptr;
++}
++
+ } // namespace DRMPRIME
+ 
+ CVideoBufferDRMPRIME::CVideoBufferDRMPRIME(int id) : CVideoBuffer(id)
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h
+index e0c166456cf0..4f7d4340014c 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.h
+@@ -15,6 +15,7 @@ extern "C"
+ {
+ #include <libavutil/frame.h>
+ #include <libavutil/hwcontext_drm.h>
++#include <libavutil/mastering_display_metadata.h>
+ }
+ 
+ namespace DRMPRIME
+@@ -33,8 +34,24 @@ enum drm_color_range
+   DRM_COLOR_YCBCR_FULL_RANGE,
+ };
+ 
++// HDR enums is copied from linux include/linux/hdmi.h (strangely not part of uapi)
++enum hdmi_metadata_type
++{
++  HDMI_STATIC_METADATA_TYPE1 = 1,
++};
++enum hdmi_eotf
++{
++  HDMI_EOTF_TRADITIONAL_GAMMA_SDR,
++  HDMI_EOTF_TRADITIONAL_GAMMA_HDR,
++  HDMI_EOTF_SMPTE_ST2084,
++  HDMI_EOTF_BT_2100_HLG,
++};
++
+ int GetColorEncoding(const VideoPicture& picture);
+ int GetColorRange(const VideoPicture& picture);
++uint8_t GetEOTF(const VideoPicture& picture);
++const AVMasteringDisplayMetadata* GetMasteringDisplayMetadata(const VideoPicture& picture);
++const AVContentLightMetadata* GetContentLightMetadata(const VideoPicture& picture);
+ 
+ } // namespace DRMPRIME
+ 
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp
+index 4105b8c74006..ae3557e84a3e 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp
+@@ -31,6 +31,18 @@ void CVideoLayerBridgeDRMPRIME::Disable()
+   struct plane* plane = m_DRM->GetVideoPlane();
+   m_DRM->AddProperty(plane, "FB_ID", 0);
+   m_DRM->AddProperty(plane, "CRTC_ID", 0);
++
++  // disable HDR metadata
++  struct connector* connector = m_DRM->GetConnector();
++  if (m_DRM->SupportsProperty(connector, "HDR_OUTPUT_METADATA"))
++  {
++    m_DRM->AddProperty(connector, "HDR_OUTPUT_METADATA", 0);
++    m_DRM->SetActive(true);
++
++    if (m_hdr_blob_id)
++      drmModeDestroyPropertyBlob(m_DRM->GetFileDescriptor(), m_hdr_blob_id);
++    m_hdr_blob_id = 0;
++  }
+ }
+ 
+ void CVideoLayerBridgeDRMPRIME::Acquire(CVideoBufferDRMPRIME* buffer)
+@@ -148,6 +160,66 @@ void CVideoLayerBridgeDRMPRIME::Configure(CVideoBufferDRMPRIME* buffer)
+     m_DRM->AddProperty(plane, "COLOR_ENCODING", GetColorEncoding(picture));
+     m_DRM->AddProperty(plane, "COLOR_RANGE", GetColorRange(picture));
+   }
++
++  struct connector* connector = m_DRM->GetConnector();
++  if (m_DRM->SupportsProperty(connector, "HDR_OUTPUT_METADATA"))
++  {
++    m_hdr_metadata.metadata_type = HDMI_STATIC_METADATA_TYPE1;
++    m_hdr_metadata.hdmi_metadata_type1 = {
++        .eotf = GetEOTF(picture),
++        .metadata_type = HDMI_STATIC_METADATA_TYPE1,
++    };
++
++    if (m_hdr_blob_id)
++      drmModeDestroyPropertyBlob(m_DRM->GetFileDescriptor(), m_hdr_blob_id);
++    m_hdr_blob_id = 0;
++
++    if (m_hdr_metadata.hdmi_metadata_type1.eotf)
++    {
++      const AVMasteringDisplayMetadata* mdmd = GetMasteringDisplayMetadata(picture);
++      if (mdmd && mdmd->has_primaries)
++      {
++        // Convert to unsigned 16-bit values in units of 0.00002,
++        // where 0x0000 represents zero and 0xC350 represents 1.0000
++        for (int i = 0; i < 3; i++)
++        {
++          m_hdr_metadata.hdmi_metadata_type1.display_primaries[i].x =
++              std::round(av_q2d(mdmd->display_primaries[i][0]) * 50000.0);
++          m_hdr_metadata.hdmi_metadata_type1.display_primaries[i].y =
++              std::round(av_q2d(mdmd->display_primaries[i][1]) * 50000.0);
++        }
++        m_hdr_metadata.hdmi_metadata_type1.white_point.x =
++            std::round(av_q2d(mdmd->white_point[0]) * 50000.0);
++        m_hdr_metadata.hdmi_metadata_type1.white_point.y =
++            std::round(av_q2d(mdmd->white_point[1]) * 50000.0);
++      }
++      if (mdmd && mdmd->has_luminance)
++      {
++        // Convert to unsigned 16-bit value in units of 1 cd/m2,
++        // where 0x0001 represents 1 cd/m2 and 0xFFFF represents 65535 cd/m2
++        m_hdr_metadata.hdmi_metadata_type1.max_display_mastering_luminance =
++            std::round(av_q2d(mdmd->max_luminance));
++
++        // Convert to unsigned 16-bit value in units of 0.0001 cd/m2,
++        // where 0x0001 represents 0.0001 cd/m2 and 0xFFFF represents 6.5535 cd/m2
++        m_hdr_metadata.hdmi_metadata_type1.min_display_mastering_luminance =
++            std::round(av_q2d(mdmd->min_luminance) * 10000.0);
++      }
++
++      const AVContentLightMetadata* clmd = GetContentLightMetadata(picture);
++      if (clmd)
++      {
++        m_hdr_metadata.hdmi_metadata_type1.max_cll = clmd->MaxCLL;
++        m_hdr_metadata.hdmi_metadata_type1.max_fall = clmd->MaxFALL;
++      }
++
++      drmModeCreatePropertyBlob(m_DRM->GetFileDescriptor(), &m_hdr_metadata, sizeof(m_hdr_metadata),
++                                &m_hdr_blob_id);
++    }
++
++    m_DRM->AddProperty(connector, "HDR_OUTPUT_METADATA", m_hdr_blob_id);
++    m_DRM->SetActive(true);
++  }
+ }
+ 
+ void CVideoLayerBridgeDRMPRIME::SetVideoPlane(CVideoBufferDRMPRIME* buffer, const CRect& destRect)
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.h b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.h
+index 1d1cf1555456..6a64f1f87f4c 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.h
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.h
+@@ -13,6 +13,36 @@
+ 
+ #include <memory>
+ 
++#include <drm_mode.h>
++
++#ifndef HAVE_HDR_OUTPUT_METADATA
++// HDR structs is copied from linux include/linux/hdmi.h
++struct hdr_metadata_infoframe
++{
++  uint8_t eotf;
++  uint8_t metadata_type;
++  struct
++  {
++    uint16_t x, y;
++  } display_primaries[3];
++  struct
++  {
++    uint16_t x, y;
++  } white_point;
++  uint16_t max_display_mastering_luminance;
++  uint16_t min_display_mastering_luminance;
++  uint16_t max_cll;
++  uint16_t max_fall;
++};
++struct hdr_output_metadata
++{
++  uint32_t metadata_type;
++  union {
++    struct hdr_metadata_infoframe hdmi_metadata_type1;
++  };
++};
++#endif
++
+ namespace KODI
+ {
+ namespace WINDOWING
+@@ -48,4 +78,7 @@ class CVideoLayerBridgeDRMPRIME : public KODI::WINDOWING::GBM::CVideoLayerBridge
+ 
+   CVideoBufferDRMPRIME* m_buffer = nullptr;
+   CVideoBufferDRMPRIME* m_prev_buffer = nullptr;
++
++  uint32_t m_hdr_blob_id = 0;
++  struct hdr_output_metadata m_hdr_metadata = {};
+ };

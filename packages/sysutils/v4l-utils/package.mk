@@ -5,13 +5,17 @@
 # with 1.0.0 repeat delay is broken. test on upgrade
 
 PKG_NAME="v4l-utils"
-PKG_VERSION="1.18.0"
-PKG_SHA256="6cb60d822eeed20486a03cc23e0fc65956fbc1e85e0c1a7477f68bbd9802880d"
+PKG_VERSION="5af0730d06247a2de487abf2e00e70b156f1fb82"
+PKG_SHA256=""
 PKG_LICENSE="GPL"
 PKG_SITE="http://linuxtv.org/"
-PKG_URL="http://linuxtv.org/downloads/v4l-utils/$PKG_NAME-$PKG_VERSION.tar.bz2"
+PKG_URL="git://linuxtv.org/v4l-utils.git"
+PKG_GIT_CLONE_BRANCH="master"
+PKG_GIT_CLONE_SINGLE="yes"
+PKG_GIT_CLONE_DEPTH=1
 PKG_DEPENDS_TARGET="toolchain alsa-lib systemd"
 PKG_LONGDESC="Linux V4L2 and DVB API utilities and v4l libraries (libv4l)."
+PKG_TOOLCHAIN="configure"
 
 PKG_CONFIGURE_OPTS_TARGET="--without-jpeg \
 	--disable-bpf \
@@ -22,17 +26,21 @@ pre_configure_target() {
   # cec-ctl fails to build in subdirs
   cd $PKG_BUILD
   rm -rf .$TARGET_NAME
+  ./bootstrap.sh
 }
 
 make_target() {
   make -C utils/keytable CFLAGS="$TARGET_CFLAGS"
   make -C utils/ir-ctl CFLAGS="$TARGET_CFLAGS"
   if [ "$CEC_FRAMEWORK_SUPPORT" = "yes" ]; then
+    make -C utils/libcecutil CFLAGS="$TARGET_CFLAGS"
     make -C utils/cec-ctl CFLAGS="$TARGET_CFLAGS"
+    make -C utils/cec-compliance CFLAGS="$TARGET_CFLAGS"
   fi
   make -C lib CFLAGS="$TARGET_CFLAGS"
   make -C utils/dvb CFLAGS="$TARGET_CFLAGS"
   make -C utils/v4l2-ctl CFLAGS="$TARGET_CFLAGS"
+  make -C utils/v4l2-compliance CFLAGS="$TARGET_CFLAGS"
 }
 
 makeinstall_target() {
@@ -40,9 +48,11 @@ makeinstall_target() {
   make install DESTDIR=$INSTALL PREFIX=/usr -C utils/ir-ctl
   if [ "$CEC_FRAMEWORK_SUPPORT" = "yes" ]; then
     make install DESTDIR=$INSTALL PREFIX=/usr -C utils/cec-ctl
+    make install DESTDIR=$INSTALL PREFIX=/usr -C utils/cec-compliance
   fi
   make install DESTDIR=$INSTALL PREFIX=/usr -C utils/dvb
   make install DESTDIR=$INSTALL PREFIX=/usr -C utils/v4l2-ctl
+  make install DESTDIR=$INSTALL PREFIX=/usr -C utils/v4l2-compliance
 }
 
 create_multi_keymap() {

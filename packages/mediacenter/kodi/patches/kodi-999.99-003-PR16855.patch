@@ -1,0 +1,203 @@
+From a432d18e508ff6f529fc0cd95ac046f96a973201 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Thu, 31 Oct 2019 19:18:50 +0000
+Subject: [PATCH 1/4] DVDVideoCodecDRMPRIME: log human readable ffmpeg error
+ message
+
+---
+ .../DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp | 27 +++++++++++++------
+ 1 file changed, 19 insertions(+), 8 deletions(-)
+
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+index c26567035604..65076e8920d4 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+@@ -22,6 +22,7 @@
+ extern "C"
+ {
+ #include <libavcodec/avcodec.h>
++#include <libavutil/error.h>
+ #include <libavutil/opt.h>
+ #include <libavutil/pixdesc.h>
+ }
+@@ -219,13 +220,14 @@ bool CDVDVideoCodecDRMPRIME::AddData(const DemuxPacket& packet)
+   int ret = avcodec_send_packet(m_pCodecContext, &avpkt);
+   if (ret == AVERROR(EAGAIN))
+     return false;
+-  else if (ret == AVERROR_EOF)
+-    return true;
+   else if (ret)
+   {
+-    CLog::Log(LOGERROR, "CDVDVideoCodecDRMPRIME::{} - send packet failed, ret:{}", __FUNCTION__,
+-              ret);
+-    return false;
++    char err[AV_ERROR_MAX_STRING_SIZE] = {};
++    av_strerror(ret, err, AV_ERROR_MAX_STRING_SIZE);
++    CLog::Log(LOGERROR, "CDVDVideoCodecDRMPRIME::{} - send packet failed: {} ({})", __FUNCTION__,
++              err, ret);
++    if (ret != AVERROR_EOF)
++      return false;
+   }
+ 
+   return true;
+@@ -247,7 +249,14 @@ void CDVDVideoCodecDRMPRIME::Drain()
+   av_init_packet(&avpkt);
+   avpkt.data = nullptr;
+   avpkt.size = 0;
+-  avcodec_send_packet(m_pCodecContext, &avpkt);
++  int ret = avcodec_send_packet(m_pCodecContext, &avpkt);
++  if (ret && ret != AVERROR_EOF)
++  {
++    char err[AV_ERROR_MAX_STRING_SIZE] = {};
++    av_strerror(ret, err, AV_ERROR_MAX_STRING_SIZE);
++    CLog::Log(LOGERROR, "CDVDVideoCodecDRMPRIME::{} - send packet failed: {} ({})", __FUNCTION__,
++              err, ret);
++  }
+ }
+ 
+ void CDVDVideoCodecDRMPRIME::SetPictureParams(VideoPicture* pVideoPicture)
+@@ -353,8 +362,10 @@ CDVDVideoCodec::VCReturn CDVDVideoCodecDRMPRIME::GetPicture(VideoPicture* pVideo
+     return VC_EOF;
+   else if (ret)
+   {
+-    CLog::Log(LOGERROR, "CDVDVideoCodecDRMPRIME::{} - receive frame failed, ret:{}", __FUNCTION__,
+-              ret);
++    char err[AV_ERROR_MAX_STRING_SIZE] = {};
++    av_strerror(ret, err, AV_ERROR_MAX_STRING_SIZE);
++    CLog::Log(LOGERROR, "CDVDVideoCodecDRMPRIME::{} - receive frame failed: {} ({})", __FUNCTION__,
++              err, ret);
+     return VC_ERROR;
+   }
+ 
+
+From cbefaca1b2c575f3ea7ab30af18308bc7ad032bd Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Thu, 31 Oct 2019 19:18:50 +0000
+Subject: [PATCH 2/4] DVDVideoCodecDRMPRIME: drain ffmpeg codec on reset
+
+---
+ .../DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp | 36 +++++++++++++++++--
+ 1 file changed, 33 insertions(+), 3 deletions(-)
+
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+index 65076e8920d4..9ca7bdd6d12a 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+@@ -204,6 +204,9 @@ bool CDVDVideoCodecDRMPRIME::AddData(const DemuxPacket& packet)
+   if (!m_pCodecContext)
+     return true;
+ 
++  if (!packet.pData)
++    return true;
++
+   AVPacket avpkt;
+   av_init_packet(&avpkt);
+   avpkt.data = packet.pData;
+@@ -226,7 +229,7 @@ bool CDVDVideoCodecDRMPRIME::AddData(const DemuxPacket& packet)
+     av_strerror(ret, err, AV_ERROR_MAX_STRING_SIZE);
+     CLog::Log(LOGERROR, "CDVDVideoCodecDRMPRIME::{} - send packet failed: {} ({})", __FUNCTION__,
+               err, ret);
+-    if (ret != AVERROR_EOF)
++    if (ret != AVERROR_EOF && ret != AVERROR_INVALIDDATA)
+       return false;
+   }
+ 
+@@ -238,9 +241,27 @@ void CDVDVideoCodecDRMPRIME::Reset()
+   if (!m_pCodecContext)
+     return;
+ 
++  Drain();
++
++  do
++  {
++    int ret = avcodec_receive_frame(m_pCodecContext, m_pFrame);
++    if (ret == AVERROR_EOF)
++      break;
++    else if (ret)
++    {
++      char err[AV_ERROR_MAX_STRING_SIZE] = {};
++      av_strerror(ret, err, AV_ERROR_MAX_STRING_SIZE);
++      CLog::Log(LOGERROR, "CDVDVideoCodecDRMPRIME::{} - receive frame failed: {} ({})",
++                __FUNCTION__, err, ret);
++      break;
++    }
++    else
++      av_frame_unref(m_pFrame);
++  } while (true);
++
++  CLog::Log(LOGDEBUG, "CDVDVideoCodecDRMPRIME::{} - flush buffers", __FUNCTION__);
+   avcodec_flush_buffers(m_pCodecContext);
+-  av_frame_unref(m_pFrame);
+-  m_codecControlFlags = 0;
+ }
+ 
+ void CDVDVideoCodecDRMPRIME::Drain()
+@@ -359,7 +380,15 @@ CDVDVideoCodec::VCReturn CDVDVideoCodecDRMPRIME::GetPicture(VideoPicture* pVideo
+   if (ret == AVERROR(EAGAIN))
+     return VC_BUFFER;
+   else if (ret == AVERROR_EOF)
++  {
++    if (m_codecControlFlags & DVD_CODEC_CTRL_DRAIN)
++    {
++      CLog::Log(LOGDEBUG, "CDVDVideoCodecDRMPRIME::{} - flush buffers", __FUNCTION__);
++      avcodec_flush_buffers(m_pCodecContext);
++      SetCodecControl(m_codecControlFlags & ~DVD_CODEC_CTRL_DRAIN);
++    }
+     return VC_EOF;
++  }
+   else if (ret)
+   {
+     char err[AV_ERROR_MAX_STRING_SIZE] = {};
+@@ -384,6 +413,7 @@ CDVDVideoCodec::VCReturn CDVDVideoCodecDRMPRIME::GetPicture(VideoPicture* pVideo
+   {
+     CLog::Log(LOGERROR, "CDVDVideoCodecDRMPRIME::{} - videoBuffer:nullptr format:{}", __FUNCTION__,
+               av_get_pix_fmt_name(static_cast<AVPixelFormat>(m_pFrame->format)));
++    av_frame_unref(m_pFrame);
+     return VC_ERROR;
+   }
+ 
+
+From fa372a3a4f2a83a86c5c4ca74ffad3c0879fbc9f Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Thu, 31 Oct 2019 19:18:50 +0000
+Subject: [PATCH 3/4] DVDVideoCodecDRMPRIME: simplify color_range assignment
+
+---
+ .../cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+index 9ca7bdd6d12a..3c472fdbff2e 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
+@@ -305,7 +305,7 @@ void CDVDVideoCodecDRMPRIME::SetPictureParams(VideoPicture* pVideoPicture)
+   }
+ 
+   pVideoPicture->color_range =
+-      m_pFrame->color_range == AVCOL_RANGE_JPEG || m_hints.colorRange == AVCOL_RANGE_JPEG ? 1 : 0;
++      m_pFrame->color_range == AVCOL_RANGE_JPEG || m_hints.colorRange == AVCOL_RANGE_JPEG;
+   pVideoPicture->color_primaries = m_pFrame->color_primaries == AVCOL_PRI_UNSPECIFIED
+                                        ? m_hints.colorPrimaries
+                                        : m_pFrame->color_primaries;
+
+From 1f4b08b73c582bbde4b635e7f65c01f72b8db5c9 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 3 Nov 2019 11:43:46 +0000
+Subject: [PATCH 4/4] VideoBufferDRMPRIME: set pixel format
+
+---
+ xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
+index c1069dc4b435..25da2de9e99b 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDRMPRIME.cpp
+@@ -77,6 +77,7 @@ const AVContentLightMetadata* GetContentLightMetadata(const VideoPicture& pictur
+ 
+ CVideoBufferDRMPRIME::CVideoBufferDRMPRIME(int id) : CVideoBuffer(id)
+ {
++  m_pixFormat = AV_PIX_FMT_DRM_PRIME;
+ }
+ 
+ CVideoBufferDRMPRIMEFFmpeg::CVideoBufferDRMPRIMEFFmpeg(IVideoBufferPool& pool, int id)

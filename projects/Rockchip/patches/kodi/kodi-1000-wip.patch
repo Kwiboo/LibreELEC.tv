@@ -1,0 +1,25 @@
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h
+index 5cd8808b3c..cb851c25b0 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h
+@@ -28,7 +28,6 @@ public:
+   void Reset() override;
+   CDVDVideoCodec::VCReturn GetPicture(VideoPicture* pVideoPicture) override;
+   const char* GetName() override { return m_name.c_str(); }
+-  unsigned GetAllowedReferences() override { return 5; }
+   void SetCodecControl(int flags) override { m_codecControlFlags = flags; }
+ 
+ protected:
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp
+index fd93e2f116..a1720a3687 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp
+@@ -22,7 +22,7 @@ extern "C"
+ #include <libavcodec/avcodec.h>
+ }
+ 
+-#define DUMB_BUFFER_NV12 0
++#define DUMB_BUFFER_NV12 1
+ 
+ using namespace KODI::WINDOWING::GBM;
+ 

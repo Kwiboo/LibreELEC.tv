@@ -1,0 +1,39 @@
+diff --git a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp
+index fd93e2f116..a1720a3687 100644
+--- a/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp
++++ b/xbmc/cores/VideoPlayer/Process/gbm/VideoBufferDumb.cpp
+@@ -22,7 +22,7 @@ extern "C"
+ #include <libavcodec/avcodec.h>
+ }
+ 
+-#define DUMB_BUFFER_NV12 0
++#define DUMB_BUFFER_NV12 1
+ 
+ using namespace KODI::WINDOWING::GBM;
+ 
+diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp
+index ff00fd335b..a5e975d58a 100644
+--- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp
++++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/VideoLayerBridgeDRMPRIME.cpp
+@@ -43,6 +43,10 @@ void CVideoLayerBridgeDRMPRIME::Disable()
+       drmModeDestroyPropertyBlob(m_DRM->GetFileDescriptor(), m_hdr_blob_id);
+     m_hdr_blob_id = 0;
+   }
++  if (m_DRM->SupportsProperty(connector, "Colorspace"))
++  {
++    m_DRM->AddProperty(connector, "Colorspace", 0);
++  }
+ }
+ 
+ void CVideoLayerBridgeDRMPRIME::Acquire(CVideoBufferDRMPRIME* buffer)
+@@ -241,6 +245,10 @@ void CVideoLayerBridgeDRMPRIME::Configure(CVideoBufferDRMPRIME* buffer)
+     m_DRM->AddProperty(connector, "HDR_OUTPUT_METADATA", m_hdr_blob_id);
+     m_DRM->SetActive(true);
+   }
++  if (m_DRM->SupportsProperty(connector, "Colorspace"))
++  {
++    m_DRM->AddProperty(connector, "Colorspace", GetColorEncoding(picture) == DRM_COLOR_YCBCR_BT2020 ? 9 : 0);
++  }
+ }
+ 
+ void CVideoLayerBridgeDRMPRIME::SetVideoPlane(CVideoBufferDRMPRIME* buffer, const CRect& destRect)

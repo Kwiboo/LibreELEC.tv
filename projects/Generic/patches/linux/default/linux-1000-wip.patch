@@ -1,0 +1,158 @@
+diff --git a/drivers/gpu/drm/drm_framebuffer.c b/drivers/gpu/drm/drm_framebuffer.c
+index 57564318ceea..ceddad16d15d 100644
+--- a/drivers/gpu/drm/drm_framebuffer.c
++++ b/drivers/gpu/drm/drm_framebuffer.c
+@@ -359,7 +359,7 @@ int drm_mode_addfb2(struct drm_device *dev,
+ 	if (IS_ERR(fb))
+ 		return PTR_ERR(fb);
+ 
+-	DRM_DEBUG_KMS("[FB:%d]\n", fb->base.id);
++	DRM_DEBUG_ATOMIC("[FB:%d]\n", fb->base.id);
+ 	r->fb_id = fb->base.id;
+ 
+ 	/* Transfer ownership to the filp for reaping on close */
+diff --git a/drivers/gpu/drm/i915/display/intel_atomic.c b/drivers/gpu/drm/i915/display/intel_atomic.c
+index 7cb2257bbb93..98fe7d12c705 100644
+--- a/drivers/gpu/drm/i915/display/intel_atomic.c
++++ b/drivers/gpu/drm/i915/display/intel_atomic.c
+@@ -286,8 +286,8 @@ static void intel_atomic_setup_scaler(struct intel_crtc_scaler_state *scaler_sta
+ 		mode = SKL_PS_SCALER_MODE_DYN;
+ 	}
+ 
+-	DRM_DEBUG_KMS("Attached scaler id %u.%u to %s:%d\n",
+-		      intel_crtc->pipe, *scaler_id, name, idx);
++	DRM_DEBUG_ATOMIC("Attached scaler id %u.%u to %s:%d\n",
++			 intel_crtc->pipe, *scaler_id, name, idx);
+ 	scaler_state->scalers[*scaler_id].mode = mode;
+ }
+ 
+diff --git a/drivers/gpu/drm/i915/display/intel_display.c b/drivers/gpu/drm/i915/display/intel_display.c
+index d09b0cc6ebe7..357927109441 100644
+--- a/drivers/gpu/drm/i915/display/intel_display.c
++++ b/drivers/gpu/drm/i915/display/intel_display.c
+@@ -5491,7 +5491,7 @@ skl_update_scaler(struct intel_crtc_state *crtc_state, bool force_detach,
+ 
+ 	/* mark this plane as a scaler user in crtc_state */
+ 	scaler_state->scaler_users |= (1 << scaler_user);
+-	DRM_DEBUG_KMS("scaler_user index %u.%u: "
++	DRM_DEBUG_ATOMIC("scaler_user index %u.%u: "
+ 		"staged scaling request for %ux%u->%ux%u scaler_users = 0x%x\n",
+ 		intel_crtc->pipe, scaler_user, src_w, src_h, dst_w, dst_h,
+ 		scaler_state->scaler_users);
+@@ -11939,6 +11939,8 @@ compute_baseline_pipe_bpp(struct intel_crtc *crtc,
+ 
+ 	pipe_config->pipe_bpp = bpp;
+ 
++	DRM_DEBUG_KMS("Limiting baseline bpp to %d\n", pipe_config->pipe_bpp);
++
+ 	/* Clamp display bpp to connector max bpp */
+ 	for_each_new_connector_in_state(state, connector, connector_state, i) {
+ 		int ret;
+diff --git a/drivers/gpu/drm/i915/display/intel_hdmi.c b/drivers/gpu/drm/i915/display/intel_hdmi.c
+index b030f7ae3302..19c4ee1191e8 100644
+--- a/drivers/gpu/drm/i915/display/intel_hdmi.c
++++ b/drivers/gpu/drm/i915/display/intel_hdmi.c
+@@ -2200,24 +2200,34 @@ static bool hdmi_deep_color_possible(const struct intel_crtc_state *crtc_state,
+ 		&crtc_state->base.adjusted_mode;
+ 	int i;
+ 
+-	if (HAS_GMCH(dev_priv))
++	if (HAS_GMCH(dev_priv)) {
++		DRM_DEBUG_KMS("bpc=%d HAS_GMCH(dev_priv)\n", bpc);
+ 		return false;
++	}
+ 
+-	if (bpc == 10 && INTEL_GEN(dev_priv) < 11)
++	if (bpc == 10 && INTEL_GEN(dev_priv) < 11) {
++		DRM_DEBUG_KMS("bpc=%d bpc == 10 && INTEL_GEN(dev_priv) < 11\n", bpc);
+ 		return false;
++	}
+ 
+-	if (crtc_state->pipe_bpp < bpc * 3)
++	if (crtc_state->pipe_bpp < bpc * 3) {
++		DRM_DEBUG_KMS("bpc=%d crtc_state->pipe_bpp(%d) < bpc * 3\n", bpc, crtc_state->pipe_bpp);
+ 		return false;
++	}
+ 
+-	if (!crtc_state->has_hdmi_sink)
++	if (!crtc_state->has_hdmi_sink) {
++		DRM_DEBUG_KMS("bpc=%d !crtc_state->has_hdmi_sink\n", bpc);
+ 		return false;
++	}
+ 
+ 	/*
+ 	 * HDMI deep color affects the clocks, so it's only possible
+ 	 * when not cloning with other encoder types.
+ 	 */
+-	if (crtc_state->output_types != 1 << INTEL_OUTPUT_HDMI)
++	if (crtc_state->output_types != 1 << INTEL_OUTPUT_HDMI) {
++		DRM_DEBUG_KMS("bpc=%d crtc_state->output_types != 1 << INTEL_OUTPUT_HDMI\n", bpc);
+ 		return false;
++	}
+ 
+ 	for_each_new_connector_in_state(state, connector, connector_state, i) {
+ 		const struct drm_display_info *info = &connector->display_info;
+@@ -2229,33 +2239,44 @@ static bool hdmi_deep_color_possible(const struct intel_crtc_state *crtc_state,
+ 			const struct drm_hdmi_info *hdmi = &info->hdmi;
+ 
+ 			if (bpc == 12 && !(hdmi->y420_dc_modes &
+-					   DRM_EDID_YCBCR420_DC_36))
++					   DRM_EDID_YCBCR420_DC_36)) {
++				DRM_DEBUG_KMS("bpc=%d DRM_EDID_YCBCR420_DC_36\n", bpc);
+ 				return false;
+-			else if (bpc == 10 && !(hdmi->y420_dc_modes &
+-						DRM_EDID_YCBCR420_DC_30))
++			} else if (bpc == 10 && !(hdmi->y420_dc_modes &
++						DRM_EDID_YCBCR420_DC_30)) {
++				DRM_DEBUG_KMS("bpc=%d DRM_EDID_YCBCR420_DC_30\n", bpc);
+ 				return false;
++			}
+ 		} else {
+ 			if (bpc == 12 && !(info->edid_hdmi_dc_modes &
+-					   DRM_EDID_HDMI_DC_36))
++					   DRM_EDID_HDMI_DC_36)) {
++				DRM_DEBUG_KMS("bpc=%d DRM_EDID_HDMI_DC_36\n", bpc);
+ 				return false;
+-			else if (bpc == 10 && !(info->edid_hdmi_dc_modes &
+-						DRM_EDID_HDMI_DC_30))
++			} else if (bpc == 10 && !(info->edid_hdmi_dc_modes &
++						DRM_EDID_HDMI_DC_30)) {
++				DRM_DEBUG_KMS("bpc=%d DRM_EDID_HDMI_DC_30\n", bpc);
+ 				return false;
++			}
+ 		}
+ 	}
+ 
+ 	/* Display WA #1139: glk */
+ 	if (bpc == 12 && IS_GLK_REVID(dev_priv, 0, GLK_REVID_A1) &&
+-	    adjusted_mode->htotal > 5460)
++	    adjusted_mode->htotal > 5460) {
++		DRM_DEBUG_KMS("bpc=%d Display WA #1139: glk\n", bpc);
+ 		return false;
++	}
+ 
+ 	/* Display Wa_1405510057:icl */
+ 	if (crtc_state->output_format == INTEL_OUTPUT_FORMAT_YCBCR420 &&
+ 	    bpc == 10 && INTEL_GEN(dev_priv) >= 11 &&
+ 	    (adjusted_mode->crtc_hblank_end -
+-	     adjusted_mode->crtc_hblank_start) % 8 == 2)
++	     adjusted_mode->crtc_hblank_start) % 8 == 2) {
++		DRM_DEBUG_KMS("bpc=%d Display Wa_1405510057:icl\n", bpc);
+ 		return false;
++	}
+ 
++	DRM_DEBUG_KMS("bpc=%d OK\n", bpc);
+ 	return true;
+ }
+ 
+@@ -2335,7 +2356,9 @@ int intel_hdmi_compute_config(struct intel_encoder *encoder,
+ 		clock_12bpc *= 2;
+ 	}
+ 
+-	if (drm_mode_is_420_only(&connector->display_info, adjusted_mode)) {
++	if (drm_mode_is_420_only(&connector->display_info, adjusted_mode) ||
++	    (drm_mode_is_420_also(&connector->display_info, adjusted_mode) &&
++	    connector->display_info.hdmi.y420_dc_modes)) {
+ 		if (!intel_hdmi_ycbcr420_config(connector, pipe_config,
+ 						&clock_12bpc, &clock_10bpc,
+ 						&clock_8bpc)) {

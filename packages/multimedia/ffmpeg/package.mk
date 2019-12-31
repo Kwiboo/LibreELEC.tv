@@ -26,9 +26,9 @@ else
 fi
 
 if [ "${VAAPI_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" libva"
-  PKG_NEED_UNPACK+=" $(get_pkg_directory libva)"
-  PKG_FFMPEG_VAAPI="--enable-vaapi"
+  PKG_DEPENDS_TARGET+=" libva libdrm"
+  PKG_NEED_UNPACK+=" $(get_pkg_directory libva) $(get_pkg_directory libdrm)"
+  PKG_FFMPEG_VAAPI="--enable-vaapi --enable-libdrm"
 else
   PKG_FFMPEG_VAAPI="--disable-vaapi"
 fi

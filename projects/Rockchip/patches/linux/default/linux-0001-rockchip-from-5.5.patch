@@ -13269,7 +13269,7 @@ diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm
 index 4139f129eafb..0bdf2e1e889c 100644
 --- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
 +++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-@@ -4837,7 +4837,13 @@ static int to_drm_connector_type(enum signal_type st)
+@@ -4842,7 +4842,13 @@ static int to_drm_connector_type(enum signal_type st)
  
  static struct drm_encoder *amdgpu_dm_connector_to_encoder(struct drm_connector *connector)
  {
@@ -13436,7 +13436,7 @@ diff --git a/drivers/gpu/drm/nouveau/dispnv50/disp.c b/drivers/gpu/drm/nouveau/d
 index b46be8a091e9..a13924ae1992 100644
 --- a/drivers/gpu/drm/nouveau/dispnv50/disp.c
 +++ b/drivers/gpu/drm/nouveau/dispnv50/disp.c
-@@ -2392,7 +2392,7 @@ nv50_display_create(struct drm_device *dev)
+@@ -2412,7 +2412,7 @@ nv50_display_create(struct drm_device *dev)
  
  	/* cull any connectors we created that don't have an encoder */
  	list_for_each_entry_safe(connector, tmp, &dev->mode_config.connector_list, head) {
@@ -13621,3 +13621,27 @@ index 681cb590f952..c6e993e78dbd 100644
 +				  (connector)->possible_encoders)
  
  #endif
+From a819406b547a71a78fa0a3402e03e795b58a7c04 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 6 Jan 2020 10:49:11 +0000
+Subject: [PATCH] Revert "net: stmmac: platform: Fix MDIO init for platforms
+ without PHY"
+
+This reverts commit bfdbfd28f76028b960458d107dc4ae9240c928b3.
+---
+ drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
+index 1f230bd854c4..170c3a052b14 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
+@@ -320,7 +320,7 @@ static int stmmac_mtl_setup(struct platform_device *pdev,
+ static int stmmac_dt_phy(struct plat_stmmacenet_data *plat,
+ 			 struct device_node *np, struct device *dev)
+ {
+-	bool mdio = false;
++	bool mdio = true;
+ 	static const struct of_device_id need_mdio_ids[] = {
+ 		{ .compatible = "snps,dwc-qos-ethernet-4.10" },
+ 		{},

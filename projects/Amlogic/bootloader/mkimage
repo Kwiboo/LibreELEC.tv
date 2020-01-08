@@ -32,18 +32,6 @@ EOF
   mcopy -s "${LE_TMP}/uEnv.ini" ::
 }
 
-mkimage_extlinux(){
-  echo "image: copying exlinux.conf"
-  mkdir -p "${LE_TMP}/extlinux"
-  cat << EOF > "${LE_TMP}/extlinux/extlinux.conf"
-LABEL ${DISTRO}
-  LINUX /${KERNEL_NAME}
-  FDT /${DTB}
-  APPEND boot=LABEL=${DISTRO_BOOTLABEL} disk=LABEL=${DISTRO_DISKLABEL} quiet ${EXTRA_CMDLINE}
-EOF
-  mcopy -s -o "${LE_TMP}/extlinux" ::
-}
-
 mkimage_dtb(){
   if [ "$DTB" != "@@DTB_NAME@@" ]; then
     echo "image: copying device tree"
@@ -64,14 +52,12 @@ case "${UBOOT_SYSTEM}" in
     ;;
   khadas*|lepotato|nanopi-k2|odroid*)
     mkimage_uboot
-    mkimage_extlinux
     mkimage_dtb
     ;;
   *)
     mkimage_uEnv
     mkimage_autoscripts
     mkimage_bootini
-    mkimage_extlinux
     mkimage_uboot
     mkimage_dtb
     ;;

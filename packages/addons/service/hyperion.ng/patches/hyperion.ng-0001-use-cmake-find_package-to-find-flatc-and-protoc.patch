@@ -1,0 +1,92 @@
+From b88f0e787c986ea627bc87f6c13bb805a52f5e38 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Thu, 16 Jan 2020 07:37:41 +0000
+Subject: [PATCH] use cmake find_package to find flatc and protoc
+
+---
+ dependencies/CMakeLists.txt | 46 ++++++++++++++++---------------------
+ 1 file changed, 20 insertions(+), 26 deletions(-)
+
+diff --git a/dependencies/CMakeLists.txt b/dependencies/CMakeLists.txt
+index 4c4094e8..00628f92 100644
+--- a/dependencies/CMakeLists.txt
++++ b/dependencies/CMakeLists.txt
+@@ -9,6 +9,8 @@ if(ENABLE_WS281XPWM)
+ 		external/rpi_ws281x/rpihw.c)
+ endif()
+ 
++include(FindPackageHandleStandardArgs)
++
+ #=============================================================================
+ # FLATBUFFER
+ #=============================================================================
+@@ -16,12 +18,10 @@ endif()
+ set(USE_SYSTEM_FLATBUFFERS_LIBS ${DEFAULT_USE_SYSTEM_FLATBUFFERS_LIBS} CACHE BOOL "use flatbuffers library from system")
+ 
+ if (USE_SYSTEM_FLATBUFFERS_LIBS)
+-	if (ENABLE_AMLOGIC)
+-		find_program(FLATBUFFERS_FLATC_EXECUTABLE NAMES flatc REQUIRED)
+-	else ()
+-		find_package(flatbuffers REQUIRED)
+-	endif()
+-	include_directories(${FLATBUFFERS_INCLUDE_DIRS})
++	find_package(flatbuffers REQUIRED CONFIG NAMES flatbuffers Flatbuffers)
++	find_package_handle_standard_args(flatbuffers CONFIG_MODE)
++	get_target_property(FLATBUFFERS_FLATC_EXECUTABLE flatbuffers::flatc LOCATION)
++	set(FLATBUFFERS_FLATC_EXECUTABLE ${FLATBUFFERS_FLATC_EXECUTABLE} PARENT_SCOPE)
+ else ()
+ 	set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared flatbuffers library")
+ 	set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "Build Flatbuffers with tests")
+@@ -58,22 +58,18 @@ message(STATUS "Using flatbuffers compiler: " ${FLATBUFFERS_FLATC_EXECUTABLE})
+ 
+ function(compile_flattbuffer_schema SRC_FBS OUTPUT_DIR)
+ 	string(REGEX REPLACE "\\.fbs$" "_generated.h" GEN_HEADER ${SRC_FBS})
+-	if (ENABLE_AMLOGIC)
+-		add_custom_command(
+-			OUTPUT ${GEN_HEADER}
+-			COMMAND "${FLATBUFFERS_FLATC_EXECUTABLE}" -c --no-includes --gen-mutable
+-					--gen-object-api
+-					-o "${OUTPUT_DIR}"
+-					"${SRC_FBS}")
++	if(CMAKE_CROSSCOMPILING OR USE_SYSTEM_FLATBUFFERS_LIBS)
++		set(FLATC_DEPENDENCY ${FLATBUFFERS_FLATC_EXECUTABLE})
+ 	else()
+-		add_custom_command(
+-			OUTPUT ${GEN_HEADER}
+-			COMMAND "${FLATBUFFERS_FLATC_EXECUTABLE}" -c --no-includes --gen-mutable
+-					--gen-object-api
+-					-o "${OUTPUT_DIR}"
+-					"${SRC_FBS}"
+-			DEPENDS flatc)
++		set(FLATC_DEPENDENCY flatc)
+ 	endif()
++	add_custom_command(
++		OUTPUT ${GEN_HEADER}
++		COMMAND "${FLATBUFFERS_FLATC_EXECUTABLE}" -c --no-includes --gen-mutable
++				--gen-object-api
++				-o "${OUTPUT_DIR}"
++				"${SRC_FBS}"
++		DEPENDS ${FLATC_DEPENDENCY})
+ endfunction()
+ 
+ #=============================================================================
+@@ -83,12 +79,10 @@ endfunction()
+ set(USE_SYSTEM_PROTO_LIBS ${DEFAULT_USE_SYSTEM_PROTO_LIBS} CACHE BOOL "use protobuf library from system")
+ 
+ if (USE_SYSTEM_PROTO_LIBS)
+-	find_package(Protobuf REQUIRED)
+-	if (ENABLE_AMLOGIC)
+-		set(PROTOBUF_INCLUDE_DIRS "${Protobuf_INCLUDE_DIRS}" PARENT_SCOPE)
+-		set(PROTOBUF_PROTOC_EXECUTABLE "${Protobuf_PROTOC_EXECUTABLE}" PARENT_SCOPE)
+-	endif()
+-	include_directories(${PROTOBUF_INCLUDE_DIRS})
++	find_package(protobuf REQUIRED CONFIG NAMES protobuf Protobuf)
++	find_package_handle_standard_args(protobuf CONFIG_MODE)
++	get_target_property(PROTOBUF_PROTOC_EXECUTABLE protobuf::protoc LOCATION)
++	set(PROTOBUF_PROTOC_EXECUTABLE ${PROTOBUF_PROTOC_EXECUTABLE} PARENT_SCOPE)
+ else ()
+ 	set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared protobuf library")
+ 	add_subdirectory(external/protobuf)
+-- 
+2.17.1
+

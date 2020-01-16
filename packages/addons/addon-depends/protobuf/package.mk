@@ -27,6 +27,7 @@ post_makeinstall_target() {
   rm -rf $INSTALL/usr/bin
 
   # HACK: we have protoc in $TOOLCHAIN/bin but it seems
-  # the one from sysroot prefix is picked when building hyperion. remove it!
+  # the one from sysroot prefix is picked when building hyperion. replace it!
   rm -f $SYSROOT_PREFIX/usr/bin/protoc
+  cp -PR $TOOLCHAIN/bin/protoc $SYSROOT_PREFIX/usr/bin
 }

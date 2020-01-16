@@ -82,6 +82,8 @@ post_makeinstall_target() {
 
   mkdir -p $INSTALL/usr/share/services
     cp -P $PKG_DIR/default.d/*.conf $INSTALL/usr/share/services
+
+  ln -sf $SYSROOT_PREFIX/usr/include/avahi-compat-libdns_sd/dns_sd.h $SYSROOT_PREFIX/usr/include/dns_sd.h
 }
 
 post_install() {

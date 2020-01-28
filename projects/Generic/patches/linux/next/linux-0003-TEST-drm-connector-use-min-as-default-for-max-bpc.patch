@@ -1,0 +1,26 @@
+From 3c2ccfe014230c6b314b037fc3bb86d377b39832 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Fri, 31 Jan 2020 21:29:01 +0000
+Subject: [PATCH 3/5] TEST: drm/connector: use min as default for max bpc
+
+---
+ drivers/gpu/drm/drm_connector.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_connector.c b/drivers/gpu/drm/drm_connector.c
+index 2166000ed057..e012f16bb05f 100644
+--- a/drivers/gpu/drm/drm_connector.c
++++ b/drivers/gpu/drm/drm_connector.c
+@@ -2019,9 +2019,9 @@ int drm_connector_attach_max_bpc_property(struct drm_connector *connector,
+ 		connector->max_bpc_property = prop;
+ 	}
+ 
+-	drm_object_attach_property(&connector->base, prop, max);
+-	connector->state->max_requested_bpc = max;
+-	connector->state->max_bpc = max;
++	drm_object_attach_property(&connector->base, prop, min);
++	connector->state->max_requested_bpc = min;
++	connector->state->max_bpc = min;
+ 
+ 	return 0;
+ }

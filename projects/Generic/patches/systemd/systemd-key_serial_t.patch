@@ -1,0 +1,17 @@
+diff -Naur systemd-242/src/basic/missing_keyctl.h patch.systemd-242/src/basic/missing_keyctl.h
+--- systemd-242/src/basic/missing_keyctl.h	2019-04-11 16:28:36.000000000 +0000
++++ patch.systemd-242/src/basic/missing_keyctl.h	2019-08-13 22:09:28.012342786 +0000
+@@ -39,11 +39,11 @@
+ #define KEY_SPEC_SESSION_KEYRING -3
+ #endif
+ 
++typedef int32_t key_serial_t;
++
+ /* From linux/key.h */
+ #ifndef KEY_POS_VIEW
+ 
+-typedef int32_t key_serial_t;
+-
+ #define KEY_POS_VIEW    0x01000000
+ #define KEY_POS_READ    0x02000000
+ #define KEY_POS_WRITE   0x04000000

@@ -1,0 +1,104 @@
+From 9f9eb3cef92dd17855c267a4b85a3eaccd457e7b Mon Sep 17 00:00:00 2001
+From: Shashank Sharma <shashank.sharma@intel.com>
+Date: Tue, 7 May 2019 18:32:56 +0530
+Subject: [PATCH 1/5] drm/i915/GLK: Properly handle plane CSC for BT2020
+ framebuffers
+
+Framebuffer formats P01x are supported by GLK, but the function which
+handles CSC on plane color control register, still expectes the input
+buffer to be REC709. This can cause inaccurate output for direct P01x
+flips.
+
+This patch checks if the color_encoding property is set to YCBCR_2020,
+and enables the corresponding color conversion mode on plane CSC.
+
+PS: renamed variable plane_color_ctl to color_ctl for 80 char stuff.
+
+V2: Expose the YCBCR_BT2020 value in enum values of supported encoding
+    formats.
+V3: Fixed the missing BIT() while setting supported_encodings
+    (Lukas, team Kodi)
+
+Cc: Ville Syrjala <ville.syrjala@linux.intel.com>
+Cc: Maarten Lankhorst <maarten.lankhorst@intel.com>
+Cc: Uma Shankar <uma.shankar@intel.com>
+Signed-off-by: Shashank Sharma <shashank.sharma@intel.com>
+---
+ drivers/gpu/drm/i915/display/intel_display.c | 26 ++++++++++++--------
+ drivers/gpu/drm/i915/display/intel_sprite.c  | 10 ++++++--
+ 2 files changed, 24 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/gpu/drm/i915/display/intel_display.c b/drivers/gpu/drm/i915/display/intel_display.c
+index 19ea842cfd84..ad67c9a87a08 100644
+--- a/drivers/gpu/drm/i915/display/intel_display.c
++++ b/drivers/gpu/drm/i915/display/intel_display.c
+@@ -4736,24 +4736,30 @@ u32 glk_plane_color_ctl(const struct intel_crtc_state *crtc_state,
+ 		to_i915(plane_state->uapi.plane->dev);
+ 	const struct drm_framebuffer *fb = plane_state->hw.fb;
+ 	struct intel_plane *plane = to_intel_plane(plane_state->uapi.plane);
+-	u32 plane_color_ctl = 0;
++	u32 color_ctl = 0;
+ 
+-	plane_color_ctl |= PLANE_COLOR_PLANE_GAMMA_DISABLE;
+-	plane_color_ctl |= glk_plane_color_ctl_alpha(plane_state);
++	color_ctl |= PLANE_COLOR_PLANE_GAMMA_DISABLE;
++	color_ctl |= glk_plane_color_ctl_alpha(plane_state);
+ 
+ 	if (fb->format->is_yuv && !icl_is_hdr_plane(dev_priv, plane->id)) {
+-		if (plane_state->hw.color_encoding == DRM_COLOR_YCBCR_BT709)
+-			plane_color_ctl |= PLANE_COLOR_CSC_MODE_YUV709_TO_RGB709;
+-		else
+-			plane_color_ctl |= PLANE_COLOR_CSC_MODE_YUV601_TO_RGB709;
++		switch (plane_state->hw.color_encoding) {
++		case DRM_COLOR_YCBCR_BT709:
++			color_ctl |= PLANE_COLOR_CSC_MODE_YUV709_TO_RGB709;
++			break;
++		case DRM_COLOR_YCBCR_BT2020:
++			color_ctl |= PLANE_COLOR_CSC_MODE_YUV2020_TO_RGB2020;
++			break;
++		default:
++			color_ctl |= PLANE_COLOR_CSC_MODE_YUV601_TO_RGB709;
++		}
+ 
+ 		if (plane_state->hw.color_range == DRM_COLOR_YCBCR_FULL_RANGE)
+-			plane_color_ctl |= PLANE_COLOR_YUV_RANGE_CORRECTION_DISABLE;
++			color_ctl |= PLANE_COLOR_YUV_RANGE_CORRECTION_DISABLE;
+ 	} else if (fb->format->is_yuv) {
+-		plane_color_ctl |= PLANE_COLOR_INPUT_CSC_ENABLE;
++		color_ctl |= PLANE_COLOR_INPUT_CSC_ENABLE;
+ 	}
+ 
+-	return plane_color_ctl;
++	return color_ctl;
+ }
+ 
+ static int
+diff --git a/drivers/gpu/drm/i915/display/intel_sprite.c b/drivers/gpu/drm/i915/display/intel_sprite.c
+index fca77ec1e0dd..fe439c3bc12e 100644
+--- a/drivers/gpu/drm/i915/display/intel_sprite.c
++++ b/drivers/gpu/drm/i915/display/intel_sprite.c
+@@ -2968,6 +2968,7 @@ skl_universal_plane_create(struct drm_i915_private *dev_priv,
+ 	struct intel_plane *plane;
+ 	enum drm_plane_type plane_type;
+ 	unsigned int supported_rotations;
++	unsigned int supported_encodings;
+ 	unsigned int possible_crtcs;
+ 	const u64 *modifiers;
+ 	const u32 *formats;
+@@ -3045,9 +3046,14 @@ skl_universal_plane_create(struct drm_i915_private *dev_priv,
+ 					   DRM_MODE_ROTATE_0,
+ 					   supported_rotations);
+ 
++	supported_encodings = BIT(DRM_COLOR_YCBCR_BT601) |
++			      BIT(DRM_COLOR_YCBCR_BT709);
++
++	if (INTEL_GEN(dev_priv) >= 10 || IS_GEMINILAKE(dev_priv))
++		supported_encodings |= BIT(DRM_COLOR_YCBCR_BT2020);
++
+ 	drm_plane_create_color_properties(&plane->base,
+-					  BIT(DRM_COLOR_YCBCR_BT601) |
+-					  BIT(DRM_COLOR_YCBCR_BT709),
++					  supported_encodings,
+ 					  BIT(DRM_COLOR_YCBCR_LIMITED_RANGE) |
+ 					  BIT(DRM_COLOR_YCBCR_FULL_RANGE),
+ 					  DRM_COLOR_YCBCR_BT709,

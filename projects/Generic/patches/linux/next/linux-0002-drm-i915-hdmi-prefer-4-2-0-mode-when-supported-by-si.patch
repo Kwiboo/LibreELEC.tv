@@ -1,0 +1,51 @@
+From 898d69b8d8788d9ea209f79b82a327f7c561b4e5 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Tue, 28 Jan 2020 23:05:23 +0000
+Subject: [PATCH 2/5] drm/i915/hdmi: prefer 4:2:0 mode when supported by sink
+
+---
+ drivers/gpu/drm/i915/display/intel_hdmi.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/i915/display/intel_hdmi.c b/drivers/gpu/drm/i915/display/intel_hdmi.c
+index 93ac0f296852..bd97ea8c8261 100644
+--- a/drivers/gpu/drm/i915/display/intel_hdmi.c
++++ b/drivers/gpu/drm/i915/display/intel_hdmi.c
+@@ -2164,6 +2164,7 @@ intel_hdmi_mode_valid(struct drm_connector *connector,
+ 	struct intel_hdmi *hdmi = intel_attached_hdmi(to_intel_connector(connector));
+ 	struct drm_device *dev = intel_hdmi_to_dev(hdmi);
+ 	struct drm_i915_private *dev_priv = to_i915(dev);
++	struct drm_display_info *info = &connector->display_info;
+ 	enum drm_mode_status status;
+ 	int clock;
+ 	int max_dotclk = to_i915(connector->dev)->max_dotclk_freq;
+@@ -2184,7 +2185,8 @@ intel_hdmi_mode_valid(struct drm_connector *connector,
+ 	if (mode->flags & DRM_MODE_FLAG_DBLCLK)
+ 		clock *= 2;
+ 
+-	if (drm_mode_is_420_only(&connector->display_info, mode))
++	if (connector->ycbcr_420_allowed && drm_mode_is_420(info, mode) &&
++	    (info->color_formats & DRM_COLOR_FORMAT_YCRCB420))
+ 		clock /= 2;
+ 
+ 	/* check if we can do 8bpc */
+@@ -2409,7 +2411,8 @@ int intel_hdmi_compute_config(struct intel_encoder *encoder,
+ 	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
+ 	struct drm_display_mode *adjusted_mode = &pipe_config->hw.adjusted_mode;
+ 	struct drm_connector *connector = conn_state->connector;
+-	struct drm_scdc *scdc = &connector->display_info.hdmi.scdc;
++	struct drm_display_info *info = &connector->display_info;
++	struct drm_scdc *scdc = &info->hdmi.scdc;
+ 	struct intel_digital_connector_state *intel_conn_state =
+ 		to_intel_digital_connector_state(conn_state);
+ 	bool force_dvi = intel_conn_state->force_audio == HDMI_AUDIO_OFF_DVI;
+@@ -2427,7 +2430,8 @@ int intel_hdmi_compute_config(struct intel_encoder *encoder,
+ 	if (adjusted_mode->flags & DRM_MODE_FLAG_DBLCLK)
+ 		pipe_config->pixel_multiplier = 2;
+ 
+-	if (drm_mode_is_420_only(&connector->display_info, adjusted_mode)) {
++	if (connector->ycbcr_420_allowed && drm_mode_is_420(info, adjusted_mode)
++	    && (info->color_formats & DRM_COLOR_FORMAT_YCRCB420)) {
+ 		if (!intel_hdmi_ycbcr420_config(connector, pipe_config)) {
+ 			DRM_ERROR("Can't support YCBCR420 output\n");
+ 			return -EINVAL;

@@ -1,0 +1,26 @@
+From 74c6521d9de10894a3a9ee654acebc54bb5b9c69 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Tue, 28 Jan 2020 23:14:15 +0000
+Subject: [PATCH 4/5] TEST: drm/i915/hdmi: allow 10 bpc on gemini lake
+
+---
+ drivers/gpu/drm/i915/display/intel_hdmi.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/i915/display/intel_hdmi.c b/drivers/gpu/drm/i915/display/intel_hdmi.c
+index bd97ea8c8261..29c5e8463267 100644
+--- a/drivers/gpu/drm/i915/display/intel_hdmi.c
++++ b/drivers/gpu/drm/i915/display/intel_hdmi.c
+@@ -2224,7 +2224,11 @@ static bool hdmi_deep_color_possible(const struct intel_crtc_state *crtc_state,
+ 	if (HAS_GMCH(dev_priv))
+ 		return false;
+ 
+-	if (bpc == 10 && INTEL_GEN(dev_priv) < 11)
++	if (bpc == 10 && INTEL_GEN(dev_priv) < 11 && !IS_GEMINILAKE(dev_priv))
++		return false;
++
++	if (bpc == 10 && IS_GEMINILAKE(dev_priv) &&
++	    crtc_state->output_format == INTEL_OUTPUT_FORMAT_YCBCR420)
+ 		return false;
+ 
+ 	if (crtc_state->pipe_bpp < bpc * 3)

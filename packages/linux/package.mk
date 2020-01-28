@@ -10,7 +10,7 @@ PKG_DEPENDS_TARGET="toolchain linux:host cpio:host kmod:host xz:host keyutils $K
 PKG_NEED_UNPACK="$LINUX_DEPENDS $(get_pkg_directory initramfs) $(get_pkg_variable initramfs PKG_NEED_UNPACK)"
 PKG_LONGDESC="This package contains a precompiled kernel image and the modules."
 PKG_IS_KERNEL_PKG="yes"
-PKG_STAMP="$KERNEL_TARGET $KERNEL_MAKE_EXTRACMD"
+PKG_STAMP="$LINUX $KERNEL_TARGET $KERNEL_MAKE_EXTRACMD"
 
 PKG_PATCH_DIRS="$LINUX"
 
@@ -27,6 +27,12 @@ case "$LINUX" in
     PKG_SHA256="8e072094cbf85c4b1157ef3c180e906cb1f85cee993c3016800fd51b4c382f54"
     PKG_URL="https://github.com/raspberrypi/linux/archive/$PKG_VERSION.tar.gz"
     PKG_SOURCE_NAME="linux-$LINUX-$PKG_VERSION.tar.gz"
+    ;;
+  next)
+    PKG_VERSION="next-20200130"
+    PKG_SHA256="89840abaf402dcac3146fd78bb73e0b1e76afeeb3353179f43ce87f293d2fc7e"
+    PKG_URL="https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/snapshot/linux-next-$PKG_VERSION.tar.gz"
+    PKG_SOURCE_NAME="linux-$PKG_VERSION.tar.gz"
     ;;
   *)
     PKG_VERSION="5.5"
@@ -147,7 +153,8 @@ pre_make_target() {
     sed -i "s|CONFIG_EXTRA_FIRMWARE=.*|CONFIG_EXTRA_FIRMWARE=\"${FW_LIST}\"|" $PKG_BUILD/.config
   fi
 
-  kernel_make oldconfig
+  kernel_make olddefconfig
+  kernel_make savedefconfig
 }
 
 make_target() {

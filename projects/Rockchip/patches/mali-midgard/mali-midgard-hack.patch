@@ -1,0 +1,22 @@
+diff --git a/driver/product/kernel/drivers/gpu/arm/midgard/mali_kbase_softjobs.c b/driver/product/kernel/drivers/gpu/arm/midgard/mali_kbase_softjobs.c
+index e762af4..838e437 100644
+--- a/driver/product/kernel/drivers/gpu/arm/midgard/mali_kbase_softjobs.c
++++ b/driver/product/kernel/drivers/gpu/arm/midgard/mali_kbase_softjobs.c
+@@ -807,7 +807,7 @@ int kbase_mem_copy_from_extres(struct kbase_context *kctx,
+ 
+ 		for (i = 0; i < dma_to_copy/PAGE_SIZE; i++) {
+ 
+-			void *extres_page = dma_buf_kmap(dma_buf, i);
++			void *extres_page = NULL; //dma_buf_kmap(dma_buf, i);
+ 
+ 			if (extres_page)
+ 				kbase_mem_copy_from_extres_page(kctx,
+@@ -816,7 +816,7 @@ int kbase_mem_copy_from_extres(struct kbase_context *kctx,
+ 						&target_page_nr,
+ 						offset, &to_copy);
+ 
+-			dma_buf_kunmap(dma_buf, i, extres_page);
++			//dma_buf_kunmap(dma_buf, i, extres_page);
+ 			if (target_page_nr >= buf_data->nr_pages)
+ 				break;
+ 		}

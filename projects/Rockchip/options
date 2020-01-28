@@ -19,7 +19,7 @@
 
   # Kernel to use. values can be:
   # default:  default mainline kernel
-    LINUX="${LINUX:-default}"
+    LINUX="${LINUX:-next}"
 
 ################################################################################
 # setup build defaults
@@ -62,6 +62,12 @@
   # Space separated list is supported,
   # e.g. FIRMWARE="dvb-firmware misc-firmware wlan-firmware"
     FIRMWARE="misc-firmware wlan-firmware dvb-firmware brcmfmac_sdio-firmware"
+
+  # additional drivers to install:
+  # for a list of additional drivers see packages/linux-drivers
+  # Space separated list is supported,
+  # e.g. ADDITIONAL_DRIVERS="DRIVER1 DRIVER2"
+    ADDITIONAL_DRIVERS=""
 
   # additional packages to install
     ADDITIONAL_PACKAGES="dtc"

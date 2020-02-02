@@ -1,4 +1,61 @@
-From f13b6014af30426eef07bb798afc98a5dbd63975 Mon Sep 17 00:00:00 2001
+From 6c3544ab6af1ad8a589211d32a3280fee07b8c83 Mon Sep 17 00:00:00 2001
+From: Philipp Zabel <p.zabel@pengutronix.de>
+Date: Mon, 27 Jan 2020 15:56:02 +0100
+Subject: [PATCH] media: hantro: fix extra MV/MC sync space calculation
+
+Add space for MVs and MC sync data to the capture buffers depending on
+whether the post processor will be enabled for the new capture format
+passed to TRY_FMT, not the currently set capture format.
+
+Signed-off-by: Philipp Zabel <p.zabel@pengutronix.de>
+Reviewed-by: Ezequiel Garcia <ezequiel@collabora.com>
+---
+ drivers/staging/media/hantro/hantro_v4l2.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/staging/media/hantro/hantro_v4l2.c b/drivers/staging/media/hantro/hantro_v4l2.c
+index 0198bcda26b7..f4ae2cee0f18 100644
+--- a/drivers/staging/media/hantro/hantro_v4l2.c
++++ b/drivers/staging/media/hantro/hantro_v4l2.c
+@@ -295,7 +295,7 @@ static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f,
+ 		 * +---------------------------+
+ 		 */
+ 		if (ctx->vpu_src_fmt->fourcc == V4L2_PIX_FMT_H264_SLICE &&
+-		    !hantro_needs_postproc(ctx, ctx->vpu_dst_fmt))
++		    !hantro_needs_postproc(ctx, fmt))
+ 			pix_mp->plane_fmt[0].sizeimage +=
+ 				64 * MB_WIDTH(pix_mp->width) *
+ 				     MB_WIDTH(pix_mp->height) + 32;
+
+From ba67bf71ca62dbd04dd98236bd8a69de336571a7 Mon Sep 17 00:00:00 2001
+From: Ezequiel Garcia <ezequiel@collabora.com>
+Date: Wed, 29 Jan 2020 18:06:08 -0300
+Subject: [PATCH] media: hantro: Prevent encoders from using post-processing
+
+The post-processing feature is meant to be used by decoding
+only. Prevent encoding jobs from enabling it.
+
+Fixes: 8c2d66b036c77 ("media: hantro: Support color conversion via post-processing")
+Signed-off-by: Ezequiel Garcia <ezequiel@collabora.com>
+---
+ drivers/staging/media/hantro/hantro.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/staging/media/hantro/hantro.h b/drivers/staging/media/hantro/hantro.h
+index b0faa43b3f79..327ddef45345 100644
+--- a/drivers/staging/media/hantro/hantro.h
++++ b/drivers/staging/media/hantro/hantro.h
+@@ -423,7 +423,7 @@ hantro_get_dst_buf(struct hantro_ctx *ctx)
+ static inline bool
+ hantro_needs_postproc(struct hantro_ctx *ctx, const struct hantro_fmt *fmt)
+ {
+-	return fmt->fourcc != V4L2_PIX_FMT_NV12;
++	return !hantro_is_encoder_ctx(ctx) && fmt->fourcc != V4L2_PIX_FMT_NV12;
+ }
+ 
+ static inline dma_addr_t
+
+From bef435be60acc96ced615d83af9d1cacfd8ebb87 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 29 Oct 2019 01:26:01 +0000
 Subject: [PATCH] RFC: media: uapi: h264: Add DPB entry field reference flags
@@ -51,7 +108,7 @@ index e877bf1d537c..76020ebd1e6c 100644
  struct v4l2_h264_dpb_entry {
  	__u64 reference_ts;
 
-From 178708eae224bd680fd9d7721ffe93e51bb19852 Mon Sep 17 00:00:00 2001
+From a79886ba9e996858f67ccd78c7677fa7eea8cf32 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 29 Oct 2019 01:26:02 +0000
 Subject: [PATCH] RFC: media: hantro: Fix H264 decoding of field encoded
@@ -67,7 +124,7 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  3 files changed, 85 insertions(+), 56 deletions(-)
 
 diff --git a/drivers/staging/media/hantro/hantro_g1_h264_dec.c b/drivers/staging/media/hantro/hantro_g1_h264_dec.c
-index 3cd40a8f0daa..4f2923d34d41 100644
+index 424c648ce9fc..89cf5741280e 100644
 --- a/drivers/staging/media/hantro/hantro_g1_h264_dec.c
 +++ b/drivers/staging/media/hantro/hantro_g1_h264_dec.c
 @@ -132,25 +132,12 @@ static void set_ref(struct hantro_ctx *ctx)
@@ -99,7 +156,7 @@ index 3cd40a8f0daa..4f2923d34d41 100644
  	/*
  	 * Set up reference frame picture numbers.
 diff --git a/drivers/staging/media/hantro/hantro_h264.c b/drivers/staging/media/hantro/hantro_h264.c
-index 568640eab3a6..79d96ff4e685 100644
+index f2d3e81fb6ce..4db779354e89 100644
 --- a/drivers/staging/media/hantro/hantro_h264.c
 +++ b/drivers/staging/media/hantro/hantro_h264.c
 @@ -225,17 +225,65 @@ static void prepare_table(struct hantro_ctx *ctx)
@@ -313,10 +370,10 @@ index 568640eab3a6..79d96ff4e685 100644
  
  int hantro_h264_dec_prepare_run(struct hantro_ctx *ctx)
 diff --git a/drivers/staging/media/hantro/hantro_hw.h b/drivers/staging/media/hantro/hantro_hw.h
-index fa91dd1848b7..fb1451e8a80b 100644
+index 2398d4c1f207..3dc7b8f27c32 100644
 --- a/drivers/staging/media/hantro/hantro_hw.h
 +++ b/drivers/staging/media/hantro/hantro_hw.h
-@@ -86,6 +86,8 @@ struct hantro_h264_dec_hw_ctx {
+@@ -88,6 +88,8 @@ struct hantro_h264_dec_hw_ctx {
  	struct v4l2_h264_dpb_entry dpb[HANTRO_H264_DPB_SIZE];
  	struct hantro_h264_dec_reflists reflists;
  	struct hantro_h264_dec_ctrls ctrls;

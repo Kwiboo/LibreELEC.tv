@@ -1,4 +1,4 @@
-From 9982c619f7cf7ca5e11173e9b809a09b6899be77 Mon Sep 17 00:00:00 2001
+From 8b4148617e2824c5bf43fd07b6e30e77eaf1571c Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 5 Nov 2019 23:05:35 +0000
 Subject: [PATCH] WIP: media: hantro: rk3399 mpeg2 src_fmt
@@ -10,7 +10,7 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/staging/media/hantro/rk3399_vpu_hw_mpeg2_dec.c b/drivers/staging/media/hantro/rk3399_vpu_hw_mpeg2_dec.c
-index b40d2cdf832f..62a4e6ad7aa8 100644
+index 7e9aad671489..b9b8194b42f2 100644
 --- a/drivers/staging/media/hantro/rk3399_vpu_hw_mpeg2_dec.c
 +++ b/drivers/staging/media/hantro/rk3399_vpu_hw_mpeg2_dec.c
 @@ -127,7 +127,7 @@ rk3399_vpu_mpeg2_dec_set_buffers(struct hantro_dev *vpu,
@@ -34,7 +34,7 @@ index b40d2cdf832f..62a4e6ad7aa8 100644
  	      VDPU_REG_TOPFIELDFIRST_E(picture->top_field_first);
  	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(120));
 
-From 90ce9c74ea9d30a855cfadb314a2aa82e986676a Mon Sep 17 00:00:00 2001
+From c285b16d14ae3a0488f39aeae4ef91087f918dba Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 5 Nov 2019 23:06:34 +0000
 Subject: [PATCH] WIP: media: hantro: g1 mpeg2 src_fmt
@@ -46,7 +46,7 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/staging/media/hantro/hantro_g1_mpeg2_dec.c b/drivers/staging/media/hantro/hantro_g1_mpeg2_dec.c
-index f3bf67d8a289..c20d74d4a55e 100644
+index 24041849384a..44f7326aba32 100644
 --- a/drivers/staging/media/hantro/hantro_g1_mpeg2_dec.c
 +++ b/drivers/staging/media/hantro/hantro_g1_mpeg2_dec.c
 @@ -125,7 +125,7 @@ hantro_g1_mpeg2_dec_set_buffers(struct hantro_dev *vpu, struct hantro_ctx *ctx,
@@ -70,7 +70,7 @@ index f3bf67d8a289..c20d74d4a55e 100644
  	      G1_REG_TOPFIELDFIRST_E(picture->top_field_first);
  	vdpu_write_relaxed(vpu, reg, G1_SWREG(4));
 
-From e9a5a945f942f149e482132783203884c1ac9cf0 Mon Sep 17 00:00:00 2001
+From 1a3727c344968bd973c7ac2da7d526d19764cfe7 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Tue, 5 Nov 2019 23:09:18 +0000
 Subject: [PATCH] WIP: media: hantro: vp8 src_fmt
@@ -83,7 +83,7 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  3 files changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/staging/media/hantro/hantro_g1_vp8_dec.c b/drivers/staging/media/hantro/hantro_g1_vp8_dec.c
-index cad18094fee0..5acc1b14f734 100644
+index a5cdf150cd16..e36538117fbf 100644
 --- a/drivers/staging/media/hantro/hantro_g1_vp8_dec.c
 +++ b/drivers/staging/media/hantro/hantro_g1_vp8_dec.c
 @@ -430,8 +430,8 @@ void hantro_g1_vp8_dec_run(struct hantro_ctx *ctx)
@@ -113,7 +113,7 @@ index 0e02d147b189..e010c9088fde 100644
  
  	/*
 diff --git a/drivers/staging/media/hantro/rk3399_vpu_hw_vp8_dec.c b/drivers/staging/media/hantro/rk3399_vpu_hw_vp8_dec.c
-index 76d7ed3fd69a..458f1f1f43ad 100644
+index a4a792f00b11..2f553e740294 100644
 --- a/drivers/staging/media/hantro/rk3399_vpu_hw_vp8_dec.c
 +++ b/drivers/staging/media/hantro/rk3399_vpu_hw_vp8_dec.c
 @@ -508,8 +508,8 @@ void rk3399_vpu_vp8_dec_run(struct hantro_ctx *ctx)
@@ -128,7 +128,7 @@ index 76d7ed3fd69a..458f1f1f43ad 100644
  	u32 reg;
  
 
-From d74e08d30e3074ed2fe95b813074739e0bca09f3 Mon Sep 17 00:00:00 2001
+From 53587b8e287e5a4dd7df5f99820a627575ea9235 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 18 Aug 2019 10:40:31 +0000
 Subject: [PATCH] media: hantro: Refactor G1 H264 code
@@ -145,7 +145,7 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  3 files changed, 435 insertions(+), 234 deletions(-)
 
 diff --git a/drivers/staging/media/hantro/hantro_g1_h264_dec.c b/drivers/staging/media/hantro/hantro_g1_h264_dec.c
-index 4f2923d34d41..aeefa652e5a9 100644
+index 89cf5741280e..20999b005307 100644
 --- a/drivers/staging/media/hantro/hantro_g1_h264_dec.c
 +++ b/drivers/staging/media/hantro/hantro_g1_h264_dec.c
 @@ -1,6 +1,6 @@
@@ -769,8 +769,8 @@ index 4f2923d34d41..aeefa652e5a9 100644
 +	vdpu_write_relaxed(vpu, addr, G1_REG_RLC_VLC_BASE);
  
  	/* Destination (decoded frame) buffer. */
--	dst_dma = vb2_dma_contig_plane_dma_addr(&dst_buf->vb2_buf, 0);
-+	addr = vb2_dma_contig_plane_dma_addr(&dst_buf->vb2_buf, 0);
+-	dst_dma = hantro_get_dec_buf_addr(ctx, &dst_buf->vb2_buf);
++	addr = hantro_get_dec_buf_addr(ctx, &dst_buf->vb2_buf);
  	/* Adjust dma addr to start at second line for bottom field */
 -	if (ctrls->slices[0].flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD)
 +	if (slices[0].flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD)
@@ -835,7 +835,7 @@ index 4f2923d34d41..aeefa652e5a9 100644
 +	vdpu_write_relaxed(vpu, hantro_h264_get_ref_buf(ctx, 14), G1_REG_REFER14_BASE);
 +	vdpu_write_relaxed(vpu, hantro_h264_get_ref_buf(ctx, 15), G1_REG_REFER15_BASE);
  
- 	hantro_finish_run(ctx);
+ 	hantro_end_prepare_run(ctx);
  
  	/* Start decoding! */
 -	vdpu_write_relaxed(vpu,
@@ -854,7 +854,7 @@ index 4f2923d34d41..aeefa652e5a9 100644
 +	vdpu_write(vpu, reg, G1_SWREG(1));
  }
 diff --git a/drivers/staging/media/hantro/hantro_h264.c b/drivers/staging/media/hantro/hantro_h264.c
-index 79d96ff4e685..f82f0744cfd0 100644
+index 4db779354e89..2edcdda2ad63 100644
 --- a/drivers/staging/media/hantro/hantro_h264.c
 +++ b/drivers/staging/media/hantro/hantro_h264.c
 @@ -596,6 +596,20 @@ dma_addr_t hantro_h264_get_ref_buf(struct hantro_ctx *ctx,
@@ -879,10 +879,10 @@ index 79d96ff4e685..f82f0744cfd0 100644
  {
  	struct hantro_h264_dec_hw_ctx *h264_ctx = &ctx->h264_dec;
 diff --git a/drivers/staging/media/hantro/hantro_hw.h b/drivers/staging/media/hantro/hantro_hw.h
-index fb1451e8a80b..bb6f9a87aade 100644
+index 3dc7b8f27c32..fadd3e1bf0d9 100644
 --- a/drivers/staging/media/hantro/hantro_hw.h
 +++ b/drivers/staging/media/hantro/hantro_hw.h
-@@ -159,6 +159,8 @@ void hantro_jpeg_enc_exit(struct hantro_ctx *ctx);
+@@ -172,6 +172,8 @@ void hantro_jpeg_enc_exit(struct hantro_ctx *ctx);
  
  dma_addr_t hantro_h264_get_ref_buf(struct hantro_ctx *ctx,
  				   unsigned int dpb_idx);
@@ -892,7 +892,7 @@ index fb1451e8a80b..bb6f9a87aade 100644
  void hantro_g1_h264_dec_run(struct hantro_ctx *ctx);
  int hantro_h264_dec_init(struct hantro_ctx *ctx);
 
-From f3dd203c7e47ad829c90db6aacb8f97662d049d0 Mon Sep 17 00:00:00 2001
+From 9d5400ebc8e4a6e5e9046ca7e73b6c7beba21950 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 18 Aug 2019 10:40:31 +0000
 Subject: [PATCH] media: hantro: Add support for H264 decoding on RK3399
@@ -906,10 +906,10 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  create mode 100644 drivers/staging/media/hantro/rk3399_vpu_hw_h264_dec.c
 
 diff --git a/drivers/staging/media/hantro/Makefile b/drivers/staging/media/hantro/Makefile
-index 5d6b0383d280..8d33b0e8aa6c 100644
+index 496b30c3c396..9bb8a560cb0a 100644
 --- a/drivers/staging/media/hantro/Makefile
 +++ b/drivers/staging/media/hantro/Makefile
-@@ -8,6 +8,7 @@ hantro-vpu-y += \
+@@ -9,6 +9,7 @@ hantro-vpu-y += \
  		hantro_g1_mpeg2_dec.o \
  		hantro_g1_vp8_dec.o \
  		rk3399_vpu_hw_jpeg_enc.o \
@@ -918,10 +918,10 @@ index 5d6b0383d280..8d33b0e8aa6c 100644
  		rk3399_vpu_hw_vp8_dec.o \
  		hantro_jpeg.o \
 diff --git a/drivers/staging/media/hantro/hantro_hw.h b/drivers/staging/media/hantro/hantro_hw.h
-index bb6f9a87aade..8a4ada2fc8c3 100644
+index fadd3e1bf0d9..4a64873bf332 100644
 --- a/drivers/staging/media/hantro/hantro_hw.h
 +++ b/drivers/staging/media/hantro/hantro_hw.h
-@@ -163,6 +163,7 @@ u16 hantro_h264_get_ref_nbr(struct hantro_ctx *ctx,
+@@ -176,6 +176,7 @@ u16 hantro_h264_get_ref_nbr(struct hantro_ctx *ctx,
  			    unsigned int dpb_idx);
  int hantro_h264_dec_prepare_run(struct hantro_ctx *ctx);
  void hantro_g1_h264_dec_run(struct hantro_ctx *ctx);
@@ -931,7 +931,7 @@ index bb6f9a87aade..8a4ada2fc8c3 100644
  
 diff --git a/drivers/staging/media/hantro/rk3399_vpu_hw_h264_dec.c b/drivers/staging/media/hantro/rk3399_vpu_hw_h264_dec.c
 new file mode 100644
-index 000000000000..02a81f03eed1
+index 000000000000..1f9de7d5a923
 --- /dev/null
 +++ b/drivers/staging/media/hantro/rk3399_vpu_hw_h264_dec.c
 @@ -0,0 +1,493 @@
@@ -1379,7 +1379,7 @@ index 000000000000..02a81f03eed1
 +	vdpu_write_relaxed(vpu, addr, VDPU_REG_RLC_VLC_BASE);
 +
 +	/* Destination (decoded frame) buffer. */
-+	addr = vb2_dma_contig_plane_dma_addr(&dst_buf->vb2_buf, 0);
++	addr = hantro_get_dec_buf_addr(ctx, &dst_buf->vb2_buf);
 +	/* Adjust dma addr to start at second line for bottom field */
 +	if (slices[0].flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD)
 +		offset = ALIGN(ctx->src_fmt.width, MB_DIM);
@@ -1422,14 +1422,14 @@ index 000000000000..02a81f03eed1
 +	vdpu_write_relaxed(vpu, hantro_h264_get_ref_buf(ctx, 14), VDPU_REG_REFER14_BASE);
 +	vdpu_write_relaxed(vpu, hantro_h264_get_ref_buf(ctx, 15), VDPU_REG_REFER15_BASE);
 +
-+	hantro_finish_run(ctx);
++	hantro_end_prepare_run(ctx);
 +
 +	/* Start decoding! */
 +	reg = vdpu_read(vpu, VDPU_SWREG(57)) | VDPU_REG_DEC_E(1);
 +	vdpu_write(vpu, reg, VDPU_SWREG(57));
 +}
 
-From e742e121a164f15fb287da07f712d93308477dfc Mon Sep 17 00:00:00 2001
+From 445afe43d25e2b128d58450e0b5df571cb264daa Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 18 Aug 2019 10:40:31 +0000
 Subject: [PATCH] media: hantro: Enable H264 decoding on RK3399
@@ -1440,7 +1440,7 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  1 file changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/staging/media/hantro/rk3399_vpu_hw.c b/drivers/staging/media/hantro/rk3399_vpu_hw.c
-index 9ac1f2cb6a16..8d62bcd1bd9c 100644
+index 9ac1f2cb6a16..3e05cd2c870e 100644
 --- a/drivers/staging/media/hantro/rk3399_vpu_hw.c
 +++ b/drivers/staging/media/hantro/rk3399_vpu_hw.c
 @@ -60,6 +60,19 @@ static const struct hantro_fmt rk3399_vpu_dec_fmts[] = {
@@ -1486,7 +1486,7 @@ index 9ac1f2cb6a16..8d62bcd1bd9c 100644
  	.irqs = rk3399_irqs,
  	.num_irqs = ARRAY_SIZE(rk3399_irqs),
 
-From c2b2a7444f8721119cf4679cb5f1527f193c2dfc Mon Sep 17 00:00:00 2001
+From 4771da277672726554718f6145e35d77cc2f7928 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Sun, 18 Aug 2019 10:40:31 +0000
 Subject: [PATCH] media: hantro: Enable H264 decoding on RK3328
@@ -1500,7 +1500,7 @@ Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/staging/media/hantro/rk3399_vpu_hw.c b/drivers/staging/media/hantro/rk3399_vpu_hw.c
-index 8d62bcd1bd9c..9a52ed3f779d 100644
+index 3e05cd2c870e..78f878ca01ff 100644
 --- a/drivers/staging/media/hantro/rk3399_vpu_hw.c
 +++ b/drivers/staging/media/hantro/rk3399_vpu_hw.c
 @@ -232,7 +232,8 @@ const struct hantro_variant rk3328_vpu_variant = {

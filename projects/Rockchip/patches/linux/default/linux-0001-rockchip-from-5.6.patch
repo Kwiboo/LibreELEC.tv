@@ -1,0 +1,2696 @@
+From 7e54e74df95e30dce6ace9aa707be15ca9e0fa68 Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Date: Mon, 26 Aug 2019 21:25:47 +0200
+Subject: [PATCH] drm: rockchip: Provide ddc symlink in rk3066_hdmi sysfs
+ directory
+
+Use the ddc pointer provided by the generic connector.
+
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Acked-by: Sam Ravnborg <sam@ravnborg.org>
+Reviewed-by: Emil Velikov <emil.velikov@collabora.com>
+Acked-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/ <4cad24dde4508cec17483f983da08226ba7e48b0.1566845537.git.andrzej.p@collabora.com
+(cherry picked from commit 9c544cc33d5dfbbf15ff41b081c1579b29ee4f6b)
+---
+ drivers/gpu/drm/rockchip/rk3066_hdmi.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rk3066_hdmi.c b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
+index cdb401f4283d..8673e64723e3 100644
+--- a/drivers/gpu/drm/rockchip/rk3066_hdmi.c
++++ b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
+@@ -564,9 +564,10 @@ rk3066_hdmi_register(struct drm_device *drm, struct rk3066_hdmi *hdmi)
+ 
+ 	drm_connector_helper_add(&hdmi->connector,
+ 				 &rk3066_hdmi_connector_helper_funcs);
+-	drm_connector_init(drm, &hdmi->connector,
+-			   &rk3066_hdmi_connector_funcs,
+-			   DRM_MODE_CONNECTOR_HDMIA);
++	drm_connector_init_with_ddc(drm, &hdmi->connector,
++				    &rk3066_hdmi_connector_funcs,
++				    DRM_MODE_CONNECTOR_HDMIA,
++				    hdmi->ddc);
+ 
+ 	drm_connector_attach_encoder(&hdmi->connector, encoder);
+ 
+
+From db4d31fbd0625ab1f73c1b218e75015a8df71746 Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Date: Mon, 26 Aug 2019 21:25:48 +0200
+Subject: [PATCH] drm: rockchip: Provide ddc symlink in inno_hdmi sysfs
+ directory
+
+Use the ddc pointer provided by the generic connector.
+
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Acked-by: Sam Ravnborg <sam@ravnborg.org>
+Reviewed-by: Emil Velikov <emil.velikov@collabora.com>
+Acked-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/ <a1f778d328328f15300338600bb2400850717300.1566845537.git.andrzej.p@collabora.com
+(cherry picked from commit b1f64c2fde41e62121b3fe09b645027db2aa5067)
+---
+ drivers/gpu/drm/rockchip/inno_hdmi.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/inno_hdmi.c b/drivers/gpu/drm/rockchip/inno_hdmi.c
+index ed344a795b4d..e5864e823020 100644
+--- a/drivers/gpu/drm/rockchip/inno_hdmi.c
++++ b/drivers/gpu/drm/rockchip/inno_hdmi.c
+@@ -624,8 +624,10 @@ static int inno_hdmi_register(struct drm_device *drm, struct inno_hdmi *hdmi)
+ 
+ 	drm_connector_helper_add(&hdmi->connector,
+ 				 &inno_hdmi_connector_helper_funcs);
+-	drm_connector_init(drm, &hdmi->connector, &inno_hdmi_connector_funcs,
+-			   DRM_MODE_CONNECTOR_HDMIA);
++	drm_connector_init_with_ddc(drm, &hdmi->connector,
++				    &inno_hdmi_connector_funcs,
++				    DRM_MODE_CONNECTOR_HDMIA,
++				    hdmi->ddc);
+ 
+ 	drm_connector_attach_encoder(&hdmi->connector, encoder);
+ 
+
+From b81faed13c9d2ed924928d72e01082883642d120 Mon Sep 17 00:00:00 2001
+From: Wambui Karuga <wambui.karugax@gmail.com>
+Date: Thu, 7 Nov 2019 12:29:45 +0300
+Subject: [PATCH] drm/rockchip: use DRM_DEV_ERROR for log output
+
+Replace the use of the dev_err macro with the DRM_DEV_ERROR
+DRM helper macro. rockchip driver uses almost exclusively DRM_* logging
+(aside from 2 dev_* instances, one of which is converted in this patch),
+so this makes things more consistent.
+
+Signed-off-by: Wambui Karuga <wambui.karugax@gmail.com>
+[seanpaul expanded on the commit message]
+Signed-off-by: Sean Paul <seanpaul@chromium.org>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191107092945.15513-1-wambui.karugax@gmail.com
+(cherry picked from commit f4563f3cec404ebcead65987e8a97e0cbf1ff34d)
+---
+ drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+index bc073ec5c183..5f23cf702cb4 100644
+--- a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+@@ -916,7 +916,7 @@ static int dw_mipi_dsi_rockchip_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	if (!dsi->cdata) {
+-		dev_err(dev, "no dsi-config for %s node\n", np->name);
++		DRM_DEV_ERROR(dev, "no dsi-config for %s node\n", np->name);
+ 		return -EINVAL;
+ 	}
+ 
+
+From 7854ae59f75e83346a33634698b16a609dac22f4 Mon Sep 17 00:00:00 2001
+From: Krzysztof Kozlowski <krzk@kernel.org>
+Date: Wed, 20 Nov 2019 21:33:48 +0800
+Subject: [PATCH] drm/rockchip: Fix Kconfig indentation
+
+Adjust indentation from spaces to tab (+optional two spaces) as in
+coding style with command like:
+	$ sed -e 's/^        /\t/' -i */Kconfig
+
+Signed-off-by: Krzysztof Kozlowski <krzk@kernel.org>
+Signed-off-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191120133348.6640-1-krzk@kernel.org
+(cherry picked from commit eb448304f6d207bfb3fa52463c539f32d55dc2ac)
+---
+ drivers/gpu/drm/rockchip/Kconfig | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/Kconfig b/drivers/gpu/drm/rockchip/Kconfig
+index 6f4222f8beeb..1670a5cae3c7 100644
+--- a/drivers/gpu/drm/rockchip/Kconfig
++++ b/drivers/gpu/drm/rockchip/Kconfig
+@@ -28,17 +28,17 @@ config ROCKCHIP_ANALOGIX_DP
+ 	  on RK3288 or RK3399 based SoC, you should select this option.
+ 
+ config ROCKCHIP_CDN_DP
+-        bool "Rockchip cdn DP"
++	bool "Rockchip cdn DP"
+ 	depends on EXTCON=y || (EXTCON=m && DRM_ROCKCHIP=m)
+-        help
++	help
+ 	  This selects support for Rockchip SoC specific extensions
+ 	  for the cdn DP driver. If you want to enable Dp on
+ 	  RK3399 based SoC, you should select this
+ 	  option.
+ 
+ config ROCKCHIP_DW_HDMI
+-        bool "Rockchip specific extensions for Synopsys DW HDMI"
+-        help
++	bool "Rockchip specific extensions for Synopsys DW HDMI"
++	help
+ 	  This selects support for Rockchip SoC specific extensions
+ 	  for the Synopsys DesignWare HDMI driver. If you want to
+ 	  enable HDMI on RK3288 or RK3399 based SoC, you should select
+
+From d755133d4dc40ae499aeff4f60e2a06c7f08b79b Mon Sep 17 00:00:00 2001
+From: Daniel Vetter <daniel.vetter@ffwll.ch>
+Date: Wed, 27 Nov 2019 19:00:33 +0100
+Subject: [PATCH] drm/rockchip: Use drm_gem_fb_create_with_dirty
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+If rockchip would switch over to the generic fbdev setup we could
+grabage collect even more of all this code (all of the remaining fb
+handling code really).
+
+v2: Actually use _with_dirty like the patch subject promised (Andrzej)
+
+Cc: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Reviewed-by: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Signed-off-by: Daniel Vetter <daniel.vetter@intel.com>
+Cc: Sandy Huang <hjc@rock-chips.com>
+Cc: "Heiko Stübner" <heiko@sntech.de>
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
+Link: https://patchwork.freedesktop.org/patch/msgid/20191127180035.416209-1-daniel.vetter@ffwll.ch
+(cherry picked from commit 11b7e986da28fb2a56c50dd97d074e7058bea015)
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_fb.c | 54 +-----------------------------
+ 1 file changed, 1 insertion(+), 53 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_fb.c b/drivers/gpu/drm/rockchip/rockchip_drm_fb.c
+index ca01234c037c..221e72e71432 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_fb.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_fb.c
+@@ -53,64 +53,12 @@ rockchip_fb_alloc(struct drm_device *dev, const struct drm_mode_fb_cmd2 *mode_cm
+ 	return fb;
+ }
+ 
+-static struct drm_framebuffer *
+-rockchip_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
+-			const struct drm_mode_fb_cmd2 *mode_cmd)
+-{
+-	const struct drm_format_info *info = drm_get_format_info(dev,
+-								 mode_cmd);
+-	struct drm_framebuffer *fb;
+-	struct drm_gem_object *objs[ROCKCHIP_MAX_FB_BUFFER];
+-	struct drm_gem_object *obj;
+-	int num_planes = min_t(int, info->num_planes, ROCKCHIP_MAX_FB_BUFFER);
+-	int ret;
+-	int i;
+-
+-	for (i = 0; i < num_planes; i++) {
+-		unsigned int width = mode_cmd->width / (i ? info->hsub : 1);
+-		unsigned int height = mode_cmd->height / (i ? info->vsub : 1);
+-		unsigned int min_size;
+-
+-		obj = drm_gem_object_lookup(file_priv, mode_cmd->handles[i]);
+-		if (!obj) {
+-			DRM_DEV_ERROR(dev->dev,
+-				      "Failed to lookup GEM object\n");
+-			ret = -ENXIO;
+-			goto err_gem_object_unreference;
+-		}
+-
+-		min_size = (height - 1) * mode_cmd->pitches[i] +
+-			mode_cmd->offsets[i] +
+-			width * info->cpp[i];
+-
+-		if (obj->size < min_size) {
+-			drm_gem_object_put_unlocked(obj);
+-			ret = -EINVAL;
+-			goto err_gem_object_unreference;
+-		}
+-		objs[i] = obj;
+-	}
+-
+-	fb = rockchip_fb_alloc(dev, mode_cmd, objs, i);
+-	if (IS_ERR(fb)) {
+-		ret = PTR_ERR(fb);
+-		goto err_gem_object_unreference;
+-	}
+-
+-	return fb;
+-
+-err_gem_object_unreference:
+-	for (i--; i >= 0; i--)
+-		drm_gem_object_put_unlocked(objs[i]);
+-	return ERR_PTR(ret);
+-}
+-
+ static const struct drm_mode_config_helper_funcs rockchip_mode_config_helpers = {
+ 	.atomic_commit_tail = drm_atomic_helper_commit_tail_rpm,
+ };
+ 
+ static const struct drm_mode_config_funcs rockchip_drm_mode_config_funcs = {
+-	.fb_create = rockchip_user_fb_create,
++	.fb_create = drm_gem_fb_create_with_dirty,
+ 	.output_poll_changed = drm_fb_helper_output_poll_changed,
+ 	.atomic_check = drm_atomic_helper_check,
+ 	.atomic_commit = drm_atomic_helper_commit,
+
+From 4f34632812d89438d15ac7c2bad28cbc856c1538 Mon Sep 17 00:00:00 2001
+From: Jerome Brunet <jbrunet@baylibre.com>
+Date: Fri, 6 Dec 2019 11:35:42 +0100
+Subject: [PATCH] ASoC: hdmi-codec: re-introduce mutex locking again
+
+The dai codec needs to ensure that on one dai is used at any time.
+This is currently protected by bit atomic operation. With this change,
+it done with a mutex instead.
+
+This change is not about functionality or efficiency. It is done with
+the hope that it help maintainability in the future.
+
+Suggested-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Jerome Brunet <jbrunet@baylibre.com>
+Link: https://lore.kernel.org/r/20191206103542.485224-1-jbrunet@baylibre.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+(cherry picked from commit 1442842952ccfe4178602c7a8459ac2ecb9d9e1a)
+---
+ sound/soc/codecs/hdmi-codec.c | 32 +++++++++++++++++++-------------
+ 1 file changed, 19 insertions(+), 13 deletions(-)
+
+diff --git a/sound/soc/codecs/hdmi-codec.c b/sound/soc/codecs/hdmi-codec.c
+index 4eaa2b5b20a5..444cc4e3374e 100644
+--- a/sound/soc/codecs/hdmi-codec.c
++++ b/sound/soc/codecs/hdmi-codec.c
+@@ -274,7 +274,8 @@ struct hdmi_codec_priv {
+ 	uint8_t eld[MAX_ELD_BYTES];
+ 	struct snd_pcm_chmap *chmap_info;
+ 	unsigned int chmap_idx;
+-	unsigned long busy;
++	struct mutex lock;
++	bool busy;
+ 	struct snd_soc_jack *jack;
+ 	unsigned int jack_status;
+ };
+@@ -390,9 +391,10 @@ static int hdmi_codec_startup(struct snd_pcm_substream *substream,
+ 	struct hdmi_codec_priv *hcp = snd_soc_dai_get_drvdata(dai);
+ 	int ret = 0;
+ 
+-	ret = test_and_set_bit(0, &hcp->busy);
+-	if (ret) {
++	mutex_lock(&hcp->lock);
++	if (hcp->busy) {
+ 		dev_err(dai->dev, "Only one simultaneous stream supported!\n");
++		mutex_unlock(&hcp->lock);
+ 		return -EINVAL;
+ 	}
+ 
+@@ -405,21 +407,21 @@ static int hdmi_codec_startup(struct snd_pcm_substream *substream,
+ 	if (hcp->hcd.ops->get_eld) {
+ 		ret = hcp->hcd.ops->get_eld(dai->dev->parent, hcp->hcd.data,
+ 					    hcp->eld, sizeof(hcp->eld));
++		if (ret)
++			goto err;
++
++		ret = snd_pcm_hw_constraint_eld(substream->runtime, hcp->eld);
++		if (ret)
++			goto err;
+ 
+-		if (!ret) {
+-			ret = snd_pcm_hw_constraint_eld(substream->runtime,
+-							hcp->eld);
+-			if (ret)
+-				goto err;
+-		}
+ 		/* Select chmap supported */
+ 		hdmi_codec_eld_chmap(hcp);
+ 	}
+-	return 0;
++
++	hcp->busy = true;
+ 
+ err:
+-	/* Release the exclusive lock on error */
+-	clear_bit(0, &hcp->busy);
++	mutex_unlock(&hcp->lock);
+ 	return ret;
+ }
+ 
+@@ -431,7 +433,9 @@ static void hdmi_codec_shutdown(struct snd_pcm_substream *substream,
+ 	hcp->chmap_idx = HDMI_CODEC_CHMAP_IDX_UNKNOWN;
+ 	hcp->hcd.ops->audio_shutdown(dai->dev->parent, hcp->hcd.data);
+ 
+-	clear_bit(0, &hcp->busy);
++	mutex_lock(&hcp->lock);
++	hcp->busy = false;
++	mutex_unlock(&hcp->lock);
+ }
+ 
+ static int hdmi_codec_hw_params(struct snd_pcm_substream *substream,
+@@ -811,6 +815,8 @@ static int hdmi_codec_probe(struct platform_device *pdev)
+ 		return -ENOMEM;
+ 
+ 	hcp->hcd = *hcd;
++	mutex_init(&hcp->lock);
++
+ 	daidrv = devm_kcalloc(dev, dai_count, sizeof(*daidrv), GFP_KERNEL);
+ 	if (!daidrv)
+ 		return -ENOMEM;
+
+From 12360d4f2f8fb184a786720a9f9702d43a321443 Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Date: Mon, 9 Dec 2019 15:31:25 +0100
+Subject: [PATCH] drm/bridge/synopsys: dsi: driver-specific configuration of
+ phy timings
+
+The timing values for dw-dsi are often dependent on the used display and
+according to Philippe Cornu will most likely also depend on the used phy
+technology in the soc-specific implementation.
+
+To solve this and allow specific implementations to define them as needed
+add a new get_timing callback to phy_ops and call this from the dphy_timing
+function to retrieve the necessary values for the specific mode.
+
+Right now this handles the hs2lp + lp2hs where Rockchip SoCs need handling
+according to the phy speed, while STM seems to be ok with static values.
+
+changes in v5:
+- rebase on 5.5-rc1
+- merge into px30 dsi series to prevent ordering conflicts
+
+changes in v4:
+- rebase to make it directly fit on top of drm-misc-next after all
+
+changes in v3:
+- check existence of phy_ops->get_timing in __dw_mipi_dsi_probe()
+- emit actual error when get_timing() call fails
+- add tags from Philippe and Yannick
+
+changes in v2:
+- add driver-specific handling, don't force all bridge users to use
+  the same timings, as suggested by Philippe
+
+Suggested-by: Philippe Cornu <philippe.cornu@st.com>
+Signed-off-by: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Reviewed-by: Philippe Cornu <philippe.cornu@st.com>
+Tested-by: Yannick Fertre <yannick.fertre@st.com>
+Reviewed-by: Neil Armstrong <narmstrong@baylibre.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191209143130.4553-2-heiko@sntech.de
+(cherry picked from commit 25ed8aeb9c396475f48c13abdaf76a2e6e6b117b)
+---
+ drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c   | 27 ++++++---
+ drivers/gpu/drm/rockchip/Kconfig                |  1 +
+ drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c | 78 +++++++++++++++++++++++++
+ drivers/gpu/drm/stm/dw_mipi_dsi-stm.c           | 13 +++++
+ include/drm/bridge/dw_mipi_dsi.h                |  9 +++
+ 5 files changed, 121 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c b/drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c
+index b6e793bb653c..bfe0061e54a2 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c
+@@ -719,7 +719,15 @@ static void dw_mipi_dsi_vertical_timing_config(struct dw_mipi_dsi *dsi,
+ 
+ static void dw_mipi_dsi_dphy_timing_config(struct dw_mipi_dsi *dsi)
+ {
++	const struct dw_mipi_dsi_phy_ops *phy_ops = dsi->plat_data->phy_ops;
++	struct dw_mipi_dsi_dphy_timing timing;
+ 	u32 hw_version;
++	int ret;
++
++	ret = phy_ops->get_timing(dsi->plat_data->priv_data,
++				  dsi->lane_mbps, &timing);
++	if (ret)
++		DRM_DEV_ERROR(dsi->dev, "Retrieving phy timings failed\n");
+ 
+ 	/*
+ 	 * TODO dw drv improvements
+@@ -732,16 +740,20 @@ static void dw_mipi_dsi_dphy_timing_config(struct dw_mipi_dsi *dsi)
+ 	hw_version = dsi_read(dsi, DSI_VERSION) & VERSION;
+ 
+ 	if (hw_version >= HWVER_131) {
+-		dsi_write(dsi, DSI_PHY_TMR_CFG, PHY_HS2LP_TIME_V131(0x40) |
+-			  PHY_LP2HS_TIME_V131(0x40));
++		dsi_write(dsi, DSI_PHY_TMR_CFG,
++			  PHY_HS2LP_TIME_V131(timing.data_hs2lp) |
++			  PHY_LP2HS_TIME_V131(timing.data_lp2hs));
+ 		dsi_write(dsi, DSI_PHY_TMR_RD_CFG, MAX_RD_TIME_V131(10000));
+ 	} else {
+-		dsi_write(dsi, DSI_PHY_TMR_CFG, PHY_HS2LP_TIME(0x40) |
+-			  PHY_LP2HS_TIME(0x40) | MAX_RD_TIME(10000));
++		dsi_write(dsi, DSI_PHY_TMR_CFG,
++			  PHY_HS2LP_TIME(timing.data_hs2lp) |
++			  PHY_LP2HS_TIME(timing.data_lp2hs) |
++			  MAX_RD_TIME(10000));
+ 	}
+ 
+-	dsi_write(dsi, DSI_PHY_TMR_LPCLK_CFG, PHY_CLKHS2LP_TIME(0x40)
+-		  | PHY_CLKLP2HS_TIME(0x40));
++	dsi_write(dsi, DSI_PHY_TMR_LPCLK_CFG,
++		  PHY_CLKHS2LP_TIME(timing.clk_hs2lp) |
++		  PHY_CLKLP2HS_TIME(timing.clk_lp2hs));
+ }
+ 
+ static void dw_mipi_dsi_dphy_interface_config(struct dw_mipi_dsi *dsi)
+@@ -991,7 +1003,8 @@ __dw_mipi_dsi_probe(struct platform_device *pdev,
+ 	dsi->dev = dev;
+ 	dsi->plat_data = plat_data;
+ 
+-	if (!plat_data->phy_ops->init || !plat_data->phy_ops->get_lane_mbps) {
++	if (!plat_data->phy_ops->init || !plat_data->phy_ops->get_lane_mbps ||
++	    !plat_data->phy_ops->get_timing) {
+ 		DRM_ERROR("Phy not properly configured\n");
+ 		return ERR_PTR(-ENODEV);
+ 	}
+diff --git a/drivers/gpu/drm/rockchip/Kconfig b/drivers/gpu/drm/rockchip/Kconfig
+index 1670a5cae3c7..310aa1546893 100644
+--- a/drivers/gpu/drm/rockchip/Kconfig
++++ b/drivers/gpu/drm/rockchip/Kconfig
+@@ -46,6 +46,7 @@ config ROCKCHIP_DW_HDMI
+ 
+ config ROCKCHIP_DW_MIPI_DSI
+ 	bool "Rockchip specific extensions for Synopsys DW MIPI DSI"
++	select GENERIC_PHY_MIPI_DPHY
+ 	help
+ 	  This selects support for Rockchip SoC specific extensions
+ 	  for the Synopsys DesignWare HDMI driver. If you want to
+diff --git a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+index 5f23cf702cb4..b41d86ee9e17 100644
+--- a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+@@ -559,9 +559,87 @@ dw_mipi_dsi_get_lane_mbps(void *priv_data, const struct drm_display_mode *mode,
+ 	return 0;
+ }
+ 
++struct hstt {
++	unsigned int maxfreq;
++	struct dw_mipi_dsi_dphy_timing timing;
++};
++
++#define HSTT(_maxfreq, _c_lp2hs, _c_hs2lp, _d_lp2hs, _d_hs2lp)	\
++{					\
++	.maxfreq = _maxfreq,		\
++	.timing = {			\
++		.clk_lp2hs = _c_lp2hs,	\
++		.clk_hs2lp = _c_hs2lp,	\
++		.data_lp2hs = _d_lp2hs,	\
++		.data_hs2lp = _d_hs2lp,	\
++	}				\
++}
++
++/* Table A-3 High-Speed Transition Times */
++struct hstt hstt_table[] = {
++	HSTT(  90,  32, 20,  26, 13),
++	HSTT( 100,  35, 23,  28, 14),
++	HSTT( 110,  32, 22,  26, 13),
++	HSTT( 130,  31, 20,  27, 13),
++	HSTT( 140,  33, 22,  26, 14),
++	HSTT( 150,  33, 21,  26, 14),
++	HSTT( 170,  32, 20,  27, 13),
++	HSTT( 180,  36, 23,  30, 15),
++	HSTT( 200,  40, 22,  33, 15),
++	HSTT( 220,  40, 22,  33, 15),
++	HSTT( 240,  44, 24,  36, 16),
++	HSTT( 250,  48, 24,  38, 17),
++	HSTT( 270,  48, 24,  38, 17),
++	HSTT( 300,  50, 27,  41, 18),
++	HSTT( 330,  56, 28,  45, 18),
++	HSTT( 360,  59, 28,  48, 19),
++	HSTT( 400,  61, 30,  50, 20),
++	HSTT( 450,  67, 31,  55, 21),
++	HSTT( 500,  73, 31,  59, 22),
++	HSTT( 550,  79, 36,  63, 24),
++	HSTT( 600,  83, 37,  68, 25),
++	HSTT( 650,  90, 38,  73, 27),
++	HSTT( 700,  95, 40,  77, 28),
++	HSTT( 750, 102, 40,  84, 28),
++	HSTT( 800, 106, 42,  87, 30),
++	HSTT( 850, 113, 44,  93, 31),
++	HSTT( 900, 118, 47,  98, 32),
++	HSTT( 950, 124, 47, 102, 34),
++	HSTT(1000, 130, 49, 107, 35),
++	HSTT(1050, 135, 51, 111, 37),
++	HSTT(1100, 139, 51, 114, 38),
++	HSTT(1150, 146, 54, 120, 40),
++	HSTT(1200, 153, 57, 125, 41),
++	HSTT(1250, 158, 58, 130, 42),
++	HSTT(1300, 163, 58, 135, 44),
++	HSTT(1350, 168, 60, 140, 45),
++	HSTT(1400, 172, 64, 144, 47),
++	HSTT(1450, 176, 65, 148, 48),
++	HSTT(1500, 181, 66, 153, 50)
++};
++
++static int
++dw_mipi_dsi_phy_get_timing(void *priv_data, unsigned int lane_mbps,
++			   struct dw_mipi_dsi_dphy_timing *timing)
++{
++	int i;
++
++	for (i = 0; i < ARRAY_SIZE(hstt_table); i++)
++		if (lane_mbps < hstt_table[i].maxfreq)
++			break;
++
++	if (i == ARRAY_SIZE(hstt_table))
++		i--;
++
++	*timing = hstt_table[i].timing;
++
++	return 0;
++}
++
+ static const struct dw_mipi_dsi_phy_ops dw_mipi_dsi_rockchip_phy_ops = {
+ 	.init = dw_mipi_dsi_phy_init,
+ 	.get_lane_mbps = dw_mipi_dsi_get_lane_mbps,
++	.get_timing = dw_mipi_dsi_phy_get_timing,
+ };
+ 
+ static void dw_mipi_dsi_rockchip_config(struct dw_mipi_dsi_rockchip *dsi,
+diff --git a/drivers/gpu/drm/stm/dw_mipi_dsi-stm.c b/drivers/gpu/drm/stm/dw_mipi_dsi-stm.c
+index 514efefb0016..4b165635b2d4 100644
+--- a/drivers/gpu/drm/stm/dw_mipi_dsi-stm.c
++++ b/drivers/gpu/drm/stm/dw_mipi_dsi-stm.c
+@@ -309,11 +309,24 @@ dw_mipi_dsi_get_lane_mbps(void *priv_data, const struct drm_display_mode *mode,
+ 	return 0;
+ }
+ 
++static int
++dw_mipi_dsi_phy_get_timing(void *priv_data, unsigned int lane_mbps,
++			   struct dw_mipi_dsi_dphy_timing *timing)
++{
++	timing->clk_hs2lp = 0x40;
++	timing->clk_lp2hs = 0x40;
++	timing->data_hs2lp = 0x40;
++	timing->data_lp2hs = 0x40;
++
++	return 0;
++}
++
+ static const struct dw_mipi_dsi_phy_ops dw_mipi_dsi_stm_phy_ops = {
+ 	.init = dw_mipi_dsi_phy_init,
+ 	.power_on = dw_mipi_dsi_phy_power_on,
+ 	.power_off = dw_mipi_dsi_phy_power_off,
+ 	.get_lane_mbps = dw_mipi_dsi_get_lane_mbps,
++	.get_timing = dw_mipi_dsi_phy_get_timing,
+ };
+ 
+ static struct dw_mipi_dsi_plat_data dw_mipi_dsi_stm_plat_data = {
+diff --git a/include/drm/bridge/dw_mipi_dsi.h b/include/drm/bridge/dw_mipi_dsi.h
+index 94cc64a342e1..b0e390b3288e 100644
+--- a/include/drm/bridge/dw_mipi_dsi.h
++++ b/include/drm/bridge/dw_mipi_dsi.h
+@@ -19,6 +19,13 @@ struct dw_mipi_dsi;
+ struct mipi_dsi_device;
+ struct platform_device;
+ 
++struct dw_mipi_dsi_dphy_timing {
++	u16 data_hs2lp;
++	u16 data_lp2hs;
++	u16 clk_hs2lp;
++	u16 clk_lp2hs;
++};
++
+ struct dw_mipi_dsi_phy_ops {
+ 	int (*init)(void *priv_data);
+ 	void (*power_on)(void *priv_data);
+@@ -27,6 +34,8 @@ struct dw_mipi_dsi_phy_ops {
+ 			     const struct drm_display_mode *mode,
+ 			     unsigned long mode_flags, u32 lanes, u32 format,
+ 			     unsigned int *lane_mbps);
++	int (*get_timing)(void *priv_data, unsigned int lane_mbps,
++			  struct dw_mipi_dsi_dphy_timing *timing);
+ };
+ 
+ struct dw_mipi_dsi_host_ops {
+
+From b30096a3bc3cf417dbfbadaf152fb8cd7d7074af Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Date: Mon, 9 Dec 2019 15:31:26 +0100
+Subject: [PATCH] drm/bridge/synopsys: dsi: move phy_ops callbacks around panel
+ enablement
+
+If implementation-specific phy_ops need to be defined they probably
+should be enabled before trying to talk to the panel and disabled only
+after the panel was disabled.
+
+Right now they are enabled last and disabled first, so might make it
+impossible to talk to some panels - example for this being the px30
+with an external Innosilicon dphy that needs the phy to be enabled
+to transfer commands to the panel.
+
+So move the calls appropriately.
+
+changed in v5:
+- rebased on top of 5.5-rc1
+- merged with dsi timing change to prevent ordering conflicts
+
+Signed-off-by: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Reviewed-by: Neil Armstrong <narmstrong@baylibre.com>
+Tested-by: Yannick Fertre <yannick.fertre@st.com>
+Reviewed-by: Philippe Cornu <philippe.cornu@st.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191209143130.4553-3-heiko@sntech.de
+(cherry picked from commit 89bddff6be745fd688bbdd53773f5eb3136051eb)
+---
+ drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c b/drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c
+index bfe0061e54a2..b18351b6760a 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c
+@@ -810,9 +810,6 @@ static void dw_mipi_dsi_bridge_post_disable(struct drm_bridge *bridge)
+ 	struct dw_mipi_dsi *dsi = bridge_to_dsi(bridge);
+ 	const struct dw_mipi_dsi_phy_ops *phy_ops = dsi->plat_data->phy_ops;
+ 
+-	if (phy_ops->power_off)
+-		phy_ops->power_off(dsi->plat_data->priv_data);
+-
+ 	/*
+ 	 * Switch to command mode before panel-bridge post_disable &
+ 	 * panel unprepare.
+@@ -829,6 +826,9 @@ static void dw_mipi_dsi_bridge_post_disable(struct drm_bridge *bridge)
+ 	 */
+ 	dsi->panel_bridge->funcs->post_disable(dsi->panel_bridge);
+ 
++	if (phy_ops->power_off)
++		phy_ops->power_off(dsi->plat_data->priv_data);
++
+ 	if (dsi->slave) {
+ 		dw_mipi_dsi_disable(dsi->slave);
+ 		clk_disable_unprepare(dsi->slave->pclk);
+@@ -895,6 +895,9 @@ static void dw_mipi_dsi_mode_set(struct dw_mipi_dsi *dsi,
+ 
+ 	/* Switch to cmd mode for panel-bridge pre_enable & panel prepare */
+ 	dw_mipi_dsi_set_mode(dsi, 0);
++
++	if (phy_ops->power_on)
++		phy_ops->power_on(dsi->plat_data->priv_data);
+ }
+ 
+ static void dw_mipi_dsi_bridge_mode_set(struct drm_bridge *bridge,
+@@ -911,15 +914,11 @@ static void dw_mipi_dsi_bridge_mode_set(struct drm_bridge *bridge,
+ static void dw_mipi_dsi_bridge_enable(struct drm_bridge *bridge)
+ {
+ 	struct dw_mipi_dsi *dsi = bridge_to_dsi(bridge);
+-	const struct dw_mipi_dsi_phy_ops *phy_ops = dsi->plat_data->phy_ops;
+ 
+ 	/* Switch to video mode for panel-bridge enable & panel enable */
+ 	dw_mipi_dsi_set_mode(dsi, MIPI_DSI_MODE_VIDEO);
+ 	if (dsi->slave)
+ 		dw_mipi_dsi_set_mode(dsi->slave, MIPI_DSI_MODE_VIDEO);
+-
+-	if (phy_ops->power_on)
+-		phy_ops->power_on(dsi->plat_data->priv_data);
+ }
+ 
+ static enum drm_mode_status
+
+From d3445003600139cf0b250e4f5e3684265cd1ae2b Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Date: Mon, 9 Dec 2019 15:31:27 +0100
+Subject: [PATCH] dt-bindings: display: rockchip-dsi: document external phys
+
+Some dw-mipi-dsi instances in Rockchip SoCs use external dphys.
+In these cases the needs clock will also be generated externally
+so these don't need the ref-clock as well.
+
+changes in v5:
+- rebased on top of 5.5-rc1
+- merged with dsi timing change to prevent ordering conflicts
+
+Signed-off-by: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Reviewed-by: Rob Herring <robh@kernel.org>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191209143130.4553-4-heiko@sntech.de
+(cherry picked from commit 0606f9b67e8c8727c1369096b3b142dd74dc0a39)
+---
+ .../devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt  | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt b/Documentation/devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt
+index ce4c1fc9116c..1ba9237d0ac0 100644
+--- a/Documentation/devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt
++++ b/Documentation/devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt
+@@ -9,8 +9,9 @@ Required properties:
+ - reg: Represent the physical address range of the controller.
+ - interrupts: Represent the controller's interrupt to the CPU(s).
+ - clocks, clock-names: Phandles to the controller's pll reference
+-  clock(ref) and APB clock(pclk). For RK3399, a phy config clock
+-  (phy_cfg) and a grf clock(grf) are required. As described in [1].
++  clock(ref) when using an internal dphy and APB clock(pclk).
++  For RK3399, a phy config clock (phy_cfg) and a grf clock(grf)
++  are required. As described in [1].
+ - rockchip,grf: this soc should set GRF regs to mux vopl/vopb.
+ - ports: contain a port node with endpoint definitions as defined in [2].
+   For vopb,set the reg = <0> and set the reg = <1> for vopl.
+@@ -18,6 +19,8 @@ Required properties:
+ - video port 1 for either a panel or subsequent encoder
+ 
+ Optional properties:
++- phys: from general PHY binding: the phandle for the PHY device.
++- phy-names: Should be "dphy" if phys references an external phy.
+ - power-domains: a phandle to mipi dsi power domain node.
+ - resets: list of phandle + reset specifier pairs, as described in [3].
+ - reset-names: string reset name, must be "apb".
+
+From 4b5b7dd28503810213d16d3b8e93cc67d785b4dd Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Date: Mon, 9 Dec 2019 15:31:28 +0100
+Subject: [PATCH] drm/rockchip: add ability to handle external dphys in
+ mipi-dsi
+
+While the common case is that the dsi controller uses an internal dphy,
+accessed through the phy registers inside the dsi controller, there is
+also the possibility to use a separate dphy from a different vendor.
+
+One such case is the Rockchip px30 that uses a Innosilicon Mipi dphy,
+so add the support for handling such a constellation, including the pll
+also getting generated inside that external phy.
+
+changes in v5:
+- rebased on top of 5.5-rc1
+- merged with dsi timing change to prevent ordering conflicts
+
+Signed-off-by: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Reviewed-by: Neil Armstrong <narmstrong@baylibre.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191209143130.4553-5-heiko@sntech.de
+(cherry picked from commit 94bedc45acb5d03ca7e4f556964c13befba247e7)
+---
+ drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c | 68 +++++++++++++++++++++++--
+ 1 file changed, 64 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+index b41d86ee9e17..17effcc73877 100644
+--- a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+@@ -12,6 +12,7 @@
+ #include <linux/mfd/syscon.h>
+ #include <linux/module.h>
+ #include <linux/of_device.h>
++#include <linux/phy/phy.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/regmap.h>
+ 
+@@ -223,6 +224,10 @@ struct dw_mipi_dsi_rockchip {
+ 	bool is_slave;
+ 	struct dw_mipi_dsi_rockchip *slave;
+ 
++	/* optional external dphy */
++	struct phy *phy;
++	union phy_configure_opts phy_opts;
++
+ 	unsigned int lane_mbps; /* per lane */
+ 	u16 input_div;
+ 	u16 feedback_div;
+@@ -359,6 +364,9 @@ static int dw_mipi_dsi_phy_init(void *priv_data)
+ 	struct dw_mipi_dsi_rockchip *dsi = priv_data;
+ 	int ret, i, vco;
+ 
++	if (dsi->phy)
++		return 0;
++
+ 	/*
+ 	 * Get vco from frequency(lane_mbps)
+ 	 * vco	frequency table
+@@ -467,6 +475,28 @@ static int dw_mipi_dsi_phy_init(void *priv_data)
+ 	return ret;
+ }
+ 
++static void dw_mipi_dsi_phy_power_on(void *priv_data)
++{
++	struct dw_mipi_dsi_rockchip *dsi = priv_data;
++	int ret;
++
++	ret = phy_set_mode(dsi->phy, PHY_MODE_MIPI_DPHY);
++	if (ret) {
++		DRM_DEV_ERROR(dsi->dev, "failed to set phy mode: %d\n", ret);
++		return;
++	}
++
++	phy_configure(dsi->phy, &dsi->phy_opts);
++	phy_power_on(dsi->phy);
++}
++
++static void dw_mipi_dsi_phy_power_off(void *priv_data)
++{
++	struct dw_mipi_dsi_rockchip *dsi = priv_data;
++
++	phy_power_off(dsi->phy);
++}
++
+ static int
+ dw_mipi_dsi_get_lane_mbps(void *priv_data, const struct drm_display_mode *mode,
+ 			  unsigned long mode_flags, u32 lanes, u32 format,
+@@ -504,6 +534,17 @@ dw_mipi_dsi_get_lane_mbps(void *priv_data, const struct drm_display_mode *mode,
+ 				      "DPHY clock frequency is out of range\n");
+ 	}
+ 
++	/* for external phy only a the mipi_dphy_config is necessary */
++	if (dsi->phy) {
++		phy_mipi_dphy_get_default_config(mode->clock * 1000 * 10 / 8,
++						 bpp, lanes,
++						 &dsi->phy_opts.mipi_dphy);
++		dsi->lane_mbps = target_mbps;
++		*lane_mbps = dsi->lane_mbps;
++
++		return 0;
++	}
++
+ 	fin = clk_get_rate(dsi->pllref_clk);
+ 	fout = target_mbps * USEC_PER_SEC;
+ 
+@@ -638,6 +679,8 @@ dw_mipi_dsi_phy_get_timing(void *priv_data, unsigned int lane_mbps,
+ 
+ static const struct dw_mipi_dsi_phy_ops dw_mipi_dsi_rockchip_phy_ops = {
+ 	.init = dw_mipi_dsi_phy_init,
++	.power_on = dw_mipi_dsi_phy_power_on,
++	.power_off = dw_mipi_dsi_phy_power_off,
+ 	.get_lane_mbps = dw_mipi_dsi_get_lane_mbps,
+ 	.get_timing = dw_mipi_dsi_phy_get_timing,
+ };
+@@ -998,12 +1041,29 @@ static int dw_mipi_dsi_rockchip_probe(struct platform_device *pdev)
+ 		return -EINVAL;
+ 	}
+ 
++	/* try to get a possible external dphy */
++	dsi->phy = devm_phy_optional_get(dev, "dphy");
++	if (IS_ERR(dsi->phy)) {
++		ret = PTR_ERR(dsi->phy);
++		DRM_DEV_ERROR(dev, "failed to get mipi dphy: %d\n", ret);
++		return ret;
++	}
++
+ 	dsi->pllref_clk = devm_clk_get(dev, "ref");
+ 	if (IS_ERR(dsi->pllref_clk)) {
+-		ret = PTR_ERR(dsi->pllref_clk);
+-		DRM_DEV_ERROR(dev,
+-			      "Unable to get pll reference clock: %d\n", ret);
+-		return ret;
++		if (dsi->phy) {
++			/*
++			 * if external phy is present, pll will be
++			 * generated there.
++			 */
++			dsi->pllref_clk = NULL;
++		} else {
++			ret = PTR_ERR(dsi->pllref_clk);
++			DRM_DEV_ERROR(dev,
++				      "Unable to get pll reference clock: %d\n",
++				      ret);
++			return ret;
++		}
+ 	}
+ 
+ 	if (dsi->cdata->flags & DW_MIPI_NEEDS_PHY_CFG_CLK) {
+
+From e55d27503865446a3f0af8e6f0690ed2ee4800bd Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Date: Mon, 9 Dec 2019 15:31:29 +0100
+Subject: [PATCH] dt-bindings: display: rockchip-dsi: add px30 compatible
+
+The px30 SoC also uses a dw-mipi-dsi controller, so add the
+compatible value for it.
+
+changes in v5:
+- rebased on top of 5.5-rc1
+- merged with dsi timing change to prevent ordering conflicts
+
+Signed-off-by: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Acked-by: Rob Herring <robh@kernel.org>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191209143130.4553-6-heiko@sntech.de
+(cherry picked from commit 95da672f386c937cc22f892fadb019de3b2c2f0d)
+---
+ .../devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt   | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt b/Documentation/devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt
+index 1ba9237d0ac0..151be3bba06f 100644
+--- a/Documentation/devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt
++++ b/Documentation/devicetree/bindings/display/rockchip/dw_mipi_dsi_rockchip.txt
+@@ -4,8 +4,10 @@ Rockchip specific extensions to the Synopsys Designware MIPI DSI
+ Required properties:
+ - #address-cells: Should be <1>.
+ - #size-cells: Should be <0>.
+-- compatible: "rockchip,rk3288-mipi-dsi", "snps,dw-mipi-dsi".
+-	      "rockchip,rk3399-mipi-dsi", "snps,dw-mipi-dsi".
++- compatible: one of
++	"rockchip,px30-mipi-dsi", "snps,dw-mipi-dsi"
++	"rockchip,rk3288-mipi-dsi", "snps,dw-mipi-dsi"
++	"rockchip,rk3399-mipi-dsi", "snps,dw-mipi-dsi"
+ - reg: Represent the physical address range of the controller.
+ - interrupts: Represent the controller's interrupt to the CPU(s).
+ - clocks, clock-names: Phandles to the controller's pll reference
+
+From be0c68df6f5d0a01a846888af61bf697b01d65b7 Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Date: Mon, 9 Dec 2019 15:31:30 +0100
+Subject: [PATCH] drm/rockchip: dsi: add px30 support
+
+Add the compatible and GRF definitions for the PX30 soc.
+
+changes in v5:
+- rebased on top of 5.5-rc1
+- merged with dsi timing change to prevent ordering conflicts
+
+Signed-off-by: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Reviewed-by: Neil Armstrong <narmstrong@baylibre.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191209143130.4553-7-heiko@sntech.de
+(cherry picked from commit 49a37dc393d774b7f7b8ba3944b75c7f8673b43a)
+---
+ drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c | 27 +++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+index 17effcc73877..6e1270e45f97 100644
+--- a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+@@ -140,6 +140,12 @@
+ #define DW_MIPI_NEEDS_PHY_CFG_CLK	BIT(0)
+ #define DW_MIPI_NEEDS_GRF_CLK		BIT(1)
+ 
++#define PX30_GRF_PD_VO_CON1		0x0438
++#define PX30_DSI_FORCETXSTOPMODE	(0xf << 7)
++#define PX30_DSI_FORCERXMODE		BIT(6)
++#define PX30_DSI_TURNDISABLE		BIT(5)
++#define PX30_DSI_LCDC_SEL		BIT(0)
++
+ #define RK3288_GRF_SOC_CON6		0x025c
+ #define RK3288_DSI0_LCDC_SEL		BIT(6)
+ #define RK3288_DSI1_LCDC_SEL		BIT(9)
+@@ -1127,6 +1133,24 @@ static int dw_mipi_dsi_rockchip_remove(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
++static const struct rockchip_dw_dsi_chip_data px30_chip_data[] = {
++	{
++		.reg = 0xff450000,
++		.lcdsel_grf_reg = PX30_GRF_PD_VO_CON1,
++		.lcdsel_big = HIWORD_UPDATE(0, PX30_DSI_LCDC_SEL),
++		.lcdsel_lit = HIWORD_UPDATE(PX30_DSI_LCDC_SEL,
++					    PX30_DSI_LCDC_SEL),
++
++		.lanecfg1_grf_reg = PX30_GRF_PD_VO_CON1,
++		.lanecfg1 = HIWORD_UPDATE(0, PX30_DSI_TURNDISABLE |
++					     PX30_DSI_FORCERXMODE |
++					     PX30_DSI_FORCETXSTOPMODE),
++
++		.max_data_lanes = 4,
++	},
++	{ /* sentinel */ }
++};
++
+ static const struct rockchip_dw_dsi_chip_data rk3288_chip_data[] = {
+ 	{
+ 		.reg = 0xff960000,
+@@ -1195,6 +1219,9 @@ static const struct rockchip_dw_dsi_chip_data rk3399_chip_data[] = {
+ 
+ static const struct of_device_id dw_mipi_dsi_rockchip_dt_ids[] = {
+ 	{
++	 .compatible = "rockchip,px30-mipi-dsi",
++	 .data = &px30_chip_data,
++	}, {
+ 	 .compatible = "rockchip,rk3288-mipi-dsi",
+ 	 .data = &rk3288_chip_data,
+ 	}, {
+
+From 1b8f69dccf5244aec31b6117e8ecb2bdc0746805 Mon Sep 17 00:00:00 2001
+From: Miquel Raynal <miquel.raynal@bootlin.com>
+Date: Tue, 24 Dec 2019 15:38:50 +0100
+Subject: [PATCH] dt-bindings: display: rockchip-lvds: Declare PX30 compatible
+
+Document the PX30 LVDS compatible.
+
+Signed-off-by: Miquel Raynal <miquel.raynal@bootlin.com>
+Acked-by: Rob Herring <robh@kernel.org>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191224143900.23567-2-miquel.raynal@bootlin.com
+(cherry picked from commit d1dc01860a2a2e9a542485b732ece729402c2bd5)
+---
+ Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt b/Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt
+index 7849ff039229..aa5663a6fd42 100644
+--- a/Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt
++++ b/Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt
+@@ -4,6 +4,7 @@ Rockchip RK3288 LVDS interface
+ Required properties:
+ - compatible: matching the soc type, one of
+ 	- "rockchip,rk3288-lvds";
++	- "rockchip,px30-lvds";
+ 
+ - reg: physical base address of the controller and length
+ 	of memory mapped region.
+
+From 328a0492209ac96fc04d3ee944fdec77a37e1fab Mon Sep 17 00:00:00 2001
+From: Miquel Raynal <miquel.raynal@bootlin.com>
+Date: Tue, 24 Dec 2019 15:38:51 +0100
+Subject: [PATCH] dt-bindings: display: rockchip-lvds: Document PX30 PHY
+
+PX30 SoCs use a single PHY shared by two display pipelines: MIPI DSI
+and LVDS. In the case of the LVDS IP, document the possibility to fill
+a PHY handle.
+
+Signed-off-by: Miquel Raynal <miquel.raynal@bootlin.com>
+Acked-by: Rob Herring <robh@kernel.org>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191224143900.23567-3-miquel.raynal@bootlin.com
+(cherry picked from commit 1e0b0a0cf31a1c2d7770bed904c66c4e71e01311)
+---
+ Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt b/Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt
+index aa5663a6fd42..aaf8c44cf90f 100644
+--- a/Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt
++++ b/Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt
+@@ -19,6 +19,9 @@ Required properties:
+ - rockchip,grf: phandle to the general register files syscon
+ - rockchip,output: "rgb", "lvds" or "duallvds", This describes the output interface
+ 
++- phys: LVDS/DSI DPHY (px30 only)
++- phy-names: name of the PHY, must be "dphy" (px30 only)
++
+ Optional properties:
+ - pinctrl-names: must contain a "lcdc" entry.
+ - pinctrl-0: pin control group to be used for this controller.
+
+From 744c9a0c00e9ad936e33ef0996e3021b2fc2ce27 Mon Sep 17 00:00:00 2001
+From: Miquel Raynal <miquel.raynal@bootlin.com>
+Date: Tue, 24 Dec 2019 15:38:52 +0100
+Subject: [PATCH] drm/rockchip: lvds: Fix indentation of a #define
+
+Fix a #define indentation before adding more lines.
+
+Fixes: 34cc0aa25456 ("drm/rockchip: Add support for Rockchip Soc LVDS")
+Signed-off-by: Miquel Raynal <miquel.raynal@bootlin.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191224143900.23567-4-miquel.raynal@bootlin.com
+(cherry picked from commit eb503ee2c9bfb0392a204d9705ca70d683a08cdd)
+---
+ drivers/gpu/drm/rockchip/rockchip_lvds.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.h b/drivers/gpu/drm/rockchip/rockchip_lvds.h
+index 029bad8e1a14..1387bcbc4bc0 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.h
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.h
+@@ -70,7 +70,7 @@
+ #define RK3288_LVDS_CFG_REG21			0x84
+ #define RK3288_LVDS_CFG_REG21_TX_ENABLE		0x92
+ #define RK3288_LVDS_CFG_REG21_TX_DISABLE	0x00
+-#define RK3288_LVDS_CH1_OFFSET                 0x100
++#define RK3288_LVDS_CH1_OFFSET			0x100
+ 
+ /* fbdiv value is split over 2 registers, with bit8 in reg2 */
+ #define RK3288_LVDS_PLL_FBDIV_REG2(_fbd) \
+
+From 5de3a1cda251b6a3365b2b7bd2b98b15a65a8ba8 Mon Sep 17 00:00:00 2001
+From: Miquel Raynal <miquel.raynal@bootlin.com>
+Date: Tue, 24 Dec 2019 15:38:53 +0100
+Subject: [PATCH] drm/rockchip: lvds: Harmonize function names
+
+Prepare the introduction of PX30 support by clarifying the function
+prefixes.
+
+We continue to prefix with 'rockchip_lvds_' generic functions that are
+not specific to a single hardware. Functions implying hardware
+modifications are now prefixed with 'rk3288_lvds_'.
+
+Signed-off-by: Miquel Raynal <miquel.raynal@bootlin.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191224143900.23567-5-miquel.raynal@bootlin.com
+(cherry picked from commit 04bc39adf9f1b0499a34eaeef4419890eb2e282a)
+---
+ drivers/gpu/drm/rockchip/rockchip_lvds.c | 140 ++++++++++++++++---------------
+ 1 file changed, 74 insertions(+), 66 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+index 8a4c9af0ba73..34e5d0b1172e 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+@@ -67,7 +67,8 @@ struct rockchip_lvds {
+ 	struct dev_pin_info *pins;
+ };
+ 
+-static inline void lvds_writel(struct rockchip_lvds *lvds, u32 offset, u32 val)
++static inline void rk3288_writel(struct rockchip_lvds *lvds, u32 offset,
++				 u32 val)
+ {
+ 	writel_relaxed(val, lvds->regs + offset);
+ 	if (lvds->output == DISPLAY_OUTPUT_LVDS)
+@@ -75,7 +76,7 @@ static inline void lvds_writel(struct rockchip_lvds *lvds, u32 offset, u32 val)
+ 	writel_relaxed(val, lvds->regs + offset + lvds->soc_data->ch1_offset);
+ }
+ 
+-static inline int lvds_name_to_format(const char *s)
++static inline int rockchip_lvds_name_to_format(const char *s)
+ {
+ 	if (strncmp(s, "jeida-18", 8) == 0)
+ 		return LVDS_JEIDA_18;
+@@ -87,7 +88,7 @@ static inline int lvds_name_to_format(const char *s)
+ 	return -EINVAL;
+ }
+ 
+-static inline int lvds_name_to_output(const char *s)
++static inline int rockchip_lvds_name_to_output(const char *s)
+ {
+ 	if (strncmp(s, "rgb", 3) == 0)
+ 		return DISPLAY_OUTPUT_RGB;
+@@ -99,7 +100,7 @@ static inline int lvds_name_to_output(const char *s)
+ 	return -EINVAL;
+ }
+ 
+-static int rockchip_lvds_poweron(struct rockchip_lvds *lvds)
++static int rk3288_lvds_poweron(struct rockchip_lvds *lvds)
+ {
+ 	int ret;
+ 	u32 val;
+@@ -121,63 +122,70 @@ static int rockchip_lvds_poweron(struct rockchip_lvds *lvds)
+ 	if (lvds->output == DISPLAY_OUTPUT_RGB) {
+ 		val |= RK3288_LVDS_CH0_REG0_TTL_EN |
+ 			RK3288_LVDS_CH0_REG0_LANECK_EN;
+-		lvds_writel(lvds, RK3288_LVDS_CH0_REG0, val);
+-		lvds_writel(lvds, RK3288_LVDS_CH0_REG2,
+-			    RK3288_LVDS_PLL_FBDIV_REG2(0x46));
+-		lvds_writel(lvds, RK3288_LVDS_CH0_REG4,
+-			    RK3288_LVDS_CH0_REG4_LANECK_TTL_MODE |
+-			    RK3288_LVDS_CH0_REG4_LANE4_TTL_MODE |
+-			    RK3288_LVDS_CH0_REG4_LANE3_TTL_MODE |
+-			    RK3288_LVDS_CH0_REG4_LANE2_TTL_MODE |
+-			    RK3288_LVDS_CH0_REG4_LANE1_TTL_MODE |
+-			    RK3288_LVDS_CH0_REG4_LANE0_TTL_MODE);
+-		lvds_writel(lvds, RK3288_LVDS_CH0_REG5,
+-			    RK3288_LVDS_CH0_REG5_LANECK_TTL_DATA |
+-			    RK3288_LVDS_CH0_REG5_LANE4_TTL_DATA |
+-			    RK3288_LVDS_CH0_REG5_LANE3_TTL_DATA |
+-			    RK3288_LVDS_CH0_REG5_LANE2_TTL_DATA |
+-			    RK3288_LVDS_CH0_REG5_LANE1_TTL_DATA |
+-			    RK3288_LVDS_CH0_REG5_LANE0_TTL_DATA);
++		rk3288_writel(lvds, RK3288_LVDS_CH0_REG0, val);
++		rk3288_writel(lvds, RK3288_LVDS_CH0_REG2,
++			      RK3288_LVDS_PLL_FBDIV_REG2(0x46));
++		rk3288_writel(lvds, RK3288_LVDS_CH0_REG4,
++			      RK3288_LVDS_CH0_REG4_LANECK_TTL_MODE |
++			      RK3288_LVDS_CH0_REG4_LANE4_TTL_MODE |
++			      RK3288_LVDS_CH0_REG4_LANE3_TTL_MODE |
++			      RK3288_LVDS_CH0_REG4_LANE2_TTL_MODE |
++			      RK3288_LVDS_CH0_REG4_LANE1_TTL_MODE |
++			      RK3288_LVDS_CH0_REG4_LANE0_TTL_MODE);
++		rk3288_writel(lvds, RK3288_LVDS_CH0_REG5,
++			      RK3288_LVDS_CH0_REG5_LANECK_TTL_DATA |
++			      RK3288_LVDS_CH0_REG5_LANE4_TTL_DATA |
++			      RK3288_LVDS_CH0_REG5_LANE3_TTL_DATA |
++			      RK3288_LVDS_CH0_REG5_LANE2_TTL_DATA |
++			      RK3288_LVDS_CH0_REG5_LANE1_TTL_DATA |
++			      RK3288_LVDS_CH0_REG5_LANE0_TTL_DATA);
+ 	} else {
+ 		val |= RK3288_LVDS_CH0_REG0_LVDS_EN |
+ 			    RK3288_LVDS_CH0_REG0_LANECK_EN;
+-		lvds_writel(lvds, RK3288_LVDS_CH0_REG0, val);
+-		lvds_writel(lvds, RK3288_LVDS_CH0_REG1,
+-			    RK3288_LVDS_CH0_REG1_LANECK_BIAS |
+-			    RK3288_LVDS_CH0_REG1_LANE4_BIAS |
+-			    RK3288_LVDS_CH0_REG1_LANE3_BIAS |
+-			    RK3288_LVDS_CH0_REG1_LANE2_BIAS |
+-			    RK3288_LVDS_CH0_REG1_LANE1_BIAS |
+-			    RK3288_LVDS_CH0_REG1_LANE0_BIAS);
+-		lvds_writel(lvds, RK3288_LVDS_CH0_REG2,
+-			    RK3288_LVDS_CH0_REG2_RESERVE_ON |
+-			    RK3288_LVDS_CH0_REG2_LANECK_LVDS_MODE |
+-			    RK3288_LVDS_CH0_REG2_LANE4_LVDS_MODE |
+-			    RK3288_LVDS_CH0_REG2_LANE3_LVDS_MODE |
+-			    RK3288_LVDS_CH0_REG2_LANE2_LVDS_MODE |
+-			    RK3288_LVDS_CH0_REG2_LANE1_LVDS_MODE |
+-			    RK3288_LVDS_CH0_REG2_LANE0_LVDS_MODE |
+-			    RK3288_LVDS_PLL_FBDIV_REG2(0x46));
+-		lvds_writel(lvds, RK3288_LVDS_CH0_REG4, 0x00);
+-		lvds_writel(lvds, RK3288_LVDS_CH0_REG5, 0x00);
++		rk3288_writel(lvds, RK3288_LVDS_CH0_REG0, val);
++		rk3288_writel(lvds, RK3288_LVDS_CH0_REG1,
++			      RK3288_LVDS_CH0_REG1_LANECK_BIAS |
++			      RK3288_LVDS_CH0_REG1_LANE4_BIAS |
++			      RK3288_LVDS_CH0_REG1_LANE3_BIAS |
++			      RK3288_LVDS_CH0_REG1_LANE2_BIAS |
++			      RK3288_LVDS_CH0_REG1_LANE1_BIAS |
++			      RK3288_LVDS_CH0_REG1_LANE0_BIAS);
++		rk3288_writel(lvds, RK3288_LVDS_CH0_REG2,
++			      RK3288_LVDS_CH0_REG2_RESERVE_ON |
++			      RK3288_LVDS_CH0_REG2_LANECK_LVDS_MODE |
++			      RK3288_LVDS_CH0_REG2_LANE4_LVDS_MODE |
++			      RK3288_LVDS_CH0_REG2_LANE3_LVDS_MODE |
++			      RK3288_LVDS_CH0_REG2_LANE2_LVDS_MODE |
++			      RK3288_LVDS_CH0_REG2_LANE1_LVDS_MODE |
++			      RK3288_LVDS_CH0_REG2_LANE0_LVDS_MODE |
++			      RK3288_LVDS_PLL_FBDIV_REG2(0x46));
++		rk3288_writel(lvds, RK3288_LVDS_CH0_REG4, 0x00);
++		rk3288_writel(lvds, RK3288_LVDS_CH0_REG5, 0x00);
+ 	}
+-	lvds_writel(lvds, RK3288_LVDS_CH0_REG3, RK3288_LVDS_PLL_FBDIV_REG3(0x46));
+-	lvds_writel(lvds, RK3288_LVDS_CH0_REGD, RK3288_LVDS_PLL_PREDIV_REGD(0x0a));
+-	lvds_writel(lvds, RK3288_LVDS_CH0_REG20, RK3288_LVDS_CH0_REG20_LSB);
+-
+-	lvds_writel(lvds, RK3288_LVDS_CFG_REGC, RK3288_LVDS_CFG_REGC_PLL_ENABLE);
+-	lvds_writel(lvds, RK3288_LVDS_CFG_REG21, RK3288_LVDS_CFG_REG21_TX_ENABLE);
++	rk3288_writel(lvds, RK3288_LVDS_CH0_REG3,
++		      RK3288_LVDS_PLL_FBDIV_REG3(0x46));
++	rk3288_writel(lvds, RK3288_LVDS_CH0_REGD,
++		      RK3288_LVDS_PLL_PREDIV_REGD(0x0a));
++	rk3288_writel(lvds, RK3288_LVDS_CH0_REG20,
++		      RK3288_LVDS_CH0_REG20_LSB);
++
++	rk3288_writel(lvds, RK3288_LVDS_CFG_REGC,
++		      RK3288_LVDS_CFG_REGC_PLL_ENABLE);
++	rk3288_writel(lvds, RK3288_LVDS_CFG_REG21,
++		      RK3288_LVDS_CFG_REG21_TX_ENABLE);
+ 
+ 	return 0;
+ }
+ 
+-static void rockchip_lvds_poweroff(struct rockchip_lvds *lvds)
++static void rk3288_lvds_poweroff(struct rockchip_lvds *lvds)
+ {
+ 	int ret;
+ 	u32 val;
+ 
+-	lvds_writel(lvds, RK3288_LVDS_CFG_REG21, RK3288_LVDS_CFG_REG21_TX_ENABLE);
+-	lvds_writel(lvds, RK3288_LVDS_CFG_REGC, RK3288_LVDS_CFG_REGC_PLL_ENABLE);
++	rk3288_writel(lvds, RK3288_LVDS_CFG_REG21,
++		      RK3288_LVDS_CFG_REG21_TX_ENABLE);
++	rk3288_writel(lvds, RK3288_LVDS_CFG_REGC,
++		      RK3288_LVDS_CFG_REGC_PLL_ENABLE);
+ 	val = LVDS_DUAL | LVDS_TTL_EN | LVDS_CH0_EN | LVDS_CH1_EN | LVDS_PWRDN;
+ 	val |= val << 16;
+ 	ret = regmap_write(lvds->grf, lvds->soc_data->grf_soc_con7, val);
+@@ -209,8 +217,8 @@ struct drm_connector_helper_funcs rockchip_lvds_connector_helper_funcs = {
+ 	.get_modes = rockchip_lvds_connector_get_modes,
+ };
+ 
+-static void rockchip_lvds_grf_config(struct drm_encoder *encoder,
+-				     struct drm_display_mode *mode)
++static void rk3288_lvds_grf_config(struct drm_encoder *encoder,
++				   struct drm_display_mode *mode)
+ {
+ 	struct rockchip_lvds *lvds = encoder_to_lvds(encoder);
+ 	u8 pin_hsync = (mode->flags & DRM_MODE_FLAG_PHSYNC) ? 1 : 0;
+@@ -241,8 +249,8 @@ static void rockchip_lvds_grf_config(struct drm_encoder *encoder,
+ 	}
+ }
+ 
+-static int rockchip_lvds_set_vop_source(struct rockchip_lvds *lvds,
+-					struct drm_encoder *encoder)
++static int rk3288_lvds_set_vop_source(struct rockchip_lvds *lvds,
++				      struct drm_encoder *encoder)
+ {
+ 	u32 val;
+ 	int ret;
+@@ -278,36 +286,36 @@ rockchip_lvds_encoder_atomic_check(struct drm_encoder *encoder,
+ 	return 0;
+ }
+ 
+-static void rockchip_lvds_encoder_enable(struct drm_encoder *encoder)
++static void rk3288_lvds_encoder_enable(struct drm_encoder *encoder)
+ {
+ 	struct rockchip_lvds *lvds = encoder_to_lvds(encoder);
+ 	struct drm_display_mode *mode = &encoder->crtc->state->adjusted_mode;
+ 	int ret;
+ 
+ 	drm_panel_prepare(lvds->panel);
+-	ret = rockchip_lvds_poweron(lvds);
++	ret = rk3288_lvds_poweron(lvds);
+ 	if (ret < 0) {
+ 		DRM_DEV_ERROR(lvds->dev, "failed to power on lvds: %d\n", ret);
+ 		drm_panel_unprepare(lvds->panel);
+ 	}
+-	rockchip_lvds_grf_config(encoder, mode);
+-	rockchip_lvds_set_vop_source(lvds, encoder);
++	rk3288_lvds_grf_config(encoder, mode);
++	rk3288_lvds_set_vop_source(lvds, encoder);
+ 	drm_panel_enable(lvds->panel);
+ }
+ 
+-static void rockchip_lvds_encoder_disable(struct drm_encoder *encoder)
++static void rk3288_lvds_encoder_disable(struct drm_encoder *encoder)
+ {
+ 	struct rockchip_lvds *lvds = encoder_to_lvds(encoder);
+ 
+ 	drm_panel_disable(lvds->panel);
+-	rockchip_lvds_poweroff(lvds);
++	rk3288_lvds_poweroff(lvds);
+ 	drm_panel_unprepare(lvds->panel);
+ }
+ 
+ static const
+-struct drm_encoder_helper_funcs rockchip_lvds_encoder_helper_funcs = {
+-	.enable = rockchip_lvds_encoder_enable,
+-	.disable = rockchip_lvds_encoder_disable,
++struct drm_encoder_helper_funcs rk3288_lvds_encoder_helper_funcs = {
++	.enable = rk3288_lvds_encoder_enable,
++	.disable = rk3288_lvds_encoder_disable,
+ 	.atomic_check = rockchip_lvds_encoder_atomic_check,
+ };
+ 
+@@ -378,7 +386,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+ 		/* default set it as output rgb */
+ 		lvds->output = DISPLAY_OUTPUT_RGB;
+ 	else
+-		lvds->output = lvds_name_to_output(name);
++		lvds->output = rockchip_lvds_name_to_output(name);
+ 
+ 	if (lvds->output < 0) {
+ 		DRM_DEV_ERROR(dev, "invalid output type [%s]\n", name);
+@@ -390,7 +398,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+ 		/* default set it as format vesa 18 */
+ 		lvds->format = LVDS_VESA_18;
+ 	else
+-		lvds->format = lvds_name_to_format(name);
++		lvds->format = rockchip_lvds_name_to_format(name);
+ 
+ 	if (lvds->format < 0) {
+ 		DRM_DEV_ERROR(dev, "invalid data-mapping format [%s]\n", name);
+@@ -410,7 +418,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+ 		goto err_put_remote;
+ 	}
+ 
+-	drm_encoder_helper_add(encoder, &rockchip_lvds_encoder_helper_funcs);
++	drm_encoder_helper_add(encoder, &rk3288_lvds_encoder_helper_funcs);
+ 
+ 	if (lvds->panel) {
+ 		connector = &lvds->connector;
+@@ -472,7 +480,7 @@ static void rockchip_lvds_unbind(struct device *dev, struct device *master,
+ {
+ 	struct rockchip_lvds *lvds = dev_get_drvdata(dev);
+ 
+-	rockchip_lvds_encoder_disable(&lvds->encoder);
++	rk3288_lvds_encoder_disable(&lvds->encoder);
+ 	if (lvds->panel)
+ 		drm_panel_detach(lvds->panel);
+ 	pm_runtime_disable(dev);
+
+From 52f3019f851df2c85631a50e4692089984b1fa0f Mon Sep 17 00:00:00 2001
+From: Miquel Raynal <miquel.raynal@bootlin.com>
+Date: Tue, 24 Dec 2019 15:38:54 +0100
+Subject: [PATCH] drm/rockchip: lvds: Change platform data to hold helper_funcs
+ pointer
+
+Prepare the introduction of PX30 support by using
+drm_encoder_helper_funcs as platform data instead of multiple register
+names which are specific to rk3288 and not generic to all Rockchip
+IPs. This way adding support for a new flavor of a similar IP will be
+a matter of adding the relevant helper funcs.
+
+Signed-off-by: Miquel Raynal <miquel.raynal@bootlin.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191224143900.23567-6-miquel.raynal@bootlin.com
+(cherry picked from commit 36839e5788da973ac574e9fe16c41166df918565)
+---
+ drivers/gpu/drm/rockchip/rockchip_lvds.c | 32 +++++++++++---------------------
+ drivers/gpu/drm/rockchip/rockchip_lvds.h |  3 +++
+ 2 files changed, 14 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+index 34e5d0b1172e..262fec61eb78 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+@@ -39,16 +39,10 @@
+ 
+ /**
+  * rockchip_lvds_soc_data - rockchip lvds Soc private data
+- * @ch1_offset: lvds channel 1 registe offset
+- * grf_soc_con6: general registe offset for LVDS contrl
+- * grf_soc_con7: general registe offset for LVDS contrl
+- * has_vop_sel: to indicate whether need to choose from different VOP.
++ * @helper_funcs: LVDS connector helper functions
+  */
+ struct rockchip_lvds_soc_data {
+-	u32 ch1_offset;
+-	int grf_soc_con6;
+-	int grf_soc_con7;
+-	bool has_vop_sel;
++	const struct drm_encoder_helper_funcs *helper_funcs;
+ };
+ 
+ struct rockchip_lvds {
+@@ -73,7 +67,7 @@ static inline void rk3288_writel(struct rockchip_lvds *lvds, u32 offset,
+ 	writel_relaxed(val, lvds->regs + offset);
+ 	if (lvds->output == DISPLAY_OUTPUT_LVDS)
+ 		return;
+-	writel_relaxed(val, lvds->regs + offset + lvds->soc_data->ch1_offset);
++	writel_relaxed(val, lvds->regs + offset + RK3288_LVDS_CH1_OFFSET);
+ }
+ 
+ static inline int rockchip_lvds_name_to_format(const char *s)
+@@ -188,7 +182,7 @@ static void rk3288_lvds_poweroff(struct rockchip_lvds *lvds)
+ 		      RK3288_LVDS_CFG_REGC_PLL_ENABLE);
+ 	val = LVDS_DUAL | LVDS_TTL_EN | LVDS_CH0_EN | LVDS_CH1_EN | LVDS_PWRDN;
+ 	val |= val << 16;
+-	ret = regmap_write(lvds->grf, lvds->soc_data->grf_soc_con7, val);
++	ret = regmap_write(lvds->grf, RK3288_LVDS_GRF_SOC_CON7, val);
+ 	if (ret != 0)
+ 		DRM_DEV_ERROR(lvds->dev, "Could not write to GRF: %d\n", ret);
+ 
+@@ -242,7 +236,7 @@ static void rk3288_lvds_grf_config(struct drm_encoder *encoder,
+ 
+ 	val |= (pin_dclk << 8) | (pin_hsync << 9);
+ 	val |= (0xffff << 16);
+-	ret = regmap_write(lvds->grf, lvds->soc_data->grf_soc_con7, val);
++	ret = regmap_write(lvds->grf, RK3288_LVDS_GRF_SOC_CON7, val);
+ 	if (ret != 0) {
+ 		DRM_DEV_ERROR(lvds->dev, "Could not write to GRF: %d\n", ret);
+ 		return;
+@@ -255,9 +249,6 @@ static int rk3288_lvds_set_vop_source(struct rockchip_lvds *lvds,
+ 	u32 val;
+ 	int ret;
+ 
+-	if (!lvds->soc_data->has_vop_sel)
+-		return 0;
+-
+ 	ret = drm_of_encoder_active_endpoint_id(lvds->dev->of_node, encoder);
+ 	if (ret < 0)
+ 		return ret;
+@@ -266,7 +257,7 @@ static int rk3288_lvds_set_vop_source(struct rockchip_lvds *lvds,
+ 	if (ret)
+ 		val |= RK3288_LVDS_SOC_CON6_SEL_VOP_LIT;
+ 
+-	ret = regmap_write(lvds->grf, lvds->soc_data->grf_soc_con6, val);
++	ret = regmap_write(lvds->grf, RK3288_LVDS_GRF_SOC_CON6, val);
+ 	if (ret < 0)
+ 		return ret;
+ 
+@@ -324,10 +315,7 @@ static const struct drm_encoder_funcs rockchip_lvds_encoder_funcs = {
+ };
+ 
+ static const struct rockchip_lvds_soc_data rk3288_lvds_data = {
+-	.ch1_offset = 0x100,
+-	.grf_soc_con6 = 0x025c,
+-	.grf_soc_con7 = 0x0260,
+-	.has_vop_sel = true,
++	.helper_funcs = &rk3288_lvds_encoder_helper_funcs,
+ };
+ 
+ static const struct of_device_id rockchip_lvds_dt_ids[] = {
+@@ -418,7 +406,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+ 		goto err_put_remote;
+ 	}
+ 
+-	drm_encoder_helper_add(encoder, &rk3288_lvds_encoder_helper_funcs);
++	drm_encoder_helper_add(encoder, lvds->soc_data->helper_funcs);
+ 
+ 	if (lvds->panel) {
+ 		connector = &lvds->connector;
+@@ -479,8 +467,10 @@ static void rockchip_lvds_unbind(struct device *dev, struct device *master,
+ 				void *data)
+ {
+ 	struct rockchip_lvds *lvds = dev_get_drvdata(dev);
++	const struct drm_encoder_helper_funcs *encoder_funcs;
+ 
+-	rk3288_lvds_encoder_disable(&lvds->encoder);
++	encoder_funcs = lvds->soc_data->helper_funcs;
++	encoder_funcs->disable(&lvds->encoder);
+ 	if (lvds->panel)
+ 		drm_panel_detach(lvds->panel);
+ 	pm_runtime_disable(dev);
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.h b/drivers/gpu/drm/rockchip/rockchip_lvds.h
+index 1387bcbc4bc0..e41e9ab3c306 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.h
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.h
+@@ -72,6 +72,9 @@
+ #define RK3288_LVDS_CFG_REG21_TX_DISABLE	0x00
+ #define RK3288_LVDS_CH1_OFFSET			0x100
+ 
++#define RK3288_LVDS_GRF_SOC_CON6		0x025C
++#define RK3288_LVDS_GRF_SOC_CON7		0x0260
++
+ /* fbdiv value is split over 2 registers, with bit8 in reg2 */
+ #define RK3288_LVDS_PLL_FBDIV_REG2(_fbd) \
+ 		(_fbd & BIT(8) ? RK3288_LVDS_CH0_REG2_PLL_FBDIV8 : 0)
+
+From 286db179f5d01123fb3f2b5384d9c2a5a87c8f65 Mon Sep 17 00:00:00 2001
+From: Miquel Raynal <miquel.raynal@bootlin.com>
+Date: Tue, 24 Dec 2019 15:38:55 +0100
+Subject: [PATCH] drm/rockchip: lvds: Create an RK3288 specific probe function
+
+The probe function is highly adapted to the RK3288 specificities, move
+all specific bits into an "rk3288_probe" function, also part of the
+platform data.
+
+The goal is to ease the addition of new flavors of Rockchip LVDS IPs.
+
+Signed-off-by: Miquel Raynal <miquel.raynal@bootlin.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191224143900.23567-7-miquel.raynal@bootlin.com
+(cherry picked from commit 9b5cbdbb93d6578bc27fd55ad51186e1411ce9f1)
+---
+ drivers/gpu/drm/rockchip/rockchip_lvds.c | 94 +++++++++++++++++++-------------
+ 1 file changed, 57 insertions(+), 37 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+index 262fec61eb78..0d2902b0d990 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+@@ -31,6 +31,8 @@
+ #define DISPLAY_OUTPUT_LVDS		1
+ #define DISPLAY_OUTPUT_DUAL_LVDS	2
+ 
++struct rockchip_lvds;
++
+ #define connector_to_lvds(c) \
+ 		container_of(c, struct rockchip_lvds, connector)
+ 
+@@ -39,9 +41,11 @@
+ 
+ /**
+  * rockchip_lvds_soc_data - rockchip lvds Soc private data
++ * @probe: LVDS platform probe function
+  * @helper_funcs: LVDS connector helper functions
+  */
+ struct rockchip_lvds_soc_data {
++	int (*probe)(struct platform_device *pdev, struct rockchip_lvds *lvds);
+ 	const struct drm_encoder_helper_funcs *helper_funcs;
+ };
+ 
+@@ -303,6 +307,52 @@ static void rk3288_lvds_encoder_disable(struct drm_encoder *encoder)
+ 	drm_panel_unprepare(lvds->panel);
+ }
+ 
++static int rk3288_lvds_probe(struct platform_device *pdev,
++			     struct rockchip_lvds *lvds)
++{
++	struct resource *res;
++	int ret;
++
++	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++	lvds->regs = devm_ioremap_resource(lvds->dev, res);
++	if (IS_ERR(lvds->regs))
++		return PTR_ERR(lvds->regs);
++
++	lvds->pclk = devm_clk_get(lvds->dev, "pclk_lvds");
++	if (IS_ERR(lvds->pclk)) {
++		DRM_DEV_ERROR(lvds->dev, "could not get pclk_lvds\n");
++		return PTR_ERR(lvds->pclk);
++	}
++
++	lvds->pins = devm_kzalloc(lvds->dev, sizeof(*lvds->pins),
++				  GFP_KERNEL);
++	if (!lvds->pins)
++		return -ENOMEM;
++
++	lvds->pins->p = devm_pinctrl_get(lvds->dev);
++	if (IS_ERR(lvds->pins->p)) {
++		DRM_DEV_ERROR(lvds->dev, "no pinctrl handle\n");
++		devm_kfree(lvds->dev, lvds->pins);
++		lvds->pins = NULL;
++	} else {
++		lvds->pins->default_state =
++			pinctrl_lookup_state(lvds->pins->p, "lcdc");
++		if (IS_ERR(lvds->pins->default_state)) {
++			DRM_DEV_ERROR(lvds->dev, "no default pinctrl state\n");
++			devm_kfree(lvds->dev, lvds->pins);
++			lvds->pins = NULL;
++		}
++	}
++
++	ret = clk_prepare(lvds->pclk);
++	if (ret < 0) {
++		DRM_DEV_ERROR(lvds->dev, "failed to prepare pclk_lvds\n");
++		return ret;
++	}
++
++	return 0;
++}
++
+ static const
+ struct drm_encoder_helper_funcs rk3288_lvds_encoder_helper_funcs = {
+ 	.enable = rk3288_lvds_encoder_enable,
+@@ -315,6 +365,7 @@ static const struct drm_encoder_funcs rockchip_lvds_encoder_funcs = {
+ };
+ 
+ static const struct rockchip_lvds_soc_data rk3288_lvds_data = {
++	.probe = rk3288_lvds_probe,
+ 	.helper_funcs = &rk3288_lvds_encoder_helper_funcs,
+ };
+ 
+@@ -488,7 +539,6 @@ static int rockchip_lvds_probe(struct platform_device *pdev)
+ 	struct device *dev = &pdev->dev;
+ 	struct rockchip_lvds *lvds;
+ 	const struct of_device_id *match;
+-	struct resource *res;
+ 	int ret;
+ 
+ 	if (!dev->of_node)
+@@ -504,37 +554,6 @@ static int rockchip_lvds_probe(struct platform_device *pdev)
+ 		return -ENODEV;
+ 	lvds->soc_data = match->data;
+ 
+-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+-	lvds->regs = devm_ioremap_resource(&pdev->dev, res);
+-	if (IS_ERR(lvds->regs))
+-		return PTR_ERR(lvds->regs);
+-
+-	lvds->pclk = devm_clk_get(&pdev->dev, "pclk_lvds");
+-	if (IS_ERR(lvds->pclk)) {
+-		DRM_DEV_ERROR(dev, "could not get pclk_lvds\n");
+-		return PTR_ERR(lvds->pclk);
+-	}
+-
+-	lvds->pins = devm_kzalloc(lvds->dev, sizeof(*lvds->pins),
+-				  GFP_KERNEL);
+-	if (!lvds->pins)
+-		return -ENOMEM;
+-
+-	lvds->pins->p = devm_pinctrl_get(lvds->dev);
+-	if (IS_ERR(lvds->pins->p)) {
+-		DRM_DEV_ERROR(dev, "no pinctrl handle\n");
+-		devm_kfree(lvds->dev, lvds->pins);
+-		lvds->pins = NULL;
+-	} else {
+-		lvds->pins->default_state =
+-			pinctrl_lookup_state(lvds->pins->p, "lcdc");
+-		if (IS_ERR(lvds->pins->default_state)) {
+-			DRM_DEV_ERROR(dev, "no default pinctrl state\n");
+-			devm_kfree(lvds->dev, lvds->pins);
+-			lvds->pins = NULL;
+-		}
+-	}
+-
+ 	lvds->grf = syscon_regmap_lookup_by_phandle(dev->of_node,
+ 						    "rockchip,grf");
+ 	if (IS_ERR(lvds->grf)) {
+@@ -542,13 +561,14 @@ static int rockchip_lvds_probe(struct platform_device *pdev)
+ 		return PTR_ERR(lvds->grf);
+ 	}
+ 
+-	dev_set_drvdata(dev, lvds);
+-
+-	ret = clk_prepare(lvds->pclk);
+-	if (ret < 0) {
+-		DRM_DEV_ERROR(dev, "failed to prepare pclk_lvds\n");
++	ret = lvds->soc_data->probe(pdev, lvds);
++	if (ret) {
++		DRM_DEV_ERROR(dev, "Platform initialization failed\n");
+ 		return ret;
+ 	}
++
++	dev_set_drvdata(dev, lvds);
++
+ 	ret = component_add(&pdev->dev, &rockchip_lvds_component_ops);
+ 	if (ret < 0) {
+ 		DRM_DEV_ERROR(dev, "failed to add component\n");
+
+From 6869166f4696693fa822c165a5064b451359edfc Mon Sep 17 00:00:00 2001
+From: Miquel Raynal <miquel.raynal@bootlin.com>
+Date: Tue, 24 Dec 2019 15:38:56 +0100
+Subject: [PATCH] drm/rockchip: lvds: improve error handling in helper
+ functions
+
+Return errors instead of returning void from internal helpers. When
+these helpers are called, check the returned value and print an error
+message in this case and not blindly continue.
+
+Signed-off-by: Miquel Raynal <miquel.raynal@bootlin.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191224143900.23567-8-miquel.raynal@bootlin.com
+(cherry picked from commit 2258d53a6696eec6a294af5627c45c8aafe001a8)
+---
+ drivers/gpu/drm/rockchip/rockchip_lvds.c | 31 +++++++++++++++++++++++--------
+ 1 file changed, 23 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+index 0d2902b0d990..6365a2c883c3 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+@@ -215,8 +215,8 @@ struct drm_connector_helper_funcs rockchip_lvds_connector_helper_funcs = {
+ 	.get_modes = rockchip_lvds_connector_get_modes,
+ };
+ 
+-static void rk3288_lvds_grf_config(struct drm_encoder *encoder,
+-				   struct drm_display_mode *mode)
++static int rk3288_lvds_grf_config(struct drm_encoder *encoder,
++				  struct drm_display_mode *mode)
+ {
+ 	struct rockchip_lvds *lvds = encoder_to_lvds(encoder);
+ 	u8 pin_hsync = (mode->flags & DRM_MODE_FLAG_PHSYNC) ? 1 : 0;
+@@ -241,10 +241,10 @@ static void rk3288_lvds_grf_config(struct drm_encoder *encoder,
+ 	val |= (pin_dclk << 8) | (pin_hsync << 9);
+ 	val |= (0xffff << 16);
+ 	ret = regmap_write(lvds->grf, RK3288_LVDS_GRF_SOC_CON7, val);
+-	if (ret != 0) {
++	if (ret)
+ 		DRM_DEV_ERROR(lvds->dev, "Could not write to GRF: %d\n", ret);
+-		return;
+-	}
++
++	return ret;
+ }
+ 
+ static int rk3288_lvds_set_vop_source(struct rockchip_lvds *lvds,
+@@ -288,13 +288,28 @@ static void rk3288_lvds_encoder_enable(struct drm_encoder *encoder)
+ 	int ret;
+ 
+ 	drm_panel_prepare(lvds->panel);
++
+ 	ret = rk3288_lvds_poweron(lvds);
+ 	if (ret < 0) {
+-		DRM_DEV_ERROR(lvds->dev, "failed to power on lvds: %d\n", ret);
++		DRM_DEV_ERROR(lvds->dev, "failed to power on LVDS: %d\n", ret);
++		drm_panel_unprepare(lvds->panel);
++		return;
++	}
++
++	ret = rk3288_lvds_grf_config(encoder, mode);
++	if (ret) {
++		DRM_DEV_ERROR(lvds->dev, "failed to configure LVDS: %d\n", ret);
+ 		drm_panel_unprepare(lvds->panel);
++		return;
+ 	}
+-	rk3288_lvds_grf_config(encoder, mode);
+-	rk3288_lvds_set_vop_source(lvds, encoder);
++
++	ret = rk3288_lvds_set_vop_source(lvds, encoder);
++	if (ret) {
++		DRM_DEV_ERROR(lvds->dev, "failed to set VOP source: %d\n", ret);
++		drm_panel_unprepare(lvds->panel);
++		return;
++	}
++
+ 	drm_panel_enable(lvds->panel);
+ }
+ 
+
+From b0cbc60a1425ccce98895d9a0f87b79318c03841 Mon Sep 17 00:00:00 2001
+From: Miquel Raynal <miquel.raynal@bootlin.com>
+Date: Tue, 24 Dec 2019 15:38:57 +0100
+Subject: [PATCH] drm/rockchip: lvds: move hardware-specific functions together
+
+Reorganize a bit the functions order to clarify the driver and separate
+hardware independent and specific functions a bit. This change only moves
+functions around, there is no functional change.
+
+Signed-off-by: Miquel Raynal <miquel.raynal@bootlin.com>
+[adapted to recent drm_panel_get_modes() param change ]
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191224143900.23567-9-miquel.raynal@bootlin.com
+(cherry picked from commit 3d0dad869aeb5d8e81985c73a6c73428258f8083)
+---
+ drivers/gpu/drm/rockchip/rockchip_lvds.c | 90 ++++++++++++++++----------------
+ 1 file changed, 45 insertions(+), 45 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+index 6365a2c883c3..a0c203dcd66f 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+@@ -98,6 +98,40 @@ static inline int rockchip_lvds_name_to_output(const char *s)
+ 	return -EINVAL;
+ }
+ 
++static const struct drm_connector_funcs rockchip_lvds_connector_funcs = {
++	.fill_modes = drm_helper_probe_single_connector_modes,
++	.destroy = drm_connector_cleanup,
++	.reset = drm_atomic_helper_connector_reset,
++	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
++	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
++};
++
++static int rockchip_lvds_connector_get_modes(struct drm_connector *connector)
++{
++	struct rockchip_lvds *lvds = connector_to_lvds(connector);
++	struct drm_panel *panel = lvds->panel;
++
++	return drm_panel_get_modes(panel);
++}
++
++static const
++struct drm_connector_helper_funcs rockchip_lvds_connector_helper_funcs = {
++	.get_modes = rockchip_lvds_connector_get_modes,
++};
++
++static int
++rockchip_lvds_encoder_atomic_check(struct drm_encoder *encoder,
++				   struct drm_crtc_state *crtc_state,
++				   struct drm_connector_state *conn_state)
++{
++	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc_state);
++
++	s->output_mode = ROCKCHIP_OUT_MODE_P888;
++	s->output_type = DRM_MODE_CONNECTOR_LVDS;
++
++	return 0;
++}
++
+ static int rk3288_lvds_poweron(struct rockchip_lvds *lvds)
+ {
+ 	int ret;
+@@ -194,27 +228,6 @@ static void rk3288_lvds_poweroff(struct rockchip_lvds *lvds)
+ 	clk_disable(lvds->pclk);
+ }
+ 
+-static const struct drm_connector_funcs rockchip_lvds_connector_funcs = {
+-	.fill_modes = drm_helper_probe_single_connector_modes,
+-	.destroy = drm_connector_cleanup,
+-	.reset = drm_atomic_helper_connector_reset,
+-	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
+-	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+-};
+-
+-static int rockchip_lvds_connector_get_modes(struct drm_connector *connector)
+-{
+-	struct rockchip_lvds *lvds = connector_to_lvds(connector);
+-	struct drm_panel *panel = lvds->panel;
+-
+-	return drm_panel_get_modes(panel);
+-}
+-
+-static const
+-struct drm_connector_helper_funcs rockchip_lvds_connector_helper_funcs = {
+-	.get_modes = rockchip_lvds_connector_get_modes,
+-};
+-
+ static int rk3288_lvds_grf_config(struct drm_encoder *encoder,
+ 				  struct drm_display_mode *mode)
+ {
+@@ -268,19 +281,6 @@ static int rk3288_lvds_set_vop_source(struct rockchip_lvds *lvds,
+ 	return 0;
+ }
+ 
+-static int
+-rockchip_lvds_encoder_atomic_check(struct drm_encoder *encoder,
+-				   struct drm_crtc_state *crtc_state,
+-				   struct drm_connector_state *conn_state)
+-{
+-	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc_state);
+-
+-	s->output_mode = ROCKCHIP_OUT_MODE_P888;
+-	s->output_type = DRM_MODE_CONNECTOR_LVDS;
+-
+-	return 0;
+-}
+-
+ static void rk3288_lvds_encoder_enable(struct drm_encoder *encoder)
+ {
+ 	struct rockchip_lvds *lvds = encoder_to_lvds(encoder);
+@@ -322,6 +322,17 @@ static void rk3288_lvds_encoder_disable(struct drm_encoder *encoder)
+ 	drm_panel_unprepare(lvds->panel);
+ }
+ 
++static const
++struct drm_encoder_helper_funcs rk3288_lvds_encoder_helper_funcs = {
++	.enable = rk3288_lvds_encoder_enable,
++	.disable = rk3288_lvds_encoder_disable,
++	.atomic_check = rockchip_lvds_encoder_atomic_check,
++};
++
++static const struct drm_encoder_funcs rockchip_lvds_encoder_funcs = {
++	.destroy = drm_encoder_cleanup,
++};
++
+ static int rk3288_lvds_probe(struct platform_device *pdev,
+ 			     struct rockchip_lvds *lvds)
+ {
+@@ -368,17 +379,6 @@ static int rk3288_lvds_probe(struct platform_device *pdev,
+ 	return 0;
+ }
+ 
+-static const
+-struct drm_encoder_helper_funcs rk3288_lvds_encoder_helper_funcs = {
+-	.enable = rk3288_lvds_encoder_enable,
+-	.disable = rk3288_lvds_encoder_disable,
+-	.atomic_check = rockchip_lvds_encoder_atomic_check,
+-};
+-
+-static const struct drm_encoder_funcs rockchip_lvds_encoder_funcs = {
+-	.destroy = drm_encoder_cleanup,
+-};
+-
+ static const struct rockchip_lvds_soc_data rk3288_lvds_data = {
+ 	.probe = rk3288_lvds_probe,
+ 	.helper_funcs = &rk3288_lvds_encoder_helper_funcs,
+
+From ee7cb3b7ad0846760918f963297572487f503bdf Mon Sep 17 00:00:00 2001
+From: Miquel Raynal <miquel.raynal@bootlin.com>
+Date: Tue, 24 Dec 2019 15:38:58 +0100
+Subject: [PATCH] drm/rockchip: lvds: Add PX30 support
+
+Introduce PX30 LVDS support. This means adding the relevant helper
+functions, a specific probe and also the initialization of a specific
+PHY.
+
+Signed-off-by: Miquel Raynal <miquel.raynal@bootlin.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191224143900.23567-10-miquel.raynal@bootlin.com
+(cherry picked from commit cca1705c3d895fcb67892fc8710005afd6d38541)
+---
+ drivers/gpu/drm/rockchip/rockchip_lvds.c | 143 +++++++++++++++++++++++++++++++
+ drivers/gpu/drm/rockchip/rockchip_lvds.h |  14 +++
+ 2 files changed, 157 insertions(+)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+index a0c203dcd66f..210396548305 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+@@ -10,6 +10,7 @@
+ #include <linux/component.h>
+ #include <linux/mfd/syscon.h>
+ #include <linux/of_graph.h>
++#include <linux/phy/phy.h>
+ #include <linux/pinctrl/devinfo.h>
+ #include <linux/platform_device.h>
+ #include <linux/pm_runtime.h>
+@@ -54,6 +55,7 @@ struct rockchip_lvds {
+ 	void __iomem *regs;
+ 	struct regmap *grf;
+ 	struct clk *pclk;
++	struct phy *dphy;
+ 	const struct rockchip_lvds_soc_data *soc_data;
+ 	int output; /* rgb lvds or dual lvds output */
+ 	int format; /* vesa or jeida format */
+@@ -322,6 +324,103 @@ static void rk3288_lvds_encoder_disable(struct drm_encoder *encoder)
+ 	drm_panel_unprepare(lvds->panel);
+ }
+ 
++static int px30_lvds_poweron(struct rockchip_lvds *lvds)
++{
++	int ret;
++
++	ret = pm_runtime_get_sync(lvds->dev);
++	if (ret < 0) {
++		DRM_DEV_ERROR(lvds->dev, "failed to get pm runtime: %d\n", ret);
++		return ret;
++	}
++
++	/* Enable LVDS mode */
++	return regmap_update_bits(lvds->grf, PX30_LVDS_GRF_PD_VO_CON1,
++				  PX30_LVDS_MODE_EN(1) | PX30_LVDS_P2S_EN(1),
++				  PX30_LVDS_MODE_EN(1) | PX30_LVDS_P2S_EN(1));
++}
++
++static void px30_lvds_poweroff(struct rockchip_lvds *lvds)
++{
++	regmap_update_bits(lvds->grf, PX30_LVDS_GRF_PD_VO_CON1,
++			   PX30_LVDS_MODE_EN(1) | PX30_LVDS_P2S_EN(1),
++			   PX30_LVDS_MODE_EN(0) | PX30_LVDS_P2S_EN(0));
++
++	pm_runtime_put(lvds->dev);
++}
++
++static int px30_lvds_grf_config(struct drm_encoder *encoder,
++				struct drm_display_mode *mode)
++{
++	struct rockchip_lvds *lvds = encoder_to_lvds(encoder);
++
++	if (lvds->output != DISPLAY_OUTPUT_LVDS) {
++		DRM_DEV_ERROR(lvds->dev, "Unsupported display output %d\n",
++			      lvds->output);
++		return -EINVAL;
++	}
++
++	/* Set format */
++	return regmap_update_bits(lvds->grf, PX30_LVDS_GRF_PD_VO_CON1,
++				  PX30_LVDS_FORMAT(lvds->format),
++				  PX30_LVDS_FORMAT(lvds->format));
++}
++
++static int px30_lvds_set_vop_source(struct rockchip_lvds *lvds,
++				    struct drm_encoder *encoder)
++{
++	int vop;
++
++	vop = drm_of_encoder_active_endpoint_id(lvds->dev->of_node, encoder);
++	if (vop < 0)
++		return vop;
++
++	return regmap_update_bits(lvds->grf, PX30_LVDS_GRF_PD_VO_CON1,
++				  PX30_LVDS_VOP_SEL(1),
++				  PX30_LVDS_VOP_SEL(vop));
++}
++
++static void px30_lvds_encoder_enable(struct drm_encoder *encoder)
++{
++	struct rockchip_lvds *lvds = encoder_to_lvds(encoder);
++	struct drm_display_mode *mode = &encoder->crtc->state->adjusted_mode;
++	int ret;
++
++	drm_panel_prepare(lvds->panel);
++
++	ret = px30_lvds_poweron(lvds);
++	if (ret) {
++		DRM_DEV_ERROR(lvds->dev, "failed to power on LVDS: %d\n", ret);
++		drm_panel_unprepare(lvds->panel);
++		return;
++	}
++
++	ret = px30_lvds_grf_config(encoder, mode);
++	if (ret) {
++		DRM_DEV_ERROR(lvds->dev, "failed to configure LVDS: %d\n", ret);
++		drm_panel_unprepare(lvds->panel);
++		return;
++	}
++
++	ret = px30_lvds_set_vop_source(lvds, encoder);
++	if (ret) {
++		DRM_DEV_ERROR(lvds->dev, "failed to set VOP source: %d\n", ret);
++		drm_panel_unprepare(lvds->panel);
++		return;
++	}
++
++	drm_panel_enable(lvds->panel);
++}
++
++static void px30_lvds_encoder_disable(struct drm_encoder *encoder)
++{
++	struct rockchip_lvds *lvds = encoder_to_lvds(encoder);
++
++	drm_panel_disable(lvds->panel);
++	px30_lvds_poweroff(lvds);
++	drm_panel_unprepare(lvds->panel);
++}
++
+ static const
+ struct drm_encoder_helper_funcs rk3288_lvds_encoder_helper_funcs = {
+ 	.enable = rk3288_lvds_encoder_enable,
+@@ -329,6 +428,13 @@ struct drm_encoder_helper_funcs rk3288_lvds_encoder_helper_funcs = {
+ 	.atomic_check = rockchip_lvds_encoder_atomic_check,
+ };
+ 
++static const
++struct drm_encoder_helper_funcs px30_lvds_encoder_helper_funcs = {
++	.enable = px30_lvds_encoder_enable,
++	.disable = px30_lvds_encoder_disable,
++	.atomic_check = rockchip_lvds_encoder_atomic_check,
++};
++
+ static const struct drm_encoder_funcs rockchip_lvds_encoder_funcs = {
+ 	.destroy = drm_encoder_cleanup,
+ };
+@@ -379,16 +485,53 @@ static int rk3288_lvds_probe(struct platform_device *pdev,
+ 	return 0;
+ }
+ 
++static int px30_lvds_probe(struct platform_device *pdev,
++			   struct rockchip_lvds *lvds)
++{
++	int ret;
++
++	/* MSB */
++	ret =  regmap_update_bits(lvds->grf, PX30_LVDS_GRF_PD_VO_CON1,
++				  PX30_LVDS_MSBSEL(1),
++				  PX30_LVDS_MSBSEL(1));
++	if (ret)
++		return ret;
++
++	/* PHY */
++	lvds->dphy = devm_phy_get(&pdev->dev, "dphy");
++	if (IS_ERR(lvds->dphy))
++		return PTR_ERR(lvds->dphy);
++
++	phy_init(lvds->dphy);
++	if (ret)
++		return ret;
++
++	phy_set_mode(lvds->dphy, PHY_MODE_LVDS);
++	if (ret)
++		return ret;
++
++	return phy_power_on(lvds->dphy);
++}
++
+ static const struct rockchip_lvds_soc_data rk3288_lvds_data = {
+ 	.probe = rk3288_lvds_probe,
+ 	.helper_funcs = &rk3288_lvds_encoder_helper_funcs,
+ };
+ 
++static const struct rockchip_lvds_soc_data px30_lvds_data = {
++	.probe = px30_lvds_probe,
++	.helper_funcs = &px30_lvds_encoder_helper_funcs,
++};
++
+ static const struct of_device_id rockchip_lvds_dt_ids[] = {
+ 	{
+ 		.compatible = "rockchip,rk3288-lvds",
+ 		.data = &rk3288_lvds_data
+ 	},
++	{
++		.compatible = "rockchip,px30-lvds",
++		.data = &px30_lvds_data
++	},
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, rockchip_lvds_dt_ids);
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.h b/drivers/gpu/drm/rockchip/rockchip_lvds.h
+index e41e9ab3c306..4ce967d23813 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.h
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.h
+@@ -106,4 +106,18 @@
+ #define LVDS_VESA_18				2
+ #define LVDS_JEIDA_18				3
+ 
++#define HIWORD_UPDATE(v, h, l)  ((GENMASK(h, l) << 16) | ((v) << (l)))
++
++#define PX30_LVDS_GRF_PD_VO_CON0		0x434
++#define   PX30_LVDS_TIE_CLKS(val)		HIWORD_UPDATE(val,  8,  8)
++#define   PX30_LVDS_INVERT_CLKS(val)		HIWORD_UPDATE(val,  9,  9)
++#define   PX30_LVDS_INVERT_DCLK(val)		HIWORD_UPDATE(val,  5,  5)
++
++#define PX30_LVDS_GRF_PD_VO_CON1		0x438
++#define   PX30_LVDS_FORMAT(val)			HIWORD_UPDATE(val, 14, 13)
++#define   PX30_LVDS_MODE_EN(val)		HIWORD_UPDATE(val, 12, 12)
++#define   PX30_LVDS_MSBSEL(val)			HIWORD_UPDATE(val, 11, 11)
++#define   PX30_LVDS_P2S_EN(val)			HIWORD_UPDATE(val,  6,  6)
++#define   PX30_LVDS_VOP_SEL(val)		HIWORD_UPDATE(val,  1,  1)
++
+ #endif /* _ROCKCHIP_LVDS_ */
+
+From c36434682f7bd8da55df8cc7856a855fb159489f Mon Sep 17 00:00:00 2001
+From: Nickey Yang <nickey.yang@rock-chips.com>
+Date: Wed, 11 Dec 2019 21:34:17 +0100
+Subject: [PATCH] drm: rockchip: rk3066_hdmi: set edid fifo address
+
+Fix edid reading error when edid's block > 2.
+
+Signed-off-by: Nickey Yang <nickey.yang@rock-chips.com>
+Signed-off-by: Johan Jonker <jbx6244@gmail.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20191211203417.19448-1-jbx6244@gmail.com
+(cherry picked from commit 0eee61521da76e2f827f8f3025d77641461553bd)
+---
+ drivers/gpu/drm/rockchip/rk3066_hdmi.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/gpu/drm/rockchip/rk3066_hdmi.c b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
+index 8673e64723e3..fe203d38664e 100644
+--- a/drivers/gpu/drm/rockchip/rk3066_hdmi.c
++++ b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
+@@ -641,6 +641,9 @@ static int rk3066_hdmi_i2c_write(struct rk3066_hdmi *hdmi, struct i2c_msg *msgs)
+ 	if (msgs->addr == DDC_ADDR)
+ 		hdmi->i2c->ddc_addr = msgs->buf[0];
+ 
++	/* Set edid fifo first address. */
++	hdmi_writeb(hdmi, HDMI_EDID_FIFO_ADDR, 0x00);
++
+ 	/* Set edid word address 0x00/0x80. */
+ 	hdmi_writeb(hdmi, HDMI_EDID_WORD_ADDR, hdmi->i2c->ddc_addr);
+ 
+
+From 23ac455bb63e3a1d228c007c7765427de65e4b59 Mon Sep 17 00:00:00 2001
+From: Julia Lawall <Julia.Lawall@inria.fr>
+Date: Wed, 1 Jan 2020 08:43:33 +0100
+Subject: [PATCH] drm: bridge: dw-hdmi: constify copied structure
+
+The dw_hdmi_hw structure is only copied into another structure,
+so make it const.
+
+The opportunity for this change was found using Coccinelle.
+
+Fixes: 7ed6c665e19d ("drm: bridge/dw_hdmi-ahb-audio: add audio driver")
+Signed-off-by: Julia Lawall <Julia.Lawall@inria.fr>
+Reviewed-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Signed-off-by: Neil Armstrong <narmstrong@baylibre.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/1577864614-5543-16-git-send-email-Julia.Lawall@inria.fr
+(cherry picked from commit d969ebe922aa13d1ec99659b6d2332e4811c4d61)
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi-ahb-audio.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-ahb-audio.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-ahb-audio.c
+index 2b7539701b42..dd56996fe9c7 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-ahb-audio.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-ahb-audio.c
+@@ -291,7 +291,7 @@ static irqreturn_t snd_dw_hdmi_irq(int irq, void *data)
+ 	return IRQ_HANDLED;
+ }
+ 
+-static struct snd_pcm_hardware dw_hdmi_hw = {
++static const struct snd_pcm_hardware dw_hdmi_hw = {
+ 	.info = SNDRV_PCM_INFO_INTERLEAVED |
+ 		SNDRV_PCM_INFO_BLOCK_TRANSFER |
+ 		SNDRV_PCM_INFO_MMAP |
+
+From 560600e08f1c4bc9eabd42c03fd58fd02fe1dd17 Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Date: Fri, 8 Nov 2019 01:06:40 +0100
+Subject: [PATCH] phy/rockchip: inno-dsidphy: generalize parameter handling
+
+During review it came to light that exposing the pll clock outside is
+not the right approach and struct phy_configure_opts_mipi_dphy exists
+just for that reason to transfer parameters to the phy.
+
+So drop the exposed clock and rely on the phy configure options
+to bring in the correct rate. That way we can also just drop the
+open coded timing struct and default values function.
+
+Fixes: b7535a3bc0ba ("phy/rockchip: Add support for Innosilicon MIPI/LVDS/TTL PHY")
+Signed-off-by: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
+Signed-off-by: Kishon Vijay Abraham I <kishon@ti.com>
+(cherry picked from commit f0684c1a836770afba7a7097e61935edd69693bf)
+---
+ drivers/phy/rockchip/Kconfig                     |   1 +
+ drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c | 319 +++++++----------------
+ 2 files changed, 100 insertions(+), 220 deletions(-)
+
+diff --git a/drivers/phy/rockchip/Kconfig b/drivers/phy/rockchip/Kconfig
+index dbd2de4d28b1..0824b9dd5683 100644
+--- a/drivers/phy/rockchip/Kconfig
++++ b/drivers/phy/rockchip/Kconfig
+@@ -39,6 +39,7 @@ config PHY_ROCKCHIP_INNO_DSIDPHY
+ 	tristate "Rockchip Innosilicon MIPI/LVDS/TTL PHY driver"
+ 	depends on (ARCH_ROCKCHIP || COMPILE_TEST) && OF
+ 	select GENERIC_PHY
++	select GENERIC_PHY_MIPI_DPHY
+ 	help
+ 	  Enable this to support the Rockchip MIPI/LVDS/TTL PHY with
+ 	  Innosilicon IP block.
+diff --git a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
+index fc729ecd3fe9..a7c6c940a3a8 100644
+--- a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
+@@ -16,6 +16,7 @@
+ #include <linux/platform_device.h>
+ #include <linux/reset.h>
+ #include <linux/phy/phy.h>
++#include <linux/phy/phy-mipi-dphy.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/mfd/syscon.h>
+ 
+@@ -167,31 +168,6 @@
+ #define DSI_PHY_STATUS		0xb0
+ #define PHY_LOCK		BIT(0)
+ 
+-struct mipi_dphy_timing {
+-	unsigned int clkmiss;
+-	unsigned int clkpost;
+-	unsigned int clkpre;
+-	unsigned int clkprepare;
+-	unsigned int clksettle;
+-	unsigned int clktermen;
+-	unsigned int clktrail;
+-	unsigned int clkzero;
+-	unsigned int dtermen;
+-	unsigned int eot;
+-	unsigned int hsexit;
+-	unsigned int hsprepare;
+-	unsigned int hszero;
+-	unsigned int hssettle;
+-	unsigned int hsskip;
+-	unsigned int hstrail;
+-	unsigned int init;
+-	unsigned int lpx;
+-	unsigned int taget;
+-	unsigned int tago;
+-	unsigned int tasure;
+-	unsigned int wakeup;
+-};
+-
+ struct inno_dsidphy {
+ 	struct device *dev;
+ 	struct clk *ref_clk;
+@@ -201,7 +177,9 @@ struct inno_dsidphy {
+ 	void __iomem *host_base;
+ 	struct reset_control *rst;
+ 	enum phy_mode mode;
++	struct phy_configure_opts_mipi_dphy dphy_cfg;
+ 
++	struct clk *pll_clk;
+ 	struct {
+ 		struct clk_hw hw;
+ 		u8 prediv;
+@@ -238,37 +216,79 @@ static void phy_update_bits(struct inno_dsidphy *inno,
+ 	writel(tmp, inno->phy_base + reg);
+ }
+ 
+-static void mipi_dphy_timing_get_default(struct mipi_dphy_timing *timing,
+-					 unsigned long period)
++static unsigned long inno_dsidphy_pll_calc_rate(struct inno_dsidphy *inno,
++						unsigned long rate)
+ {
+-	/* Global Operation Timing Parameters */
+-	timing->clkmiss = 0;
+-	timing->clkpost = 70000 + 52 * period;
+-	timing->clkpre = 8 * period;
+-	timing->clkprepare = 65000;
+-	timing->clksettle = 95000;
+-	timing->clktermen = 0;
+-	timing->clktrail = 80000;
+-	timing->clkzero = 260000;
+-	timing->dtermen = 0;
+-	timing->eot = 0;
+-	timing->hsexit = 120000;
+-	timing->hsprepare = 65000 + 4 * period;
+-	timing->hszero = 145000 + 6 * period;
+-	timing->hssettle = 85000 + 6 * period;
+-	timing->hsskip = 40000;
+-	timing->hstrail = max(8 * period, 60000 + 4 * period);
+-	timing->init = 100000000;
+-	timing->lpx = 60000;
+-	timing->taget = 5 * timing->lpx;
+-	timing->tago = 4 * timing->lpx;
+-	timing->tasure = 2 * timing->lpx;
+-	timing->wakeup = 1000000000;
++	unsigned long prate = clk_get_rate(inno->ref_clk);
++	unsigned long best_freq = 0;
++	unsigned long fref, fout;
++	u8 min_prediv, max_prediv;
++	u8 _prediv, best_prediv = 1;
++	u16 _fbdiv, best_fbdiv = 1;
++	u32 min_delta = UINT_MAX;
++
++	/*
++	 * The PLL output frequency can be calculated using a simple formula:
++	 * PLL_Output_Frequency = (FREF / PREDIV * FBDIV) / 2
++	 * PLL_Output_Frequency: it is equal to DDR-Clock-Frequency * 2
++	 */
++	fref = prate / 2;
++	if (rate > 1000000000UL)
++		fout = 1000000000UL;
++	else
++		fout = rate;
++
++	/* 5Mhz < Fref / prediv < 40MHz */
++	min_prediv = DIV_ROUND_UP(fref, 40000000);
++	max_prediv = fref / 5000000;
++
++	for (_prediv = min_prediv; _prediv <= max_prediv; _prediv++) {
++		u64 tmp;
++		u32 delta;
++
++		tmp = (u64)fout * _prediv;
++		do_div(tmp, fref);
++		_fbdiv = tmp;
++
++		/*
++		 * The possible settings of feedback divider are
++		 * 12, 13, 14, 16, ~ 511
++		 */
++		if (_fbdiv == 15)
++			continue;
++
++		if (_fbdiv < 12 || _fbdiv > 511)
++			continue;
++
++		tmp = (u64)_fbdiv * fref;
++		do_div(tmp, _prediv);
++
++		delta = abs(fout - tmp);
++		if (!delta) {
++			best_prediv = _prediv;
++			best_fbdiv = _fbdiv;
++			best_freq = tmp;
++			break;
++		} else if (delta < min_delta) {
++			best_prediv = _prediv;
++			best_fbdiv = _fbdiv;
++			best_freq = tmp;
++			min_delta = delta;
++		}
++	}
++
++	if (best_freq) {
++		inno->pll.prediv = best_prediv;
++		inno->pll.fbdiv = best_fbdiv;
++		inno->pll.rate = best_freq;
++	}
++
++	return best_freq;
+ }
+ 
+ static void inno_dsidphy_mipi_mode_enable(struct inno_dsidphy *inno)
+ {
+-	struct mipi_dphy_timing gotp;
++	struct phy_configure_opts_mipi_dphy *cfg = &inno->dphy_cfg;
+ 	const struct {
+ 		unsigned long rate;
+ 		u8 hs_prepare;
+@@ -288,12 +308,14 @@ static void inno_dsidphy_mipi_mode_enable(struct inno_dsidphy *inno)
+ 		{ 800000000, 0x21, 0x1f, 0x09, 0x29},
+ 		{1000000000, 0x09, 0x20, 0x09, 0x27},
+ 	};
+-	u32 t_txbyteclkhs, t_txclkesc, ui;
++	u32 t_txbyteclkhs, t_txclkesc;
+ 	u32 txbyteclkhs, txclkesc, esc_clk_div;
+ 	u32 hs_exit, clk_post, clk_pre, wakeup, lpx, ta_go, ta_sure, ta_wait;
+ 	u32 hs_prepare, hs_trail, hs_zero, clk_lane_hs_zero, data_lane_hs_zero;
+ 	unsigned int i;
+ 
++	inno_dsidphy_pll_calc_rate(inno, cfg->hs_clk_rate);
++
+ 	/* Select MIPI mode */
+ 	phy_update_bits(inno, REGISTER_PART_LVDS, 0x03,
+ 			MODE_ENABLE_MASK, MIPI_MODE_ENABLE);
+@@ -328,32 +350,27 @@ static void inno_dsidphy_mipi_mode_enable(struct inno_dsidphy *inno)
+ 	txclkesc = txbyteclkhs / esc_clk_div;
+ 	t_txclkesc = div_u64(PSEC_PER_SEC, txclkesc);
+ 
+-	ui = div_u64(PSEC_PER_SEC, inno->pll.rate);
+-
+-	memset(&gotp, 0, sizeof(gotp));
+-	mipi_dphy_timing_get_default(&gotp, ui);
+-
+ 	/*
+ 	 * The value of counter for HS Ths-exit
+ 	 * Ths-exit = Tpin_txbyteclkhs * value
+ 	 */
+-	hs_exit = DIV_ROUND_UP(gotp.hsexit, t_txbyteclkhs);
++	hs_exit = DIV_ROUND_UP(cfg->hs_exit, t_txbyteclkhs);
+ 	/*
+ 	 * The value of counter for HS Tclk-post
+ 	 * Tclk-post = Tpin_txbyteclkhs * value
+ 	 */
+-	clk_post = DIV_ROUND_UP(gotp.clkpost, t_txbyteclkhs);
++	clk_post = DIV_ROUND_UP(cfg->clk_post, t_txbyteclkhs);
+ 	/*
+ 	 * The value of counter for HS Tclk-pre
+ 	 * Tclk-pre = Tpin_txbyteclkhs * value
+ 	 */
+-	clk_pre = DIV_ROUND_UP(gotp.clkpre, t_txbyteclkhs);
++	clk_pre = DIV_ROUND_UP(cfg->clk_pre, t_txbyteclkhs);
+ 
+ 	/*
+ 	 * The value of counter for HS Tlpx Time
+ 	 * Tlpx = Tpin_txbyteclkhs * (2 + value)
+ 	 */
+-	lpx = DIV_ROUND_UP(gotp.lpx, t_txbyteclkhs);
++	lpx = DIV_ROUND_UP(cfg->lpx, t_txbyteclkhs);
+ 	if (lpx >= 2)
+ 		lpx -= 2;
+ 
+@@ -362,19 +379,19 @@ static void inno_dsidphy_mipi_mode_enable(struct inno_dsidphy *inno)
+ 	 * Tta-go for turnaround
+ 	 * Tta-go = Ttxclkesc * value
+ 	 */
+-	ta_go = DIV_ROUND_UP(gotp.tago, t_txclkesc);
++	ta_go = DIV_ROUND_UP(cfg->ta_go, t_txclkesc);
+ 	/*
+ 	 * The value of counter for HS Tta-sure
+ 	 * Tta-sure for turnaround
+ 	 * Tta-sure = Ttxclkesc * value
+ 	 */
+-	ta_sure = DIV_ROUND_UP(gotp.tasure, t_txclkesc);
++	ta_sure = DIV_ROUND_UP(cfg->ta_sure, t_txclkesc);
+ 	/*
+ 	 * The value of counter for HS Tta-wait
+ 	 * Tta-wait for turnaround
+ 	 * Tta-wait = Ttxclkesc * value
+ 	 */
+-	ta_wait = DIV_ROUND_UP(gotp.taget, t_txclkesc);
++	ta_wait = DIV_ROUND_UP(cfg->ta_get, t_txclkesc);
+ 
+ 	for (i = 0; i < ARRAY_SIZE(timings); i++)
+ 		if (inno->pll.rate <= timings[i].rate)
+@@ -479,6 +496,7 @@ static int inno_dsidphy_power_on(struct phy *phy)
+ 	struct inno_dsidphy *inno = phy_get_drvdata(phy);
+ 
+ 	clk_prepare_enable(inno->pclk_phy);
++	clk_prepare_enable(inno->ref_clk);
+ 	pm_runtime_get_sync(inno->dev);
+ 
+ 	/* Bandgap power on */
+@@ -524,6 +542,7 @@ static int inno_dsidphy_power_off(struct phy *phy)
+ 			LVDS_PLL_POWER_OFF | LVDS_BANDGAP_POWER_DOWN);
+ 
+ 	pm_runtime_put(inno->dev);
++	clk_disable_unprepare(inno->ref_clk);
+ 	clk_disable_unprepare(inno->pclk_phy);
+ 
+ 	return 0;
+@@ -546,168 +565,32 @@ static int inno_dsidphy_set_mode(struct phy *phy, enum phy_mode mode,
+ 	return 0;
+ }
+ 
+-static const struct phy_ops inno_dsidphy_ops = {
+-	.set_mode = inno_dsidphy_set_mode,
+-	.power_on = inno_dsidphy_power_on,
+-	.power_off = inno_dsidphy_power_off,
+-	.owner = THIS_MODULE,
+-};
+-
+-static unsigned long inno_dsidphy_pll_round_rate(struct inno_dsidphy *inno,
+-						   unsigned long prate,
+-						   unsigned long rate,
+-						   u8 *prediv, u16 *fbdiv)
+-{
+-	unsigned long best_freq = 0;
+-	unsigned long fref, fout;
+-	u8 min_prediv, max_prediv;
+-	u8 _prediv, best_prediv = 1;
+-	u16 _fbdiv, best_fbdiv = 1;
+-	u32 min_delta = UINT_MAX;
+-
+-	/*
+-	 * The PLL output frequency can be calculated using a simple formula:
+-	 * PLL_Output_Frequency = (FREF / PREDIV * FBDIV) / 2
+-	 * PLL_Output_Frequency: it is equal to DDR-Clock-Frequency * 2
+-	 */
+-	fref = prate / 2;
+-	if (rate > 1000000000UL)
+-		fout = 1000000000UL;
+-	else
+-		fout = rate;
+-
+-	/* 5Mhz < Fref / prediv < 40MHz */
+-	min_prediv = DIV_ROUND_UP(fref, 40000000);
+-	max_prediv = fref / 5000000;
+-
+-	for (_prediv = min_prediv; _prediv <= max_prediv; _prediv++) {
+-		u64 tmp;
+-		u32 delta;
+-
+-		tmp = (u64)fout * _prediv;
+-		do_div(tmp, fref);
+-		_fbdiv = tmp;
+-
+-		/*
+-		 * The possible settings of feedback divider are
+-		 * 12, 13, 14, 16, ~ 511
+-		 */
+-		if (_fbdiv == 15)
+-			continue;
+-
+-		if (_fbdiv < 12 || _fbdiv > 511)
+-			continue;
+-
+-		tmp = (u64)_fbdiv * fref;
+-		do_div(tmp, _prediv);
+-
+-		delta = abs(fout - tmp);
+-		if (!delta) {
+-			best_prediv = _prediv;
+-			best_fbdiv = _fbdiv;
+-			best_freq = tmp;
+-			break;
+-		} else if (delta < min_delta) {
+-			best_prediv = _prediv;
+-			best_fbdiv = _fbdiv;
+-			best_freq = tmp;
+-			min_delta = delta;
+-		}
+-	}
+-
+-	if (best_freq) {
+-		*prediv = best_prediv;
+-		*fbdiv = best_fbdiv;
+-	}
+-
+-	return best_freq;
+-}
+-
+-static long inno_dsidphy_pll_clk_round_rate(struct clk_hw *hw,
+-					      unsigned long rate,
+-					      unsigned long *prate)
++static int inno_dsidphy_configure(struct phy *phy,
++				  union phy_configure_opts *opts)
+ {
+-	struct inno_dsidphy *inno = hw_to_inno(hw);
+-	unsigned long fout;
+-	u16 fbdiv = 1;
+-	u8 prediv = 1;
+-
+-	fout = inno_dsidphy_pll_round_rate(inno, *prate, rate,
+-					     &prediv, &fbdiv);
+-
+-	return fout;
+-}
+-
+-static int inno_dsidphy_pll_clk_set_rate(struct clk_hw *hw,
+-					   unsigned long rate,
+-					   unsigned long parent_rate)
+-{
+-	struct inno_dsidphy *inno = hw_to_inno(hw);
+-	unsigned long fout;
+-	u16 fbdiv = 1;
+-	u8 prediv = 1;
++	struct inno_dsidphy *inno = phy_get_drvdata(phy);
++	int ret;
+ 
+-	fout = inno_dsidphy_pll_round_rate(inno, parent_rate, rate,
+-					     &prediv, &fbdiv);
++	if (inno->mode != PHY_MODE_MIPI_DPHY)
++		return -EINVAL;
+ 
+-	dev_dbg(inno->dev, "fin=%lu, fout=%lu, prediv=%u, fbdiv=%u\n",
+-		parent_rate, fout, prediv, fbdiv);
++	ret = phy_mipi_dphy_config_validate(&opts->mipi_dphy);
++	if (ret)
++		return ret;
+ 
+-	inno->pll.prediv = prediv;
+-	inno->pll.fbdiv = fbdiv;
+-	inno->pll.rate = fout;
++	memcpy(&inno->dphy_cfg, &opts->mipi_dphy, sizeof(inno->dphy_cfg));
+ 
+ 	return 0;
+ }
+ 
+-static unsigned long
+-inno_dsidphy_pll_clk_recalc_rate(struct clk_hw *hw, unsigned long prate)
+-{
+-	struct inno_dsidphy *inno = hw_to_inno(hw);
+-
+-	/* PLL_Output_Frequency = (FREF / PREDIV * FBDIV) / 2 */
+-	return (prate / inno->pll.prediv * inno->pll.fbdiv) / 2;
+-}
+-
+-static const struct clk_ops inno_dsidphy_pll_clk_ops = {
+-	.round_rate = inno_dsidphy_pll_clk_round_rate,
+-	.set_rate = inno_dsidphy_pll_clk_set_rate,
+-	.recalc_rate = inno_dsidphy_pll_clk_recalc_rate,
++static const struct phy_ops inno_dsidphy_ops = {
++	.configure = inno_dsidphy_configure,
++	.set_mode = inno_dsidphy_set_mode,
++	.power_on = inno_dsidphy_power_on,
++	.power_off = inno_dsidphy_power_off,
++	.owner = THIS_MODULE,
+ };
+ 
+-static int inno_dsidphy_pll_register(struct inno_dsidphy *inno)
+-{
+-	struct device *dev = inno->dev;
+-	struct clk *clk;
+-	const char *parent_name;
+-	struct clk_init_data init;
+-	int ret;
+-
+-	parent_name = __clk_get_name(inno->ref_clk);
+-
+-	init.name = "mipi_dphy_pll";
+-	ret = of_property_read_string(dev->of_node, "clock-output-names",
+-				      &init.name);
+-	if (ret < 0)
+-		dev_dbg(dev, "phy should set clock-output-names property\n");
+-
+-	init.ops = &inno_dsidphy_pll_clk_ops;
+-	init.parent_names = &parent_name;
+-	init.num_parents = 1;
+-	init.flags = 0;
+-
+-	inno->pll.hw.init = &init;
+-	clk = devm_clk_register(dev, &inno->pll.hw);
+-	if (IS_ERR(clk)) {
+-		ret = PTR_ERR(clk);
+-		dev_err(dev, "failed to register PLL: %d\n", ret);
+-		return ret;
+-	}
+-
+-	return devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get,
+-					   &inno->pll.hw);
+-}
+-
+ static int inno_dsidphy_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -764,10 +647,6 @@ static int inno_dsidphy_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
+-	ret = inno_dsidphy_pll_register(inno);
+-	if (ret)
+-		return ret;
+-
+ 	pm_runtime_enable(dev);
+ 
+ 	return 0;

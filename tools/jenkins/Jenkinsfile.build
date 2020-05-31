@@ -43,13 +43,38 @@ pipeline {
 			'aarch64',
 		],
 		description: 'Arch to build')
+		choice(name: 'BUILD_PERIODIC', choices: [
+			'devel',
+			'nightly',
+			'daily',
+			'weekly',
+			'monthly',
+		],
+		description: 'Periodic build')
+		booleanParam(name: 'PUBLISH', defaultValue: false, description: 'Toggle this value')
 	}
 	stages {
 		stage('Build') {
 			steps {
 				sh 'git clean -fdx target'
 				sh 'make image'
+			}
+		}
+		stage('Archive') {
+			when {
+				not { expression { return params.PUBLISH } }
+			}
+			steps {
 				archiveArtifacts artifacts: 'target/*.img.gz*, target/*.tar*'
+			}
+		}
+		stage('Publish') {
+			when {
+				expression { return params.PUBLISH }
+				not { environment name: 'PUBLISH_TO', value: '' }
+			}
+			steps {
+				sshPublisher(publishers: [sshPublisherDesc(configName: env.PUBLISH_TO, transfers: [sshTransfer(flatten: true, sourceFiles: 'target/*.img.gz, target/*.tar')])])
 			}
 		}
 	}

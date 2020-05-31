@@ -1,0 +1,54 @@
+pipeline {
+	agent {
+		dockerfile {
+			label 'docker'
+			dir 'tools/docker/focal'
+		}
+	}
+	parameters {
+		choice(name: 'PROJECT', choices: [
+			'Generic',
+			'Allwinner',
+			'Amlogic',
+			'NXP',
+			'Qualcomm',
+			'RPi',
+			'Rockchip',
+		],
+		description: 'Project to build')
+		choice(name: 'DEVICE', choices: [
+			'',
+			'A20',
+			'A64',
+			'AMLG12',
+			'AMLGX',
+			'Dragonboard',
+			'H3',
+			'H5',
+			'H6',
+			'RK3288',
+			'RK3328',
+			'RK3399',
+			'RPi',
+			'RPi2',
+			'RPi4',
+			'Slice',
+			'Slice3',
+			'iMX6',
+		],
+		description: 'Device to build')
+		choice(name: 'ARCH', choices: [
+			'x86_64',
+			'arm',
+			'aarch64',
+		],
+		description: 'Arch to build')
+	}
+	stages {
+		stage('Build') {
+			steps {
+				sh 'make image'
+			}
+		}
+	}
+}

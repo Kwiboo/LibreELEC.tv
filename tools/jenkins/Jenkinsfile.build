@@ -47,7 +47,9 @@ pipeline {
 	stages {
 		stage('Build') {
 			steps {
+				sh 'git clean -fdx target'
 				sh 'make image'
+				archiveArtifacts artifacts: 'target/*.img.gz*, target/*.tar*'
 			}
 		}
 	}

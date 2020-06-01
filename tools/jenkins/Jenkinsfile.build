@@ -1,48 +1,10 @@
 pipeline {
 	agent {
 		dockerfile {
-			label 'docker'
 			dir 'tools/docker/focal'
 		}
 	}
 	parameters {
-		choice(name: 'PROJECT', choices: [
-			'Generic',
-			'Allwinner',
-			'Amlogic',
-			'NXP',
-			'Qualcomm',
-			'RPi',
-			'Rockchip',
-		],
-		description: 'Project to build')
-		choice(name: 'DEVICE', choices: [
-			'',
-			'A20',
-			'A64',
-			'AMLG12',
-			'AMLGX',
-			'Dragonboard',
-			'H3',
-			'H5',
-			'H6',
-			'RK3288',
-			'RK3328',
-			'RK3399',
-			'RPi',
-			'RPi2',
-			'RPi4',
-			'Slice',
-			'Slice3',
-			'iMX6',
-		],
-		description: 'Device to build')
-		choice(name: 'ARCH', choices: [
-			'x86_64',
-			'arm',
-			'aarch64',
-		],
-		description: 'Arch to build')
 		choice(name: 'BUILD_PERIODIC', choices: [
 			'devel',
 			'nightly',
@@ -51,13 +13,54 @@ pipeline {
 			'monthly',
 		],
 		description: 'Periodic build')
-		booleanParam(name: 'PUBLISH', defaultValue: false, description: 'Toggle this value')
+		choice(name: 'MAKE_TARGET', choices: [
+			'',
+			'image',
+			'image noobs',
+		],
+		description: 'Periodic build')
+		booleanParam(name: 'PUBLISH', defaultValue: false, description: 'Publish build')
+		booleanParam(name: 'CLEAN', defaultValue: false, description: 'Clean build')
 	}
 	stages {
+		stage('Project') {
+			when {
+				environment name: 'PROJECT', value: ''
+			}
+			steps {
+				script {
+					def projects = sh script: "ls -A1 projects", returnStdout: true
+					env.PROJECT = input message: 'Select project to build', ok: 'Next',
+						parameters: [choice(name: 'PROJECT', choices: projects, description: '')]
+				}
+			}
+		}
+		stage('Device') {
+			when {
+				environment name: 'DEVICE', value: ''
+				not { environment name: 'PROJECT', value: 'Generic' }
+			}
+			steps {
+				script {
+					def devices = sh script: "ls -A1 projects/${env.PROJECT}/devices", returnStdout: true
+					env.DEVICE = input message: 'Select device to build', ok: 'Next',
+						parameters: [choice(name: 'DEVICE', choices: devices, description: '')]
+					env.ARCH = 'arm'
+				}
+			}
+		}
+		stage('Clean') {
+			when {
+				expression { return params.CLEAN }
+			}
+			steps {
+				sh 'git clean -fdx'
+			}
+		}
 		stage('Build') {
 			steps {
 				sh 'git clean -fdx target'
-				sh 'make image'
+				sh "make ${params.MAKE_TARGET}"
 			}
 		}
 		stage('Archive') {
@@ -74,7 +77,7 @@ pipeline {
 				not { environment name: 'PUBLISH_TO', value: '' }
 			}
 			steps {
-				sshPublisher(publishers: [sshPublisherDesc(configName: env.PUBLISH_TO, transfers: [sshTransfer(flatten: true, sourceFiles: 'target/*.img.gz, target/*.tar')])])
+				sshPublisher(publishers: [sshPublisherDesc(configName: env.PUBLISH_TO, transfers: [sshTransfer(flatten: true, sourceFiles: 'target/*.img.gz*, target/*.tar*')])])
 			}
 		}
 	}

@@ -3,12 +3,11 @@
 # Copyright (C) 2017-present Team LibreELEC (https://libreelec.tv)
 
 PKG_NAME="ffmpeg"
-# Current branch is: release/4.2-kodi
-PKG_VERSION="4.2.2-Matrix-Alpha1"
-PKG_SHA256="0dba571f9809588cfbdc29d6a551dab4cd5736701653d9263847c9ac67bcde86"
+PKG_VERSION="n4.3"
+PKG_SHA256="481558577f43f38e1f85421e937f186263743df3284003980895f3d48be67efc"
 PKG_LICENSE="LGPLv2.1+"
 PKG_SITE="https://ffmpeg.org"
-PKG_URL="https://github.com/xbmc/FFmpeg/archive/${PKG_VERSION}.tar.gz"
+PKG_URL="https://github.com/FFmpeg/FFmpeg/archive/${PKG_VERSION}.tar.gz"
 PKG_DEPENDS_TARGET="toolchain zlib bzip2 gnutls speex"
 PKG_LONGDESC="FFmpeg is a complete, cross-platform solution to record, convert and stream audio and video."
 PKG_BUILD_FLAGS="-gold"
@@ -21,25 +20,29 @@ PKG_FFMPEG_HWACCEL="--enable-hwaccels"
 if [ "${V4L2_SUPPORT}" = "yes" ]; then
   PKG_DEPENDS_TARGET+=" libdrm"
   PKG_NEED_UNPACK+=" $(get_pkg_directory libdrm)"
-  PKG_FFMPEG_V4L2="--enable-v4l2_m2m --enable-libdrm"
+  PKG_FFMPEG_V4L2="--enable-v4l2-m2m --enable-libdrm"
 
-  if [ "${PROJECT}" = "RPi" ]; then
-    PKG_PATCH_DIRS+=" v4l2-rpi"
-    PKG_FFMPEG_RPI="--disable-rpi --disable-mmal"
-    if [ "${DEVICE}" = "RPi4" ]; then
-      PKG_DEPENDS_TARGET+=" systemd"
-      PKG_NEED_UNPACK+=" $(get_pkg_directory systemd)"
-      PKG_FFMPEG_V4L2+=" --enable-libudev \
-		         --enable-v4l2-request"
-      PKG_FFMPEG_HWACCEL="--disable-hwaccel=h264_v4l2request \
-	                  --disable-hwaccel=mpeg2_v4l2request \
-		          --disable-hwaccel=vp8_v4l2request"
-    fi
+  if [ "${PROJECT}" = "Allwinner" -o "${PROJECT}" = "Rockchip" ]; then
+    PKG_V4L2_REQUEST="yes"
+  elif [ "${PROJECT}" = "RPi" -a "${DEVICE}" = "RPi4" ]; then
+    PKG_V4L2_REQUEST="yes"
+    PKG_FFMPEG_HWACCEL="--disable-hwaccel=h264_v4l2request \
+                        --disable-hwaccel=mpeg2_v4l2request \
+                        --disable-hwaccel=vp8_v4l2request \
+                        --disable-hwaccel=vp9_v4l2request"
+    PKG_FFMPEG_V4L2+=" --enable-sand --disable-rpi --disable-mmal"
+    PKG_PATCH_DIRS+=" rpi"
   else
-    PKG_PATCH_DIRS+=" v4l2"
+    PKG_V4L2_REQUEST="no"
+  fi
+
+  if [ "${PKG_V4L2_REQUEST}" = "yes" ]; then
+    PKG_DEPENDS_TARGET+=" systemd"
+    PKG_NEED_UNPACK+=" $(get_pkg_directory systemd)"
+    PKG_FFMPEG_V4L2+=" --enable-libudev --enable-v4l2-request"
   fi
 else
-  PKG_FFMPEG_V4L2="--disable-v4l2_m2m"
+  PKG_FFMPEG_V4L2="--disable-v4l2-m2m --disable-libudev --disable-v4l2-request"
 fi
 
 if [ "${VAAPI_SUPPORT}" = "yes" ]; then
@@ -58,25 +61,10 @@ else
   PKG_FFMPEG_VDPAU="--disable-vdpau"
 fi
 
-if [ "${PROJECT}" = "Allwinner" -o "${PROJECT}" = "Rockchip" ]; then
-  PKG_DEPENDS_TARGET+=" libdrm systemd" # systemd is needed for libudev
-  PKG_NEED_UNPACK+=" $(get_pkg_directory libdrm) $(get_pkg_directory systemd)"
-  PKG_PATCH_DIRS+=" v4l2-request-api"
-  PKG_FFMPEG_V4L2_REQUEST="--enable-v4l2-request --enable-libudev --enable-libdrm"
-fi
-
 if build_with_debug; then
   PKG_FFMPEG_DEBUG="--enable-debug --disable-stripping"
 else
   PKG_FFMPEG_DEBUG="--disable-debug --enable-stripping"
-fi
-
-if [ "${KODIPLAYER_DRIVER}" = "bcm2835-driver" ]; then
-  PKG_DEPENDS_TARGET+=" bcm2835-driver"
-  PKG_NEED_UNPACK+=" $(get_pkg_directory bcm2835-driver)"
-  PKG_PATCH_DIRS+=" rpi-hevc"
-  PKG_FFMPEG_LIBS="-lbcm_host -lvcos -lvchiq_arm -lmmal -lmmal_core -lmmal_util -lvcsm"
-  PKG_FFMPEG_RPI="--enable-rpi --enable-mmal"
 fi
 
 if target_has_feature neon; then
@@ -93,6 +81,8 @@ if target_has_feature "(neon|sse)"; then
   PKG_DEPENDS_TARGET+=" dav1d"
   PKG_NEED_UNPACK+=" $(get_pkg_directory dav1d)"
   PKG_FFMPEG_AV1="--enable-libdav1d"
+else
+  PKG_FFMPEG_AV1="--disable-libdav1d"
 fi
 
 pre_configure_target() {
@@ -153,8 +143,6 @@ configure_target() {
               ${PKG_FFMPEG_V4L2} \
               ${PKG_FFMPEG_VAAPI} \
               ${PKG_FFMPEG_VDPAU} \
-              ${PKG_FFMPEG_RPI} \
-              ${PKG_FFMPEG_V4L2_REQUEST} \
               --enable-runtime-cpudetect \
               --disable-hardcoded-tables \
               --disable-encoders \

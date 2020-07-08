@@ -1,0 +1,932 @@
+diff --git a/arch/arm/dts/rk3288-tinker-s.dts b/arch/arm/dts/rk3288-tinker-s.dts
+index cc7ac5f881..f0b9998c7d 100644
+--- a/arch/arm/dts/rk3288-tinker-s.dts
++++ b/arch/arm/dts/rk3288-tinker-s.dts
+@@ -9,7 +9,7 @@
+ 
+ / {
+ 	model = "Rockchip RK3288 Asus Tinker Board S";
+-	compatible = "asus,rk3288-tinker-s", "rockchip,rk3288";
++	compatible = "asus,rk3288-tinker-s", "rockchip,rk3288-tinker", "rockchip,rk3288";
+ 
+ 	chosen {
+ 		stdout-path = &uart2;
+diff --git a/arch/arm/dts/rk3288-tinker.dts b/arch/arm/dts/rk3288-tinker.dts
+index 4b8405fd82..f96d72a10f 100644
+--- a/arch/arm/dts/rk3288-tinker.dts
++++ b/arch/arm/dts/rk3288-tinker.dts
+@@ -4,41 +4,14 @@
+  */
+ 
+ /dts-v1/;
++
+ #include "rk3288-tinker.dtsi"
+ 
+ / {
+-	model = "Tinker-RK3288";
+-	compatible = "rockchip,rk3288-tinker", "rockchip,rk3288";
++	model = "Rockchip RK3288 Asus Tinker Board";
++	compatible = "asus,rk3288-tinker", "rockchip,rk3288-tinker", "rockchip,rk3288";
+ 
+ 	chosen {
+ 		stdout-path = &uart2;
+ 	};
+ };
+-
+-&pinctrl {
+-	usb {
+-		host_vbus_drv: host-vbus-drv {
+-			rockchip,pins = <0 14 RK_FUNC_GPIO &pcfg_pull_none>;
+-		};
+-	};
+-};
+-
+-&pwm1 {
+-	status = "okay";
+-};
+-
+-&uart2 {
+-	reg-shift = <2>;
+-};
+-
+-&usb_host1 {
+-	vbus-supply = <&vcc5v0_host>;
+-	status = "okay";
+-};
+-
+-&i2c2 {
+-    m24c08@50 {
+-        compatible = "at,24c08", "i2c-eeprom";
+-        reg = <0x50>;
+-    };
+-};
+diff --git a/arch/arm/dts/rk3288-tinker.dtsi b/arch/arm/dts/rk3288-tinker.dtsi
+index 2f816af47f..719bd5b71e 100644
+--- a/arch/arm/dts/rk3288-tinker.dtsi
++++ b/arch/arm/dts/rk3288-tinker.dtsi
+@@ -108,18 +108,6 @@
+ 		startup-delay-us = <100000>;
+ 		vin-supply = <&vcc_io>;
+ 	};
+-
+-	vcc5v0_host: usb-host-regulator {
+-		compatible = "regulator-fixed";
+-		enable-active-high;
+-		gpio = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&host_vbus_drv>;
+-		regulator-name = "vcc5v0_host";
+-		regulator-min-microvolt = <5000000>;
+-		regulator-max-microvolt = <5000000>;
+-		regulator-always-on;
+-	};
+ };
+ 
+ &cpu0 {
+@@ -137,7 +125,7 @@
+ 	pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_cd &sdmmc_bus4>;
+ 	status = "okay";
+ 	supports-sd;
+-	vmmc-supply = <&vcc_sd>;
++	vmmc-supply = <&vcc33_sd>;
+ 	vqmmc-supply = <&vccio_sd>;
+ };
+ 
+@@ -189,12 +177,12 @@
+ 		vcc4-supply = <&vcc_sys>;
+ 		vcc6-supply = <&vcc_sys>;
+ 		vcc7-supply = <&vcc_sys>;
+-		vcc8-supply = <&vcc_18>;
++		vcc8-supply = <&vcc_io>;
+ 		vcc9-supply = <&vcc_io>;
+ 		vcc10-supply = <&vcc_io>;
+ 		vcc11-supply = <&vcc_sys>;
+ 		vcc12-supply = <&vcc_io>;
+-		vddio-supply = <&vcc18_ldo1>;
++		vddio-supply = <&vcc_io>;
+ 
+ 		regulators {
+ 			vdd_cpu: DCDC_REG1 {
+@@ -359,6 +347,10 @@
+ 
+ &i2c2 {
+ 	status = "okay";
++	m24c08@50 {
++		compatible = "at,24c08", "i2c-eeprom";
++		reg = <0x50>;
++	};
+ 	headset: nau8825@1a {
+ 		compatible = "nuvoton,nau8825";
+ 		#sound-dai-cells = <0>;
+diff --git a/arch/arm/dts/rk3288-u-boot.dtsi b/arch/arm/dts/rk3288-u-boot.dtsi
+index 6d31735362..eb6fd883b8 100644
+--- a/arch/arm/dts/rk3288-u-boot.dtsi
++++ b/arch/arm/dts/rk3288-u-boot.dtsi
+@@ -16,6 +16,16 @@
+ 	u-boot,dm-pre-reloc;
+ };
+ 
++&emmc {
++	/* mmc to sram can't do dma, prevent aborts transfering OPTEE parts */
++	u-boot,spl-fifo-mode;
++};
++
++&sdmmc {
++	/* mmc to sram can't do dma, prevent aborts transfering OPTEE parts */
++	u-boot,spl-fifo-mode;
++};
++
+ &pmu {
+ 	u-boot,dm-pre-reloc;
+ };
+diff --git a/arch/arm/dts/rk3288.dtsi b/arch/arm/dts/rk3288.dtsi
+index 866fc08215..b0d1b2f90a 100644
+--- a/arch/arm/dts/rk3288.dtsi
++++ b/arch/arm/dts/rk3288.dtsi
+@@ -910,8 +910,7 @@
+ 
+ 	efuse: efuse@ffb40000 {
+ 		compatible = "rockchip,rk3288-efuse";
+-		reg = <0xffb40000 0x10000>;
+-		status = "disabled";
++		reg = <0xffb40000 0x20>;
+ 	};
+ 
+ 	gic: interrupt-controller@ffc01000 {
+diff --git a/arch/arm/dts/rk3328.dtsi b/arch/arm/dts/rk3328.dtsi
+index 060c84e6c0..34c0b7de41 100644
+--- a/arch/arm/dts/rk3328.dtsi
++++ b/arch/arm/dts/rk3328.dtsi
+@@ -337,6 +337,20 @@
+ 		};
+ 	};
+ 
++	efuse: efuse@ff260000 {
++		compatible = "rockchip,rk3328-efuse";
++		reg = <0x0 0xff260000 0x0 0x80>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++		clocks = <&cru SCLK_EFUSE>;
++		clock-names = "pclk_efuse";
++
++		/* Data cells */
++		cpu_id: cpu-id@7 {
++			reg = <0x07 0x10>;
++		};
++	};
++
+ 	saradc: saradc@ff280000 {
+ 		compatible = "rockchip,rk3328-saradc", "rockchip,saradc";
+ 		reg = <0x0 0xff280000 0x0 0x100>;
+diff --git a/arch/arm/dts/rk3399-u-boot.dtsi b/arch/arm/dts/rk3399-u-boot.dtsi
+index 8b857ccfc7..27ddb2e8e1 100644
+--- a/arch/arm/dts/rk3399-u-boot.dtsi
++++ b/arch/arm/dts/rk3399-u-boot.dtsi
+@@ -80,10 +80,16 @@
+ 
+ &sdhci {
+ 	u-boot,dm-pre-reloc;
++
++	/* mmc to sram can't do dma, prevent aborts transfering TF-A parts */
++	u-boot,spl-fifo-mode;
+ };
+ 
+ &sdmmc {
+ 	u-boot,dm-pre-reloc;
++
++	/* mmc to sram can't do dma, prevent aborts transfering TF-A parts */
++	u-boot,spl-fifo-mode;
+ };
+ 
+ &spi1 {
+diff --git a/arch/arm/mach-rockchip/misc.c b/arch/arm/mach-rockchip/misc.c
+index 6dbb9bde48..e8d8abb953 100644
+--- a/arch/arm/mach-rockchip/misc.c
++++ b/arch/arm/mach-rockchip/misc.c
+@@ -13,6 +13,7 @@
+ #include <env.h>
+ #include <dm.h>
+ #include <dm/uclass-internal.h>
++#include <hash.h>
+ #include <misc.h>
+ #include <u-boot/crc.h>
+ #include <u-boot/sha256.h>
+diff --git a/arch/arm/mach-rockchip/rk3399/rk3399.c b/arch/arm/mach-rockchip/rk3399/rk3399.c
+index dafa142824..43d388a12a 100644
+--- a/arch/arm/mach-rockchip/rk3399/rk3399.c
++++ b/arch/arm/mach-rockchip/rk3399/rk3399.c
+@@ -73,7 +73,7 @@ void rockchip_stimer_init(void)
+ 	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_END_COUNT_H);
+ 	writel(0, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_INIT_COUNT_L);
+ 	writel(0, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_INIT_COUNT_H);
+-	writel(TIMER_EN | TIMER_FMODE, CONFIG_ROCKCHIP_STIMER_BASE + \
++	writel(TIMER_EN | TIMER_FMODE, CONFIG_ROCKCHIP_STIMER_BASE +
+ 	       TIMER_CONTROL_REG);
+ }
+ #endif
+diff --git a/arch/arm/mach-rockchip/sdram.c b/arch/arm/mach-rockchip/sdram.c
+index 530644c043..d8d7a09c44 100644
+--- a/arch/arm/mach-rockchip/sdram.c
++++ b/arch/arm/mach-rockchip/sdram.c
+@@ -41,7 +41,15 @@ int dram_init_banksize(void)
+ #ifdef CONFIG_ARM64
+ 	/* Reserve 0x200000 for ATF bl31 */
+ 	gd->bd->bi_dram[0].start = 0x200000;
++#if CONFIG_NR_DRAM_BANKS == 2
++	gd->bd->bi_dram[0].size = 0x8400000 - gd->bd->bi_dram[0].start;
++	/* Reserve 32M for OPTEE with TA */
++	gd->bd->bi_dram[1].start = gd->bd->bi_dram[0].start
++				+ gd->bd->bi_dram[0].size + 0x2000000;
++	gd->bd->bi_dram[1].size = top - gd->bd->bi_dram[1].start;
++#else
+ 	gd->bd->bi_dram[0].size = top - gd->bd->bi_dram[0].start;
++#endif
+ #else
+ #ifdef CONFIG_SPL_OPTEE
+ 	struct tos_parameter_t *tos_parameter;
+@@ -55,16 +63,14 @@ int dram_init_banksize(void)
+ 					- CONFIG_SYS_SDRAM_BASE;
+ 		gd->bd->bi_dram[1].start = tos_parameter->tee_mem.phy_addr +
+ 					tos_parameter->tee_mem.size;
+-		gd->bd->bi_dram[1].size = gd->bd->bi_dram[0].start
+-					+ top - gd->bd->bi_dram[1].start;
++		gd->bd->bi_dram[1].size = top - gd->bd->bi_dram[1].start;
+ 	} else {
+ 		gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
+ 		gd->bd->bi_dram[0].size = 0x8400000;
+ 		/* Reserve 32M for OPTEE with TA */
+-		gd->bd->bi_dram[1].start = CONFIG_SYS_SDRAM_BASE
++		gd->bd->bi_dram[1].start = gd->bd->bi_dram[0].start
+ 					+ gd->bd->bi_dram[0].size + 0x2000000;
+-		gd->bd->bi_dram[1].size = gd->bd->bi_dram[0].start
+-					+ top - gd->bd->bi_dram[1].start;
++		gd->bd->bi_dram[1].size = top - gd->bd->bi_dram[1].start;
+ 	}
+ #else
+ 	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
+diff --git a/arch/arm/mach-rockchip/spl.c b/arch/arm/mach-rockchip/spl.c
+index 48ab0e60c6..e2f6985765 100644
+--- a/arch/arm/mach-rockchip/spl.c
++++ b/arch/arm/mach-rockchip/spl.c
+@@ -82,9 +82,8 @@ __weak void rockchip_stimer_init(void)
+ 	asm volatile("mcr p15, 0, %0, c14, c0, 0"
+ 		     : : "r"(COUNTER_FREQUENCY));
+ #endif
+-	writel(0, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_CONTROL_REG);
+-	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE);
+-	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + 4);
++	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_LOAD_COUNT_L);
++	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_LOAD_COUNT_H);
+ 	writel(TIMER_EN | TIMER_FMODE, CONFIG_ROCKCHIP_STIMER_BASE +
+ 	       TIMER_CONTROL_REG);
+ }
+diff --git a/arch/arm/mach-rockchip/tpl.c b/arch/arm/mach-rockchip/tpl.c
+index a2b8d31cbd..04f67bb44f 100644
+--- a/arch/arm/mach-rockchip/tpl.c
++++ b/arch/arm/mach-rockchip/tpl.c
+@@ -33,9 +33,8 @@ __weak void rockchip_stimer_init(void)
+ 		     : : "r"(COUNTER_FREQUENCY));
+ #endif
+ 
+-	writel(0, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_CONTROL_REG);
+-	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE);
+-	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + 4);
++	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_LOAD_COUNT_L);
++	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_LOAD_COUNT_H);
+ 	writel(TIMER_EN | TIMER_FMODE, CONFIG_ROCKCHIP_STIMER_BASE +
+ 	       TIMER_CONTROL_REG);
+ }
+diff --git a/board/rockchip/tinker_rk3288/tinker-rk3288.c b/board/rockchip/tinker_rk3288/tinker-rk3288.c
+index 7af39e10cd..c242f9b112 100644
+--- a/board/rockchip/tinker_rk3288/tinker-rk3288.c
++++ b/board/rockchip/tinker_rk3288/tinker-rk3288.c
+@@ -11,6 +11,7 @@
+ #include <init.h>
+ #include <netdev.h>
+ #include <asm/arch-rockchip/bootrom.h>
++#include <asm/arch-rockchip/misc.h>
+ #include <asm/io.h>
+ 
+ static int get_ethaddr_from_eeprom(u8 *addr)
+@@ -25,6 +26,24 @@ static int get_ethaddr_from_eeprom(u8 *addr)
+ 	return i2c_eeprom_read(dev, 0, addr, 6);
+ }
+ 
++int misc_init_r(void)
++{
++	const u32 cpuid_offset = 0x7;
++	const u32 cpuid_length = 0x10;
++	u8 cpuid[cpuid_length];
++	int ret;
++
++	ret = rockchip_cpuid_from_efuse(cpuid_offset, cpuid_length, cpuid);
++	if (ret)
++		return ret;
++
++	ret = rockchip_cpuid_set(cpuid, cpuid_length);
++	if (ret)
++		return ret;
++
++	return ret;
++}
++
+ int rk3288_board_late_init(void)
+ {
+ 	u8 ethaddr[6];
+diff --git a/common/spl/spl_fit.c b/common/spl/spl_fit.c
+index 69dabd27f6..95beaed6e5 100644
+--- a/common/spl/spl_fit.c
++++ b/common/spl/spl_fit.c
+@@ -276,8 +276,10 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
+ 
+ 	if (external_data) {
+ 		/* External data */
+-		if (fit_image_get_data_size(fit, node, &len))
++		if (fit_image_get_data_size(fit, node, &len)) {
++			puts("Cannot get external data size\n");
+ 			return -ENOENT;
++		}
+ 
+ 		load_ptr = (load_addr + align_len) & ~align_len;
+ 		length = len;
+@@ -287,8 +289,10 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
+ 
+ 		if (info->read(info,
+ 			       sector + get_aligned_image_offset(info, offset),
+-			       nr_sectors, (void *)load_ptr) != nr_sectors)
++			       nr_sectors, (void *)load_ptr) != nr_sectors) {
++			puts("Cannot read external data\n");
+ 			return -EIO;
++		}
+ 
+ 		debug("External data: dst=%lx, offset=%x, size=%lx\n",
+ 		      load_ptr, offset, (unsigned long)length);
+diff --git a/configs/evb-rk3328_defconfig b/configs/evb-rk3328_defconfig
+index 5bbdc00214..566f621ab5 100644
+--- a/configs/evb-rk3328_defconfig
++++ b/configs/evb-rk3328_defconfig
+@@ -19,6 +19,7 @@ CONFIG_FIT=y
+ CONFIG_FIT_VERBOSE=y
+ CONFIG_SPL_LOAD_FIT=y
+ CONFIG_DEFAULT_FDT_FILE="rockchip/rk3328-evb.dtb"
++CONFIG_MISC_INIT_R=y
+ # CONFIG_DISPLAY_CPUINFO is not set
+ CONFIG_DISPLAY_BOARDINFO_LATE=y
+ # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
+@@ -55,6 +56,8 @@ CONFIG_FASTBOOT_BUF_ADDR=0x800800
+ CONFIG_FASTBOOT_CMD_OEM_FORMAT=y
+ CONFIG_ROCKCHIP_GPIO=y
+ CONFIG_SYS_I2C_ROCKCHIP=y
++CONFIG_MISC=y
++CONFIG_ROCKCHIP_EFUSE=y
+ CONFIG_MMC_DW=y
+ CONFIG_MMC_DW_ROCKCHIP=y
+ CONFIG_SF_DEFAULT_SPEED=20000000
+diff --git a/configs/evb-rk3399_defconfig b/configs/evb-rk3399_defconfig
+index 3f74be3b3c..d64a05aaa5 100644
+--- a/configs/evb-rk3399_defconfig
++++ b/configs/evb-rk3399_defconfig
+@@ -1,7 +1,6 @@
+ CONFIG_ARM=y
+ CONFIG_ARCH_ROCKCHIP=y
+ CONFIG_SYS_TEXT_BASE=0x00200000
+-CONFIG_ENV_OFFSET=0x3F8000
+ CONFIG_ROCKCHIP_RK3399=y
+ CONFIG_TARGET_EVB_RK3399=y
+ CONFIG_NR_DRAM_BANKS=1
+@@ -9,6 +8,7 @@ CONFIG_DEBUG_UART_BASE=0xFF1A0000
+ CONFIG_DEBUG_UART_CLOCK=24000000
+ CONFIG_DEBUG_UART=y
+ CONFIG_DEFAULT_FDT_FILE="rockchip/rk3399-evb.dtb"
++CONFIG_MISC_INIT_R=y
+ CONFIG_DISPLAY_BOARDINFO_LATE=y
+ # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
+ CONFIG_SPL_STACK_R=y
+@@ -23,12 +23,13 @@ CONFIG_CMD_TIME=y
+ CONFIG_SPL_OF_CONTROL=y
+ CONFIG_DEFAULT_DEVICE_TREE="rk3399-evb"
+ CONFIG_OF_SPL_REMOVE_PROPS="pinctrl-0 pinctrl-names clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
+-CONFIG_ENV_IS_IN_MMC=y
+ CONFIG_SYS_RELOC_GD_ENV_ADDR=y
+-CONFIG_NET_RANDOM_ETHADDR=y
+ CONFIG_ROCKCHIP_GPIO=y
+ CONFIG_SYS_I2C_ROCKCHIP=y
++CONFIG_MISC=y
++CONFIG_ROCKCHIP_EFUSE=y
+ CONFIG_MMC_DW=y
++CONFIG_MMC_DW_ROCKCHIP=y
+ CONFIG_MMC_SDHCI=y
+ CONFIG_MMC_SDHCI_ROCKCHIP=y
+ CONFIG_SF_DEFAULT_SPEED=20000000
+@@ -53,11 +54,5 @@ CONFIG_USB_ETHER_ASIX88179=y
+ CONFIG_USB_ETHER_MCS7830=y
+ CONFIG_USB_ETHER_RTL8152=y
+ CONFIG_USB_ETHER_SMSC95XX=y
+-CONFIG_DM_VIDEO=y
+-# CONFIG_VIDEO_BPP8 is not set
+-CONFIG_DISPLAY=y
+-CONFIG_VIDEO_ROCKCHIP=y
+-CONFIG_VIDEO_ROCKCHIP_MAX_YRES=1200
+-CONFIG_DISPLAY_ROCKCHIP_MIPI=y
+ CONFIG_SPL_TINY_MEMSET=y
+ CONFIG_ERRNO_STR=y
+diff --git a/configs/miqi-rk3288_defconfig b/configs/miqi-rk3288_defconfig
+index e3e205fd54..f129fcd763 100644
+--- a/configs/miqi-rk3288_defconfig
++++ b/configs/miqi-rk3288_defconfig
+@@ -1,7 +1,6 @@
+ CONFIG_ARM=y
+ CONFIG_ARCH_ROCKCHIP=y
+ CONFIG_SYS_TEXT_BASE=0x00000000
+-CONFIG_ENV_OFFSET=0x3F8000
+ CONFIG_ROCKCHIP_RK3288=y
+ CONFIG_SPL_ROCKCHIP_BACK_TO_BROM=y
+ CONFIG_TARGET_MIQI_RK3288=y
+@@ -15,6 +14,7 @@ CONFIG_SPL_TEXT_BASE=0xff704000
+ CONFIG_USE_PREBOOT=y
+ CONFIG_SILENT_CONSOLE=y
+ CONFIG_DEFAULT_FDT_FILE="rk3288-miqi.dtb"
++CONFIG_MISC_INIT_R=y
+ CONFIG_DISPLAY_BOARDINFO_LATE=y
+ CONFIG_SPL_STACK_R=y
+ CONFIG_SPL_STACK_R_MALLOC_SIMPLE_LEN=0x2000
+@@ -36,9 +36,7 @@ CONFIG_SPL_PARTITION_UUIDS=y
+ CONFIG_SPL_OF_CONTROL=y
+ CONFIG_DEFAULT_DEVICE_TREE="rk3288-miqi"
+ CONFIG_OF_SPL_REMOVE_PROPS="pinctrl-0 pinctrl-names clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
+-CONFIG_ENV_IS_IN_MMC=y
+ CONFIG_SYS_RELOC_GD_ENV_ADDR=y
+-CONFIG_NET_RANDOM_ETHADDR=y
+ CONFIG_REGMAP=y
+ CONFIG_SPL_REGMAP=y
+ CONFIG_SYSCON=y
+@@ -49,6 +47,8 @@ CONFIG_SPL_CLK=y
+ CONFIG_FASTBOOT_CMD_OEM_FORMAT=y
+ CONFIG_ROCKCHIP_GPIO=y
+ CONFIG_SYS_I2C_ROCKCHIP=y
++CONFIG_MISC=y
++CONFIG_ROCKCHIP_EFUSE=y
+ CONFIG_MMC_DW=y
+ CONFIG_MMC_DW_ROCKCHIP=y
+ CONFIG_MTD=y
+@@ -70,17 +70,12 @@ CONFIG_SYSRESET=y
+ CONFIG_USB=y
+ CONFIG_USB_DWC2=y
+ CONFIG_ROCKCHIP_USB2_PHY=y
++CONFIG_USB_KEYBOARD=y
+ CONFIG_USB_GADGET=y
+ CONFIG_USB_GADGET_DWC2_OTG=y
+ CONFIG_USB_HOST_ETHER=y
+ CONFIG_USB_ETHER_ASIX=y
+ CONFIG_USB_ETHER_SMSC95XX=y
+-CONFIG_USB_KEYBOARD=y
+-CONFIG_DM_VIDEO=y
+-# CONFIG_VIDEO_BPP8 is not set
+-CONFIG_DISPLAY=y
+-CONFIG_VIDEO_ROCKCHIP=y
+-CONFIG_DISPLAY_ROCKCHIP_HDMI=y
+-CONFIG_CONSOLE_SCROLL_LINES=10
+ CONFIG_CMD_DHRYSTONE=y
++CONFIG_SHA256=y
+ CONFIG_ERRNO_STR=y
+diff --git a/configs/rock-pi-4-rk3399_defconfig b/configs/rock-pi-4-rk3399_defconfig
+index 0d86fdc895..1da2f7bf79 100644
+--- a/configs/rock-pi-4-rk3399_defconfig
++++ b/configs/rock-pi-4-rk3399_defconfig
+@@ -1,7 +1,6 @@
+ CONFIG_ARM=y
+ CONFIG_ARCH_ROCKCHIP=y
+ CONFIG_SYS_TEXT_BASE=0x00200000
+-CONFIG_ENV_OFFSET=0x3F8000
+ CONFIG_ROCKCHIP_RK3399=y
+ CONFIG_TARGET_EVB_RK3399=y
+ CONFIG_NR_DRAM_BANKS=1
+@@ -24,10 +23,11 @@ CONFIG_CMD_TIME=y
+ CONFIG_SPL_OF_CONTROL=y
+ CONFIG_DEFAULT_DEVICE_TREE="rk3399-rock-pi-4"
+ CONFIG_OF_SPL_REMOVE_PROPS="pinctrl-0 pinctrl-names clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
+-CONFIG_ENV_IS_IN_MMC=y
+ CONFIG_SYS_RELOC_GD_ENV_ADDR=y
+ CONFIG_ROCKCHIP_GPIO=y
+ CONFIG_SYS_I2C_ROCKCHIP=y
++CONFIG_MISC=y
++CONFIG_ROCKCHIP_EFUSE=y
+ CONFIG_MMC_DW=y
+ CONFIG_MMC_DW_ROCKCHIP=y
+ CONFIG_MMC_SDHCI=y
+diff --git a/configs/rock64-rk3328_defconfig b/configs/rock64-rk3328_defconfig
+index 826c7a6917..6fb523b8bb 100644
+--- a/configs/rock64-rk3328_defconfig
++++ b/configs/rock64-rk3328_defconfig
+@@ -54,6 +54,8 @@ CONFIG_FASTBOOT_BUF_ADDR=0x800800
+ CONFIG_FASTBOOT_CMD_OEM_FORMAT=y
+ CONFIG_ROCKCHIP_GPIO=y
+ CONFIG_SYS_I2C_ROCKCHIP=y
++CONFIG_MISC=y
++CONFIG_ROCKCHIP_EFUSE=y
+ CONFIG_MMC_DW=y
+ CONFIG_MMC_DW_ROCKCHIP=y
+ CONFIG_SF_DEFAULT_SPEED=20000000
+diff --git a/configs/rock960-rk3399_defconfig b/configs/rock960-rk3399_defconfig
+index c4e954731a..e6927449de 100644
+--- a/configs/rock960-rk3399_defconfig
++++ b/configs/rock960-rk3399_defconfig
+@@ -1,20 +1,20 @@
+ CONFIG_ARM=y
+ CONFIG_ARCH_ROCKCHIP=y
+ CONFIG_SYS_TEXT_BASE=0x00200000
+-CONFIG_ENV_OFFSET=0x3F8000
+ CONFIG_ROCKCHIP_RK3399=y
+ CONFIG_ROCKCHIP_SPL_RESERVE_IRAM=0x4000
+ CONFIG_TARGET_ROCK960_RK3399=y
++CONFIG_NR_DRAM_BANKS=1
+ CONFIG_DEBUG_UART_BASE=0xFF1A0000
+ CONFIG_DEBUG_UART_CLOCK=24000000
+ CONFIG_DEBUG_UART=y
+ CONFIG_DEFAULT_FDT_FILE="rockchip/rk3399-rock960.dtb"
++CONFIG_MISC_INIT_R=y
+ CONFIG_DISPLAY_BOARDINFO_LATE=y
+ # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
+ CONFIG_SPL_STACK_R=y
+ CONFIG_SPL_STACK_R_MALLOC_SIMPLE_LEN=0x10000
+ CONFIG_TPL=y
+-CONFIG_SYS_PROMPT="rock960 => "
+ CONFIG_CMD_BOOTZ=y
+ CONFIG_CMD_GPT=y
+ CONFIG_CMD_MMC=y
+@@ -26,10 +26,11 @@ CONFIG_CMD_REGULATOR=y
+ CONFIG_SPL_OF_CONTROL=y
+ CONFIG_DEFAULT_DEVICE_TREE="rk3399-rock960"
+ CONFIG_OF_SPL_REMOVE_PROPS="pinctrl-0 pinctrl-names clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
+-CONFIG_ENV_IS_IN_MMC=y
+ CONFIG_SYS_RELOC_GD_ENV_ADDR=y
+ CONFIG_ROCKCHIP_GPIO=y
+ CONFIG_SYS_I2C_ROCKCHIP=y
++CONFIG_MISC=y
++CONFIG_ROCKCHIP_EFUSE=y
+ CONFIG_MMC_DW=y
+ CONFIG_MMC_DW_ROCKCHIP=y
+ CONFIG_MMC_SDHCI=y
+@@ -61,9 +62,3 @@ CONFIG_USB_ETHER_SMSC95XX=y
+ CONFIG_USB_KEYBOARD=y
+ CONFIG_SPL_TINY_MEMSET=y
+ CONFIG_ERRNO_STR=y
+-CONFIG_DM_VIDEO=y
+-CONFIG_VIDEO_BPP16=y
+-CONFIG_VIDEO_BPP32=y
+-CONFIG_DISPLAY=y
+-CONFIG_VIDEO_ROCKCHIP=y
+-CONFIG_DISPLAY_ROCKCHIP_HDMI=y
+diff --git a/configs/tinker-rk3288_defconfig b/configs/tinker-rk3288_defconfig
+index 034d28ea2d..a9050cb628 100644
+--- a/configs/tinker-rk3288_defconfig
++++ b/configs/tinker-rk3288_defconfig
+@@ -2,10 +2,10 @@ CONFIG_ARM=y
+ CONFIG_ARCH_ROCKCHIP=y
+ CONFIG_SYS_TEXT_BASE=0x01000000
+ CONFIG_SPL_GPIO_SUPPORT=y
+-CONFIG_ENV_OFFSET=0x3F8000
++CONFIG_SYS_MALLOC_F_LEN=0x4000
+ CONFIG_ROCKCHIP_RK3288=y
+ CONFIG_TARGET_TINKER_RK3288=y
+-CONFIG_SPL_STACK_R_ADDR=0x80000
++CONFIG_SPL_STACK_R_ADDR=0x800000
+ CONFIG_NR_DRAM_BANKS=1
+ CONFIG_SPL_SIZE_LIMIT=0x4b000
+ CONFIG_DEBUG_UART_BASE=0xff690000
+@@ -15,9 +15,9 @@ CONFIG_DEBUG_UART=y
+ CONFIG_USE_PREBOOT=y
+ CONFIG_SILENT_CONSOLE=y
+ CONFIG_DEFAULT_FDT_FILE="rk3288-tinker.dtb"
++CONFIG_MISC_INIT_R=y
+ CONFIG_DISPLAY_BOARDINFO_LATE=y
+ CONFIG_SPL_STACK_R=y
+-CONFIG_SPL_STACK_R_MALLOC_SIMPLE_LEN=0x2000
+ CONFIG_SPL_I2C_SUPPORT=y
+ CONFIG_SPL_POWER_SUPPORT=y
+ CONFIG_CMD_GPIO=y
+@@ -38,7 +38,6 @@ CONFIG_SPL_PARTITION_UUIDS=y
+ CONFIG_SPL_OF_CONTROL=y
+ CONFIG_DEFAULT_DEVICE_TREE="rk3288-tinker"
+ CONFIG_OF_SPL_REMOVE_PROPS="clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
+-CONFIG_ENV_IS_IN_MMC=y
+ CONFIG_SYS_RELOC_GD_ENV_ADDR=y
+ CONFIG_REGMAP=y
+ CONFIG_SPL_REGMAP=y
+@@ -51,6 +50,7 @@ CONFIG_FASTBOOT_CMD_OEM_FORMAT=y
+ CONFIG_ROCKCHIP_GPIO=y
+ CONFIG_SYS_I2C_ROCKCHIP=y
+ CONFIG_MISC=y
++CONFIG_ROCKCHIP_EFUSE=y
+ CONFIG_I2C_EEPROM=y
+ CONFIG_MMC_DW=y
+ CONFIG_MMC_DW_ROCKCHIP=y
+@@ -75,15 +75,12 @@ CONFIG_SYSRESET=y
+ CONFIG_USB=y
+ CONFIG_USB_DWC2=y
+ CONFIG_ROCKCHIP_USB2_PHY=y
++CONFIG_USB_KEYBOARD=y
+ CONFIG_USB_GADGET=y
+ CONFIG_USB_GADGET_DWC2_OTG=y
+ CONFIG_USB_HOST_ETHER=y
+ CONFIG_USB_ETHER_ASIX=y
+ CONFIG_USB_ETHER_SMSC95XX=y
+-CONFIG_USB_KEYBOARD=y
+-CONFIG_DM_VIDEO=y
+-CONFIG_DISPLAY=y
+-CONFIG_VIDEO_ROCKCHIP=y
+-CONFIG_DISPLAY_ROCKCHIP_HDMI=y
+ CONFIG_CMD_DHRYSTONE=y
++CONFIG_SHA256=y
+ CONFIG_ERRNO_STR=y
+diff --git a/configs/tinker-s-rk3288_defconfig b/configs/tinker-s-rk3288_defconfig
+index 06c5d9b507..aee7061b76 100644
+--- a/configs/tinker-s-rk3288_defconfig
++++ b/configs/tinker-s-rk3288_defconfig
+@@ -7,7 +7,7 @@ CONFIG_ROCKCHIP_RK3288=y
+ CONFIG_TARGET_TINKER_RK3288=y
+ CONFIG_SPL_STACK_R_ADDR=0x800000
+ CONFIG_NR_DRAM_BANKS=1
+-CONFIG_SPL_SIZE_LIMIT=307200
++CONFIG_SPL_SIZE_LIMIT=0x4b000
+ CONFIG_DEBUG_UART_BASE=0xff690000
+ CONFIG_DEBUG_UART_CLOCK=24000000
+ CONFIG_DEBUG_UART=y
+@@ -15,9 +15,9 @@ CONFIG_DEBUG_UART=y
+ CONFIG_USE_PREBOOT=y
+ CONFIG_SILENT_CONSOLE=y
+ CONFIG_DEFAULT_FDT_FILE="rk3288-tinker-s.dtb"
++CONFIG_MISC_INIT_R=y
+ CONFIG_DISPLAY_BOARDINFO_LATE=y
+ CONFIG_SPL_STACK_R=y
+-CONFIG_SPL_STACK_R_MALLOC_SIMPLE_LEN=0x300000
+ CONFIG_SPL_I2C_SUPPORT=y
+ CONFIG_SPL_POWER_SUPPORT=y
+ CONFIG_CMD_GPIO=y
+@@ -28,7 +28,6 @@ CONFIG_CMD_SPI=y
+ CONFIG_CMD_USB=y
+ CONFIG_CMD_USB_MASS_STORAGE=y
+ # CONFIG_CMD_SETEXPR is not set
+-CONFIG_CMD_BMP=y
+ CONFIG_CMD_CACHE=y
+ CONFIG_CMD_TIME=y
+ CONFIG_CMD_PMIC=y
+@@ -39,7 +38,6 @@ CONFIG_SPL_PARTITION_UUIDS=y
+ CONFIG_SPL_OF_CONTROL=y
+ CONFIG_DEFAULT_DEVICE_TREE="rk3288-tinker-s"
+ CONFIG_OF_SPL_REMOVE_PROPS="clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
+-CONFIG_ENV_IS_IN_MMC=y
+ CONFIG_SYS_RELOC_GD_ENV_ADDR=y
+ CONFIG_REGMAP=y
+ CONFIG_SPL_REGMAP=y
+@@ -52,9 +50,11 @@ CONFIG_FASTBOOT_CMD_OEM_FORMAT=y
+ CONFIG_ROCKCHIP_GPIO=y
+ CONFIG_SYS_I2C_ROCKCHIP=y
+ CONFIG_MISC=y
++CONFIG_ROCKCHIP_EFUSE=y
+ CONFIG_I2C_EEPROM=y
+ CONFIG_MMC_DW=y
+ CONFIG_MMC_DW_ROCKCHIP=y
++CONFIG_MTD=y
+ CONFIG_SF_DEFAULT_SPEED=20000000
+ CONFIG_DM_ETH=y
+ CONFIG_ETH_DESIGNWARE=y
+@@ -75,17 +75,12 @@ CONFIG_SYSRESET=y
+ CONFIG_USB=y
+ CONFIG_USB_DWC2=y
+ CONFIG_ROCKCHIP_USB2_PHY=y
++CONFIG_USB_KEYBOARD=y
+ CONFIG_USB_GADGET=y
+ CONFIG_USB_GADGET_DWC2_OTG=y
+ CONFIG_USB_HOST_ETHER=y
+ CONFIG_USB_ETHER_ASIX=y
+ CONFIG_USB_ETHER_SMSC95XX=y
+-CONFIG_USB_KEYBOARD=y
+-CONFIG_DM_VIDEO=y
+-# CONFIG_VIDEO_BPP8 is not set
+-CONFIG_DISPLAY=y
+-CONFIG_VIDEO_ROCKCHIP=y
+-CONFIG_DISPLAY_ROCKCHIP_HDMI=y
+-CONFIG_CONSOLE_SCROLL_LINES=10
+ CONFIG_CMD_DHRYSTONE=y
++CONFIG_SHA256=y
+ CONFIG_ERRNO_STR=y
+diff --git a/drivers/misc/rockchip-efuse.c b/drivers/misc/rockchip-efuse.c
+index 2520c6a38e..e36eb95abf 100644
+--- a/drivers/misc/rockchip-efuse.c
++++ b/drivers/misc/rockchip-efuse.c
+@@ -13,6 +13,7 @@
+ #include <dm.h>
+ #include <linux/bitops.h>
+ #include <linux/delay.h>
++#include <malloc.h>
+ #include <misc.h>
+ 
+ #define RK3399_A_SHIFT          16
+@@ -27,6 +28,24 @@
+ #define RK3399_STROBE           BIT(1)
+ #define RK3399_CSB              BIT(0)
+ 
++#define RK3288_A_SHIFT          6
++#define RK3288_A_MASK           0x3ff
++#define RK3288_NFUSES           32
++#define RK3288_BYTES_PER_FUSE   1
++#define RK3288_PGENB            BIT(3)
++#define RK3288_LOAD             BIT(2)
++#define RK3288_STROBE           BIT(1)
++#define RK3288_CSB              BIT(0)
++
++#define RK3328_INT_STATUS	0x0018
++#define RK3328_DOUT		0x0020
++#define RK3328_AUTO_CTRL	0x0024
++#define RK3328_INT_FINISH	BIT(0)
++#define RK3328_AUTO_ENB		BIT(0)
++#define RK3328_AUTO_RD		BIT(1)
++
++typedef int (*EFUSE_READ)(struct udevice *dev, int offset, void *buf, int size);
++
+ struct rockchip_efuse_regs {
+ 	u32 ctrl;      /* 0x00  efuse control register */
+ 	u32 dout;      /* 0x04  efuse data out register */
+@@ -35,6 +54,10 @@ struct rockchip_efuse_regs {
+ 	u32 jtag_pass; /* 0x10  JTAG password */
+ 	u32 strobe_finish_ctrl;
+ 		       /* 0x14	efuse strobe finish control register */
++	u32 int_status;/* 0x18 */
++	u32 reserved;  /* 0x1c */
++	u32 dout2;     /* 0x20 */
++	u32 auto_ctrl; /* 0x24 */
+ };
+ 
+ struct rockchip_efuse_platdata {
+@@ -53,7 +76,7 @@ static int dump_efuses(cmd_tbl_t *cmdtp, int flag,
+ 	 */
+ 
+ 	struct udevice *dev;
+-	u8 fuses[128];
++	u8 fuses[128] = {0};
+ 	int ret;
+ 
+ 	/* retrieve the device */
+@@ -77,7 +100,7 @@ static int dump_efuses(cmd_tbl_t *cmdtp, int flag,
+ }
+ 
+ U_BOOT_CMD(
+-	rk3399_dump_efuses, 1, 1, dump_efuses,
++	rockchip_dump_efuses, 1, 1, dump_efuses,
+ 	"Dump the content of the efuses",
+ 	""
+ );
+@@ -127,10 +150,110 @@ static int rockchip_rk3399_efuse_read(struct udevice *dev, int offset,
+ 	return 0;
+ }
+ 
++static int rockchip_rk3288_efuse_read(struct udevice *dev, int offset,
++				      void *buf, int size)
++{
++	struct rockchip_efuse_platdata *plat = dev_get_platdata(dev);
++	struct rockchip_efuse_regs *efuse =
++		(struct rockchip_efuse_regs *)plat->base;
++	u8 *buffer = buf;
++	int max_size = RK3288_NFUSES * RK3288_BYTES_PER_FUSE;
++
++	if (size > (max_size - offset))
++		size = max_size - offset;
++
++	/* Switch to read mode */
++	writel(RK3288_LOAD | RK3288_PGENB, &efuse->ctrl);
++	udelay(1);
++
++	while (size--) {
++		writel(readl(&efuse->ctrl) &
++				(~(RK3288_A_MASK << RK3288_A_SHIFT)),
++				&efuse->ctrl);
++		/* set addr */
++		writel(readl(&efuse->ctrl) |
++				((offset++ & RK3288_A_MASK) << RK3288_A_SHIFT),
++				&efuse->ctrl);
++		udelay(1);
++		/* strobe low to high */
++		writel(readl(&efuse->ctrl) |
++				RK3288_STROBE, &efuse->ctrl);
++		ndelay(60);
++		/* read data */
++		*buffer++ = readl(&efuse->dout);
++		/* reset strobe to low */
++		writel(readl(&efuse->ctrl) &
++				(~RK3288_STROBE), &efuse->ctrl);
++		udelay(1);
++	}
++
++	/* Switch to standby mode */
++	writel(RK3288_PGENB | RK3288_CSB, &efuse->ctrl);
++
++	return 0;
++}
++
++static int rockchip_rk3328_efuse_read(struct udevice *dev, int offset,
++				      void *buf, int size)
++{
++	struct rockchip_efuse_platdata *plat = dev_get_platdata(dev);
++	struct rockchip_efuse_regs *efuse =
++		(struct rockchip_efuse_regs *)plat->base;
++	unsigned int addr_start, addr_end, addr_offset, addr_len;
++	u32 out_value, status;
++	u8 *buffer;
++	int ret = 0, i = 0, j = 0;
++
++	/* Max non-secure Byte */
++	if (size > 32)
++		size = 32;
++
++	/* 128 Byte efuse, 96 Byte for secure, 32 Byte for non-secure */
++	offset += 96;
++	addr_start = rounddown(offset, RK3399_BYTES_PER_FUSE) /
++						RK3399_BYTES_PER_FUSE;
++	addr_end = roundup(offset + size, RK3399_BYTES_PER_FUSE) /
++						RK3399_BYTES_PER_FUSE;
++	addr_offset = offset % RK3399_BYTES_PER_FUSE;
++	addr_len = addr_end - addr_start;
++
++	buffer = calloc(1, sizeof(*buffer) * addr_len * RK3399_BYTES_PER_FUSE);
++	if (!buffer)
++		return -ENOMEM;
++
++	for (j = 0; j < addr_len; j++) {
++		writel(RK3328_AUTO_RD | RK3328_AUTO_ENB |
++		       ((addr_start++ & RK3399_A_MASK) << RK3399_A_SHIFT),
++		         &efuse->auto_ctrl);
++		udelay(5);
++		status = readl(&efuse->int_status);
++		if (!(status & RK3328_INT_FINISH)) {
++			ret = -EIO;
++			goto err;
++		}
++		out_value = readl(&efuse->dout2);
++		writel(RK3328_INT_FINISH, &efuse->int_status);
++
++		memcpy(&buffer[i], &out_value, RK3399_BYTES_PER_FUSE);
++		i += RK3399_BYTES_PER_FUSE;
++	}
++	memcpy(buf, buffer + addr_offset, size);
++err:
++	free(buffer);
++
++	return ret;
++}
++
+ static int rockchip_efuse_read(struct udevice *dev, int offset,
+ 			       void *buf, int size)
+ {
+-	return rockchip_rk3399_efuse_read(dev, offset, buf, size);
++	EFUSE_READ efuse_read = NULL;
++
++	efuse_read = (EFUSE_READ)dev_get_driver_data(dev);
++	if (!efuse_read)
++		return -ENOSYS;
++
++	return (*efuse_read)(dev, offset, buf, size);
+ }
+ 
+ static const struct misc_ops rockchip_efuse_ops = {
+@@ -146,7 +269,39 @@ static int rockchip_efuse_ofdata_to_platdata(struct udevice *dev)
+ }
+ 
+ static const struct udevice_id rockchip_efuse_ids[] = {
+-	{ .compatible = "rockchip,rk3399-efuse" },
++	/* deprecated but kept around for dts binding compatibility */
++	{
++		.compatible = "rockchip,rockchip-efuse",
++		.data = (ulong)&rockchip_rk3288_efuse_read,
++	},
++	{
++		.compatible = "rockchip,rk3066a-efuse",
++		.data = (ulong)&rockchip_rk3288_efuse_read,
++	},
++	{
++		.compatible = "rockchip,rk3188-efuse",
++		.data = (ulong)&rockchip_rk3288_efuse_read,
++	},
++	{
++		.compatible = "rockchip,rk3228-efuse",
++		.data = (ulong)&rockchip_rk3288_efuse_read,
++	},
++	{
++		.compatible = "rockchip,rk3288-efuse",
++		.data = (ulong)&rockchip_rk3288_efuse_read,
++	},
++	{
++		.compatible = "rockchip,rk3368-efuse",
++		.data = (ulong)&rockchip_rk3288_efuse_read,
++	},
++	{
++		.compatible = "rockchip,rk3328-efuse",
++		.data = (ulong)&rockchip_rk3328_efuse_read,
++	},
++	{
++		.compatible = "rockchip,rk3399-efuse",
++		.data = (ulong)&rockchip_rk3399_efuse_read,
++	},
+ 	{}
+ };
+ 

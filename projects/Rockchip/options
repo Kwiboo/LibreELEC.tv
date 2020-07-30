@@ -65,6 +65,7 @@
 
   # additional packages to install
     ADDITIONAL_PACKAGES="dtc"
+    ADDITIONAL_DRIVERS=""
 
   # build and install CEC framework support (yes / no)
     CEC_FRAMEWORK_SUPPORT="yes"

@@ -31,10 +31,12 @@ make_target() {
   make -C utils/ir-ctl CFLAGS="$TARGET_CFLAGS"
   if [ "$CEC_FRAMEWORK_SUPPORT" = "yes" ]; then
     make -C utils/libcecutil CFLAGS="$TARGET_CFLAGS"
+    make -C utils/cec-compliance CFLAGS="$TARGET_CFLAGS"
     make -C utils/cec-ctl CFLAGS="$TARGET_CFLAGS"
   fi
   make -C lib CFLAGS="$TARGET_CFLAGS"
   make -C utils/dvb CFLAGS="$TARGET_CFLAGS"
+  make -C utils/v4l2-compliance CFLAGS="$TARGET_CFLAGS"
   make -C utils/v4l2-ctl CFLAGS="$TARGET_CFLAGS"
 }
 
@@ -42,9 +44,11 @@ makeinstall_target() {
   make install DESTDIR=$INSTALL PREFIX=/usr -C utils/keytable
   make install DESTDIR=$INSTALL PREFIX=/usr -C utils/ir-ctl
   if [ "$CEC_FRAMEWORK_SUPPORT" = "yes" ]; then
+    make install DESTDIR=$INSTALL PREFIX=/usr -C utils/cec-compliance
     make install DESTDIR=$INSTALL PREFIX=/usr -C utils/cec-ctl
   fi
   make install DESTDIR=$INSTALL PREFIX=/usr -C utils/dvb
+  make install DESTDIR=$INSTALL PREFIX=/usr -C utils/v4l2-compliance
   make install DESTDIR=$INSTALL PREFIX=/usr -C utils/v4l2-ctl
   cp ${PKG_BUILD}/contrib/lircd2toml.py ${INSTALL}/usr/bin/
 }

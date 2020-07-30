@@ -1,303 +1,4 @@
-From 6b78e5f6a3f6af03228b5523f58d63435896cfc8 Mon Sep 17 00:00:00 2001
-From: Thomas Zimmermann <tzimmermann@suse.de>
-Date: Thu, 5 Mar 2020 16:59:40 +0100
-Subject: [PATCH] drm/rockchip: Use simple encoder
-
-The rockchip driver uses empty implementations for its encoders. Replace
-the code with the generic simple encoder.
-
-Signed-off-by: Thomas Zimmermann <tzimmermann@suse.de>
-Reviewed-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-Acked-by: Daniel Vetter <daniel.vetter@ffwll.ch>
-Link: https://patchwork.freedesktop.org/patch/msgid/20200305155950.2705-13-tzimmermann@suse.de
-(cherry picked from commit 0dbd735448bfdb078a429d5d63e1bd0ef2c5d0f0)
----
- drivers/gpu/drm/rockchip/analogix_dp-rockchip.c |  9 +++------
- drivers/gpu/drm/rockchip/cdn-dp-core.c          |  9 +++------
- drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c |  8 ++------
- drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c     |  8 ++------
- drivers/gpu/drm/rockchip/inno_hdmi.c            |  8 ++------
- drivers/gpu/drm/rockchip/rk3066_hdmi.c          |  8 ++------
- drivers/gpu/drm/rockchip/rockchip_lvds.c        | 10 +++-------
- drivers/gpu/drm/rockchip/rockchip_rgb.c         |  8 ++------
- 8 files changed, 19 insertions(+), 49 deletions(-)
-
-diff --git a/drivers/gpu/drm/rockchip/analogix_dp-rockchip.c b/drivers/gpu/drm/rockchip/analogix_dp-rockchip.c
-index ce98c08aa8b4..ade2327a10e2 100644
---- a/drivers/gpu/drm/rockchip/analogix_dp-rockchip.c
-+++ b/drivers/gpu/drm/rockchip/analogix_dp-rockchip.c
-@@ -26,6 +26,7 @@
- #include <drm/drm_of.h>
- #include <drm/drm_panel.h>
- #include <drm/drm_probe_helper.h>
-+#include <drm/drm_simple_kms_helper.h>
- 
- #include "rockchip_drm_drv.h"
- #include "rockchip_drm_vop.h"
-@@ -258,10 +259,6 @@ static struct drm_encoder_helper_funcs rockchip_dp_encoder_helper_funcs = {
- 	.atomic_check = rockchip_dp_drm_encoder_atomic_check,
- };
- 
--static struct drm_encoder_funcs rockchip_dp_encoder_funcs = {
--	.destroy = drm_encoder_cleanup,
--};
--
- static int rockchip_dp_of_probe(struct rockchip_dp_device *dp)
- {
- 	struct device *dev = dp->dev;
-@@ -309,8 +306,8 @@ static int rockchip_dp_drm_create_encoder(struct rockchip_dp_device *dp)
- 							     dev->of_node);
- 	DRM_DEBUG_KMS("possible_crtcs = 0x%x\n", encoder->possible_crtcs);
- 
--	ret = drm_encoder_init(drm_dev, encoder, &rockchip_dp_encoder_funcs,
--			       DRM_MODE_ENCODER_TMDS, NULL);
-+	ret = drm_simple_encoder_init(drm_dev, encoder,
-+				      DRM_MODE_ENCODER_TMDS);
- 	if (ret) {
- 		DRM_ERROR("failed to initialize encoder with drm\n");
- 		return ret;
-diff --git a/drivers/gpu/drm/rockchip/cdn-dp-core.c b/drivers/gpu/drm/rockchip/cdn-dp-core.c
-index eed594bd38d3..06f85138b51b 100644
---- a/drivers/gpu/drm/rockchip/cdn-dp-core.c
-+++ b/drivers/gpu/drm/rockchip/cdn-dp-core.c
-@@ -20,6 +20,7 @@
- #include <drm/drm_edid.h>
- #include <drm/drm_of.h>
- #include <drm/drm_probe_helper.h>
-+#include <drm/drm_simple_kms_helper.h>
- 
- #include "cdn-dp-core.h"
- #include "cdn-dp-reg.h"
-@@ -689,10 +690,6 @@ static const struct drm_encoder_helper_funcs cdn_dp_encoder_helper_funcs = {
- 	.atomic_check = cdn_dp_encoder_atomic_check,
- };
- 
--static const struct drm_encoder_funcs cdn_dp_encoder_funcs = {
--	.destroy = drm_encoder_cleanup,
--};
--
- static int cdn_dp_parse_dt(struct cdn_dp_device *dp)
- {
- 	struct device *dev = dp->dev;
-@@ -1030,8 +1027,8 @@ static int cdn_dp_bind(struct device *dev, struct device *master, void *data)
- 							     dev->of_node);
- 	DRM_DEBUG_KMS("possible_crtcs = 0x%x\n", encoder->possible_crtcs);
- 
--	ret = drm_encoder_init(drm_dev, encoder, &cdn_dp_encoder_funcs,
--			       DRM_MODE_ENCODER_TMDS, NULL);
-+	ret = drm_simple_encoder_init(drm_dev, encoder,
-+				      DRM_MODE_ENCODER_TMDS);
- 	if (ret) {
- 		DRM_ERROR("failed to initialize encoder with drm\n");
- 		return ret;
-diff --git a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
-index 6e1270e45f97..3feff0c45b3f 100644
---- a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
-+++ b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
-@@ -21,6 +21,7 @@
- #include <drm/bridge/dw_mipi_dsi.h>
- #include <drm/drm_mipi_dsi.h>
- #include <drm/drm_of.h>
-+#include <drm/drm_simple_kms_helper.h>
- 
- #include "rockchip_drm_drv.h"
- #include "rockchip_drm_vop.h"
-@@ -789,10 +790,6 @@ dw_mipi_dsi_encoder_helper_funcs = {
- 	.disable = dw_mipi_dsi_encoder_disable,
- };
- 
--static const struct drm_encoder_funcs dw_mipi_dsi_encoder_funcs = {
--	.destroy = drm_encoder_cleanup,
--};
--
- static int rockchip_dsi_drm_create_encoder(struct dw_mipi_dsi_rockchip *dsi,
- 					   struct drm_device *drm_dev)
- {
-@@ -802,8 +799,7 @@ static int rockchip_dsi_drm_create_encoder(struct dw_mipi_dsi_rockchip *dsi,
- 	encoder->possible_crtcs = drm_of_find_possible_crtcs(drm_dev,
- 							     dsi->dev->of_node);
- 
--	ret = drm_encoder_init(drm_dev, encoder, &dw_mipi_dsi_encoder_funcs,
--			       DRM_MODE_ENCODER_DSI, NULL);
-+	ret = drm_simple_encoder_init(drm_dev, encoder, DRM_MODE_ENCODER_DSI);
- 	if (ret) {
- 		DRM_ERROR("Failed to initialize encoder with drm\n");
- 		return ret;
-diff --git a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
-index 7f56d8c3491d..121aa8a63a76 100644
---- a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
-+++ b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
-@@ -14,6 +14,7 @@
- #include <drm/drm_edid.h>
- #include <drm/drm_of.h>
- #include <drm/drm_probe_helper.h>
-+#include <drm/drm_simple_kms_helper.h>
- 
- #include "rockchip_drm_drv.h"
- #include "rockchip_drm_vop.h"
-@@ -237,10 +238,6 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
- 	return (valid) ? MODE_OK : MODE_BAD;
- }
- 
--static const struct drm_encoder_funcs dw_hdmi_rockchip_encoder_funcs = {
--	.destroy = drm_encoder_cleanup,
--};
--
- static void dw_hdmi_rockchip_encoder_disable(struct drm_encoder *encoder)
- {
- }
-@@ -546,8 +543,7 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
- 	}
- 
- 	drm_encoder_helper_add(encoder, &dw_hdmi_rockchip_encoder_helper_funcs);
--	drm_encoder_init(drm, encoder, &dw_hdmi_rockchip_encoder_funcs,
--			 DRM_MODE_ENCODER_TMDS, NULL);
-+	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
- 
- 	platform_set_drvdata(pdev, hdmi);
- 
-diff --git a/drivers/gpu/drm/rockchip/inno_hdmi.c b/drivers/gpu/drm/rockchip/inno_hdmi.c
-index e5864e823020..7afdc54eb3ec 100644
---- a/drivers/gpu/drm/rockchip/inno_hdmi.c
-+++ b/drivers/gpu/drm/rockchip/inno_hdmi.c
-@@ -19,6 +19,7 @@
- #include <drm/drm_edid.h>
- #include <drm/drm_of.h>
- #include <drm/drm_probe_helper.h>
-+#include <drm/drm_simple_kms_helper.h>
- 
- #include "rockchip_drm_drv.h"
- #include "rockchip_drm_vop.h"
-@@ -532,10 +533,6 @@ static struct drm_encoder_helper_funcs inno_hdmi_encoder_helper_funcs = {
- 	.atomic_check = inno_hdmi_encoder_atomic_check,
- };
- 
--static struct drm_encoder_funcs inno_hdmi_encoder_funcs = {
--	.destroy = drm_encoder_cleanup,
--};
--
- static enum drm_connector_status
- inno_hdmi_connector_detect(struct drm_connector *connector, bool force)
- {
-@@ -617,8 +614,7 @@ static int inno_hdmi_register(struct drm_device *drm, struct inno_hdmi *hdmi)
- 		return -EPROBE_DEFER;
- 
- 	drm_encoder_helper_add(encoder, &inno_hdmi_encoder_helper_funcs);
--	drm_encoder_init(drm, encoder, &inno_hdmi_encoder_funcs,
--			 DRM_MODE_ENCODER_TMDS, NULL);
-+	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
- 
- 	hdmi->connector.polled = DRM_CONNECTOR_POLL_HPD;
- 
-diff --git a/drivers/gpu/drm/rockchip/rk3066_hdmi.c b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
-index fe203d38664e..1c546c3a8998 100644
---- a/drivers/gpu/drm/rockchip/rk3066_hdmi.c
-+++ b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
-@@ -6,6 +6,7 @@
- 
- #include <drm/drm_of.h>
- #include <drm/drm_probe_helper.h>
-+#include <drm/drm_simple_kms_helper.h>
- 
- #include <linux/clk.h>
- #include <linux/mfd/syscon.h>
-@@ -451,10 +452,6 @@ struct drm_encoder_helper_funcs rk3066_hdmi_encoder_helper_funcs = {
- 	.atomic_check = rk3066_hdmi_encoder_atomic_check,
- };
- 
--static const struct drm_encoder_funcs rk3066_hdmi_encoder_funcs = {
--	.destroy = drm_encoder_cleanup,
--};
--
- static enum drm_connector_status
- rk3066_hdmi_connector_detect(struct drm_connector *connector, bool force)
- {
-@@ -557,8 +554,7 @@ rk3066_hdmi_register(struct drm_device *drm, struct rk3066_hdmi *hdmi)
- 		return -EPROBE_DEFER;
- 
- 	drm_encoder_helper_add(encoder, &rk3066_hdmi_encoder_helper_funcs);
--	drm_encoder_init(drm, encoder, &rk3066_hdmi_encoder_funcs,
--			 DRM_MODE_ENCODER_TMDS, NULL);
-+	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
- 
- 	hdmi->connector.polled = DRM_CONNECTOR_POLL_HPD;
- 
-diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
-index 449a62908d21..63f967902c2d 100644
---- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
-+++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
-@@ -16,13 +16,14 @@
- #include <linux/pm_runtime.h>
- #include <linux/regmap.h>
- #include <linux/reset.h>
-+
- #include <drm/drm_atomic_helper.h>
- #include <drm/drm_bridge.h>
--
- #include <drm/drm_dp_helper.h>
- #include <drm/drm_of.h>
- #include <drm/drm_panel.h>
- #include <drm/drm_probe_helper.h>
-+#include <drm/drm_simple_kms_helper.h>
- 
- #include "rockchip_drm_drv.h"
- #include "rockchip_drm_vop.h"
-@@ -435,10 +436,6 @@ struct drm_encoder_helper_funcs px30_lvds_encoder_helper_funcs = {
- 	.atomic_check = rockchip_lvds_encoder_atomic_check,
- };
- 
--static const struct drm_encoder_funcs rockchip_lvds_encoder_funcs = {
--	.destroy = drm_encoder_cleanup,
--};
--
- static int rk3288_lvds_probe(struct platform_device *pdev,
- 			     struct rockchip_lvds *lvds)
- {
-@@ -607,8 +604,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
- 	encoder->possible_crtcs = drm_of_find_possible_crtcs(drm_dev,
- 							     dev->of_node);
- 
--	ret = drm_encoder_init(drm_dev, encoder, &rockchip_lvds_encoder_funcs,
--			       DRM_MODE_ENCODER_LVDS, NULL);
-+	ret = drm_simple_encoder_init(drm_dev, encoder, DRM_MODE_ENCODER_LVDS);
- 	if (ret < 0) {
- 		DRM_DEV_ERROR(drm_dev->dev,
- 			      "failed to initialize encoder: %d\n", ret);
-diff --git a/drivers/gpu/drm/rockchip/rockchip_rgb.c b/drivers/gpu/drm/rockchip/rockchip_rgb.c
-index 90784781e515..9a771af5d0c9 100644
---- a/drivers/gpu/drm/rockchip/rockchip_rgb.c
-+++ b/drivers/gpu/drm/rockchip/rockchip_rgb.c
-@@ -14,6 +14,7 @@
- #include <drm/drm_of.h>
- #include <drm/drm_panel.h>
- #include <drm/drm_probe_helper.h>
-+#include <drm/drm_simple_kms_helper.h>
- 
- #include "rockchip_drm_drv.h"
- #include "rockchip_drm_vop.h"
-@@ -67,10 +68,6 @@ struct drm_encoder_helper_funcs rockchip_rgb_encoder_helper_funcs = {
- 	.atomic_check = rockchip_rgb_encoder_atomic_check,
- };
- 
--static const struct drm_encoder_funcs rockchip_rgb_encoder_funcs = {
--	.destroy = drm_encoder_cleanup,
--};
--
- struct rockchip_rgb *rockchip_rgb_init(struct device *dev,
- 				       struct drm_crtc *crtc,
- 				       struct drm_device *drm_dev)
-@@ -126,8 +123,7 @@ struct rockchip_rgb *rockchip_rgb_init(struct device *dev,
- 	encoder = &rgb->encoder;
- 	encoder->possible_crtcs = drm_crtc_mask(crtc);
- 
--	ret = drm_encoder_init(drm_dev, encoder, &rockchip_rgb_encoder_funcs,
--			       DRM_MODE_ENCODER_NONE, NULL);
-+	ret = drm_simple_encoder_init(drm_dev, encoder, DRM_MODE_ENCODER_NONE);
- 	if (ret < 0) {
- 		DRM_DEV_ERROR(drm_dev->dev,
- 			      "failed to initialize encoder: %d\n", ret);
-
-From 6fd7de812d8d4f76b2c05cea1dc2c6159c62d473 Mon Sep 17 00:00:00 2001
+From 8e95ca569232b94f140e0b5fc7a66a0bde5dad83 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Fri, 3 Apr 2020 16:22:34 +0200
 Subject: [PATCH] dt-bindings: display: convert rockchip vop bindings to yaml
@@ -528,7 +229,7 @@ index 000000000000..42ee2b5c31e1
 +      };
 +    };
 
-From be1bed307943cb2d6b871ab8cf938c26b5db62b7 Mon Sep 17 00:00:00 2001
+From 9bb8add409464f13abd49c7463c161ae8884645f Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Fri, 3 Apr 2020 16:22:35 +0200
 Subject: [PATCH] dt-bindings: display: rockchip-vop: add additional properties
@@ -588,7 +289,7 @@ index 42ee2b5c31e1..1695e3e4bcec 100644
                 <&cru SRST_LCDC1_AHB>,
                 <&cru SRST_LCDC1_DCLK>;
 
-From f272b063e0038cfea7c0ef695b5058e1cfef39df Mon Sep 17 00:00:00 2001
+From 9d3471e34733945a9a45f53ae7cad51755ba4045 Mon Sep 17 00:00:00 2001
 From: Geert Uytterhoeven <geert+renesas@glider.be>
 Date: Wed, 12 Feb 2020 11:08:27 +0100
 Subject: [PATCH] ARM: rockchip: Replace <linux/clk-provider.h> by
@@ -624,7 +325,7 @@ index f9797a2b5d0d..beea4564eed4 100644
  #include <linux/mfd/syscon.h>
  #include <linux/regmap.h>
 
-From 2c6d20227da1c80097cd28c0bb7b6c1eb5b7d184 Mon Sep 17 00:00:00 2001
+From 3ac49616a5567f7172c282f2f38be830fe72e207 Mon Sep 17 00:00:00 2001
 From: Colin Ian King <colin.king@canonical.com>
 Date: Thu, 23 Jan 2020 00:48:07 +0000
 Subject: [PATCH] ARM: rockchip: fix spelling mistake "to" -> "too"
@@ -653,7 +354,7 @@ index 649e0a54784c..d60856898d97 100644
  		return -EINVAL;
  	}
 
-From 4da52ea9970395cc4fd12e22cdde5cad0908a8b6 Mon Sep 17 00:00:00 2001
+From c25754384b736c747fbaaf003f15f62d51c066de Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Fri, 3 Apr 2020 15:36:30 +0200
 Subject: [PATCH] dt-bindings: display: convert rockchip rk3066 hdmi bindings
@@ -900,7 +601,7 @@ index 000000000000..4110d003ce1f
 +      };
 +    };
 
-From 1d8b864057e02861a494d9c18a12328d8bea7239 Mon Sep 17 00:00:00 2001
+From 5a77a1db02b7bf4fe6f9823233cfe43f177f6baf Mon Sep 17 00:00:00 2001
 From: Tobias Schramm <t.schramm@manjaro.org>
 Date: Thu, 16 Apr 2020 16:55:34 +0200
 Subject: [PATCH] arm64: dts: rockchip: add micro SD card regulator to
@@ -973,7 +674,7 @@ index 9bca25801260..6788ab28f89a 100644
  };
  
 
-From fdf2fafc9d59f980955fb1c26cd7358a5aaa27a0 Mon Sep 17 00:00:00 2001
+From 5a5cad49fe147de8833f57de0d6c8907868ac488 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Wed, 15 Apr 2020 15:10:57 +0200
 Subject: [PATCH] arm64: dts: rockchip: remove bus-width from mmc nodes in
@@ -1014,7 +715,7 @@ index aa256350b18f..8011e9b12347 100644
  	cap-sd-highspeed;
  	card-detect-delay = <300>;
 
-From a98b1173f1af7cdf913383e7e0287475b9933a2d Mon Sep 17 00:00:00 2001
+From a4db9eb35fbd81b68dcae179492460eb56c1e58a Mon Sep 17 00:00:00 2001
 From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
 Date: Tue, 14 Apr 2020 10:29:36 +0200
 Subject: [PATCH] arm64: dts: rockchip: add core devicetree for rk3326
@@ -1053,7 +754,7 @@ index 000000000000..2ba6da125137
 +/delete-node/ &vopl;
 +/delete-node/ &vopl_mmu;
 
-From 2b1d742b479da9dc96ccf21e92e474c99c930aa3 Mon Sep 17 00:00:00 2001
+From 347eeb60d6e2225cb0f6d3325720145a7b1d1ea3 Mon Sep 17 00:00:00 2001
 From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
 Date: Tue, 14 Apr 2020 10:29:37 +0200
 Subject: [PATCH] dt-bindings: Add binding for Hardkernel Odroid Go Advance
@@ -1089,7 +790,7 @@ index 715586dea9bb..d4a4045092df 100644
          items:
            - const: hugsun,x99
 
-From 9ef671f45e7d27b711a82178e0fa11455428fd3c Mon Sep 17 00:00:00 2001
+From 1773c3d8b1bb0dc1ad6c59cb2007445bac1d7388 Mon Sep 17 00:00:00 2001
 From: Heiko Stuebner <heiko.stuebner@theobroma-systems.com>
 Date: Tue, 14 Apr 2020 10:29:38 +0200
 Subject: [PATCH] arm64: dts: rockchip: add Odroid Advance Go
@@ -1687,107 +1388,7 @@ index 000000000000..cf20aac5f2fe
 +	};
 +};
 
-From 77b50f8cb30ce28b97f98134d6d60ed1021b398a Mon Sep 17 00:00:00 2001
-From: Enric Balletbo i Serra <enric.balletbo@collabora.com>
-Date: Sun, 26 Apr 2020 18:16:53 +0200
-Subject: [PATCH] drm/rockchip: cdn-dp-core: Make cdn_dp_core_suspend/resume
- static
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-
-This fixes the following warning detected when running make with W=1
-
-    drivers/gpu/drm/rockchip//cdn-dp-core.c:1112:5: warning: no previous
-    prototype for ‘cdn_dp_suspend’ [-Wmissing-prototypes]
-
-    drivers/gpu/drm/rockchip//cdn-dp-core.c:1126:5: warning: no previous
-    prototype for ‘cdn_dp_resume’ [-Wmissing-prototypes]
-
-Signed-off-by: Enric Balletbo i Serra <enric.balletbo@collabora.com>
-Signed-off-by: Heiko Stuebner <heiko@sntech.de>
-Link: https://patchwork.freedesktop.org/patch/msgid/20200426161653.7710-1-enric.balletbo@collabora.com
-(cherry picked from commit 7c49abb4c2f8853520abc05b7f7e8b751fbb3086)
----
- drivers/gpu/drm/rockchip/cdn-dp-core.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/gpu/drm/rockchip/cdn-dp-core.c b/drivers/gpu/drm/rockchip/cdn-dp-core.c
-index 06f85138b51b..c634b95b50f7 100644
---- a/drivers/gpu/drm/rockchip/cdn-dp-core.c
-+++ b/drivers/gpu/drm/rockchip/cdn-dp-core.c
-@@ -1106,7 +1106,7 @@ static const struct component_ops cdn_dp_component_ops = {
- 	.unbind = cdn_dp_unbind,
- };
- 
--int cdn_dp_suspend(struct device *dev)
-+static int cdn_dp_suspend(struct device *dev)
- {
- 	struct cdn_dp_device *dp = dev_get_drvdata(dev);
- 	int ret = 0;
-@@ -1120,7 +1120,7 @@ int cdn_dp_suspend(struct device *dev)
- 	return ret;
- }
- 
--int cdn_dp_resume(struct device *dev)
-+static int cdn_dp_resume(struct device *dev)
- {
- 	struct cdn_dp_device *dp = dev_get_drvdata(dev);
- 
-
-From 6a83f833666332ecafaf69e5b74fece84b91acd2 Mon Sep 17 00:00:00 2001
-From: Zheng Bin <zhengbin13@huawei.com>
-Date: Fri, 24 Apr 2020 15:44:10 +0800
-Subject: [PATCH] drm/rockchip: Remove unneeded semicolon
-
-Fixes coccicheck warning:
-
-drivers/gpu/drm/rockchip/cdn-dp-reg.c:604:2-3: Unneeded semicolon
-drivers/gpu/drm/rockchip/cdn-dp-reg.c:622:2-3: Unneeded semicolon
-drivers/gpu/drm/rockchip/cdn-dp-reg.c:703:2-3: Unneeded semicolon
-
-Reported-by: Hulk Robot <hulkci@huawei.com>
-Signed-off-by: Zheng Bin <zhengbin13@huawei.com>
-Signed-off-by: Heiko Stuebner <heiko@sntech.de>
-Link: https://patchwork.freedesktop.org/patch/msgid/20200424074410.1070-1-zhengbin13@huawei.com
-(cherry picked from commit 611e22b1d9f61a8742c99433de9ff40795574c61)
----
- drivers/gpu/drm/rockchip/cdn-dp-reg.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/drivers/gpu/drm/rockchip/cdn-dp-reg.c b/drivers/gpu/drm/rockchip/cdn-dp-reg.c
-index 7361c07cb4a7..9d2163ef4d6e 100644
---- a/drivers/gpu/drm/rockchip/cdn-dp-reg.c
-+++ b/drivers/gpu/drm/rockchip/cdn-dp-reg.c
-@@ -601,7 +601,7 @@ static int cdn_dp_get_msa_misc(struct video_info *video,
- 	case YCBCR_4_2_0:
- 		val[0] = 5;
- 		break;
--	};
-+	}
- 
- 	switch (video->color_depth) {
- 	case 6:
-@@ -619,7 +619,7 @@ static int cdn_dp_get_msa_misc(struct video_info *video,
- 	case 16:
- 		val[1] = 4;
- 		break;
--	};
-+	}
- 
- 	msa_misc = 2 * val[0] + 32 * val[1] +
- 		   ((video->color_fmt == Y_ONLY) ? (1 << 14) : 0);
-@@ -700,7 +700,7 @@ int cdn_dp_config_video(struct cdn_dp_device *dp)
- 	case 16:
- 		val = BCS_16;
- 		break;
--	};
-+	}
- 
- 	val += video->color_fmt << 8;
- 	ret = cdn_dp_reg_write(dp, DP_FRAMER_PXL_REPR, val);
-
-From 097d9346541d9f2e4639e65a70d8a68fd8be1986 Mon Sep 17 00:00:00 2001
+From f485bb3133f8bad0c5f886ebbb8dfea94682ab29 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Fri, 24 Apr 2020 17:55:59 +0200
 Subject: [PATCH] arm64: dts: rockchip: remove #sound-dai-cells from &i2s1 node
@@ -1818,7 +1419,7 @@ index c49982dfd8fc..d44c73521218 100644
  	pinctrl-0 = <&i2s_8ch_mclk_gpio>, <&i2s1_2ch_bus>;
  	rockchip,capture-channels = <8>;
 
-From 41878dbb1271eb73d952575f29f7095e08750196 Mon Sep 17 00:00:00 2001
+From f67eb446a796d6dff6c3d4cebc5a3f2831aaf33c Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Fri, 24 Apr 2020 17:56:00 +0200
 Subject: [PATCH] arm64: dts: rockchip: remove #sound-dai-cells from &spdif
@@ -1849,7 +1450,7 @@ index aee484a05181..4b4a38e59283 100644
  
  &spi1 {
 
-From 1af0d8e117e762c29ffb9a0d02b6e77aeff3165c Mon Sep 17 00:00:00 2001
+From 0a14818462c5d9ebf8345fc466a58e4a72608db1 Mon Sep 17 00:00:00 2001
 From: Boris Brezillon <boris.brezillon@collabora.com>
 Date: Fri, 3 Apr 2020 19:13:45 -0300
 Subject: [PATCH] arm64: dts: rockchip: Define the rockchip Video Decoder node
@@ -1901,57 +1502,7 @@ index 1448f358ed0a..de53f145c4fa 100644
  
  	iep_mmu: iommu@ff670800 {
 
-From e51cf454395eb45f7277fc33bbc6d07268281bca Mon Sep 17 00:00:00 2001
-From: Johan Jonker <jbx6244@gmail.com>
-Date: Sat, 25 Apr 2020 17:40:37 +0200
-Subject: [PATCH] dt-bindings: gpu: add power-domains #cooling-cells to
- arm,mali-bifrost.yaml
-
-A test with the command below gives this error:
-
-arch/arm64/boot/dts/rockchip/px30-evb.dt.yaml: gpu@ff400000:
-'#cooling-cells', 'power-domains'
-do not match any of the regexes: 'pinctrl-[0-9]+'
-
-With the conversion to yaml it also filters things
-in a node that are used by other drivers like
-'#cooling-cells' and 'power-domains'
-for Rockchip px30 gpu nodes,
-so add them to 'arm,mali-bifrost.yaml'.
-
-make ARCH=arm64 dtbs_check
-DT_SCHEMA_FILES=Documentation/devicetree/bindings/gpu/
-arm,mali-bifrost.yaml
-
-Signed-off-by: Johan Jonker <jbx6244@gmail.com>
-Signed-off-by: Rob Herring <robh@kernel.org>
-(cherry picked from commit 2c905f6c3334691a3d96d7dcdffdff0e0a9dadb5)
----
- Documentation/devicetree/bindings/gpu/arm,mali-bifrost.yaml | 6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/Documentation/devicetree/bindings/gpu/arm,mali-bifrost.yaml b/Documentation/devicetree/bindings/gpu/arm,mali-bifrost.yaml
-index 0b229a7d4a98..b1844b9c295d 100644
---- a/Documentation/devicetree/bindings/gpu/arm,mali-bifrost.yaml
-+++ b/Documentation/devicetree/bindings/gpu/arm,mali-bifrost.yaml
-@@ -43,9 +43,15 @@ properties:
- 
-   operating-points-v2: true
- 
-+  power-domains:
-+    maxItems: 1
-+
-   resets:
-     maxItems: 2
- 
-+  "#cooling-cells":
-+    const: 2
-+
- required:
-   - compatible
-   - reg
-
-From de74efa1defc4106cda6f31e011cb856a1074b59 Mon Sep 17 00:00:00 2001
+From e4f156e4ebbc39b0b64e72625e7eff5d4e117803 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Tue, 12 May 2020 22:35:22 +0200
 Subject: [PATCH] arm64: dts: rockchip: replace RK_FUNC defines in
@@ -1996,7 +1547,7 @@ index cf20aac5f2fe..bd54a37738be 100644
  	};
  };
 
-From 0b86f8e0f92794c9db7314819600507d458ef25e Mon Sep 17 00:00:00 2001
+From 83ee8df7741ad4a7c1e82d8dfe8ec73e071f66af Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Sat, 21 Mar 2020 22:54:18 +0100
 Subject: [PATCH] arm64: dts: rockchip: fix phy nodename for rk3328
@@ -2039,7 +1590,7 @@ index a4d591d91533..d399883d4b75 100644
  				reg = <0>;
  				clocks = <&cru SCLK_MAC2PHY_OUT>;
 
-From bd64674b64f3f4c70f7cef0855f8c66e1a2acdb3 Mon Sep 17 00:00:00 2001
+From 72d36823d22d6a5c5bd1b68054c1bd5c3aa34ee8 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Sat, 21 Mar 2020 22:54:19 +0100
 Subject: [PATCH] arm64: dts: rockchip: fix rtl8211f nodename for rk3328
@@ -2081,7 +1632,7 @@ index 797e90a3ac92..37f307cfa4cc 100644
  			reset-assert-us = <10000>;
  			reset-deassert-us = <30000>;
 
-From ba183cce2ebccac052414ee447ef615bb2ff1dc5 Mon Sep 17 00:00:00 2001
+From 21d5bae17e1b6400815a8ab8f3b329e2cd26f737 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Sat, 21 Mar 2020 22:54:20 +0100
 Subject: [PATCH] arm64: dts: rockchip: fix rtl8211e nodename for
@@ -2127,7 +1678,7 @@ index c88018a0ef35..20529105c63c 100644
  			interrupt-parent = <&gpio3>;
  			interrupts = <RK_PB2 IRQ_TYPE_LEVEL_LOW>;
 
-From e655529bad8cb4dea6495eb500a8db94cf907a89 Mon Sep 17 00:00:00 2001
+From 44fe2a59e51e3ee2133b87070328306fbadeee57 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Sat, 21 Mar 2020 22:54:21 +0100
 Subject: [PATCH] arm64: dts: rockchip: fix &pinctrl phy sub nodename for
@@ -2171,7 +1722,7 @@ index 20529105c63c..1d246c2caa3c 100644
  			rockchip,pins = <3 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>;
  		};
 
-From daa7af1392aa91d53ca050e6f92561af8d375643 Mon Sep 17 00:00:00 2001
+From fa313f76225764297b5e5545c32ecdad69162aba Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Sat, 21 Mar 2020 22:54:22 +0100
 Subject: [PATCH] arm64: dts: rockchip: fix rtl8211e nodename for
@@ -2213,7 +1764,7 @@ index f9f7246d4d2f..afbcd213cccf 100644
  			interrupt-parent = <&gpio3>;
  			interrupts = <RK_PB2 IRQ_TYPE_LEVEL_LOW>;
 
-From f5eac7148efd93ba264852dfd3378881d9afa6bf Mon Sep 17 00:00:00 2001
+From 0799b06a46dfa4f130a73be7b06b6e29efa0a54c Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Sat, 21 Mar 2020 22:54:23 +0100
 Subject: [PATCH] arm64: dts: rockchip: fix &pinctrl phy sub nodename for
@@ -2253,7 +1804,7 @@ index afbcd213cccf..6163ae8063a7 100644
  			rockchip,pins = <3 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>;
  		};
 
-From 623a0252df25c7cc22203c84c7606cdcff1ccfc2 Mon Sep 17 00:00:00 2001
+From 855072c9377047c67435ae9006111ea7f140d356 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Tue, 28 Apr 2020 22:30:02 +0200
 Subject: [PATCH] arm64: dts: rockchip: fix defines in pd_vio node for rk3399
@@ -2302,7 +1853,7 @@ index de53f145c4fa..e6442d249abf 100644
  					clocks = <&cru SCLK_UPHY1_TCPDCORE>,
  						 <&cru SCLK_UPHY1_TCPDPHY_REF>;
 
-From 027988b4a390644acef9f4b9df0b0e30cc673309 Mon Sep 17 00:00:00 2001
+From acb10f8f6f46da80b036a45d3201a1c312d6774f Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Tue, 28 Apr 2020 16:49:33 +0200
 Subject: [PATCH] arm64: dts: rockchip: rename and label gpio-led subnodes
@@ -2789,7 +2340,7 @@ index 437a75f31ad4..c88295782e7b 100644
  				<4 RK_PD6 RK_FUNC_GPIO &pcfg_pull_none>;
  		};
 
-From 8b38d3ef602806f1b15176f8ee9829d2660d6941 Mon Sep 17 00:00:00 2001
+From 89433e01778e283da9d3c300cdc9a72003c3547b Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Thu, 19 Dec 2019 13:19:54 +0100
 Subject: [PATCH] arm64: dts: rockchip: remove disable-wp from rk3308-roc-cc
@@ -2821,7 +2372,7 @@ index ccb27023ccce..7a96be10eaf0 100644
  	non-removable;
  	status = "okay";
 
-From 6c32c9a746c3fe1a7232e38b163a4976e22d67f2 Mon Sep 17 00:00:00 2001
+From 62331942c606bc6aa421c4bfafc9cd3a2bfded82 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Tue, 28 Apr 2020 16:49:32 +0200
 Subject: [PATCH] ARM: dts: rockchip: rename and label gpio-led subnodes
@@ -3109,7 +2660,7 @@ index acfaa12ec239..90e9be443fe6 100644
  			linux,default-trigger = "default-on";
  		};
 
-From d735cc7ec7128c7513fc64a292b618bacaf7b044 Mon Sep 17 00:00:00 2001
+From 8232baf5a20c370daa83ca08f86c7b75eaf355b6 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Fri, 3 Apr 2020 20:01:56 +0200
 Subject: [PATCH] ARM: dts: rockchip: remove identical #include from
@@ -3139,7 +2690,7 @@ index 0cd88774db95..2e1edd85f04a 100644
  
  / {
 
-From 10623149945c885081ae775a7fcc2711975ad7fa Mon Sep 17 00:00:00 2001
+From b6930283068077abdf2a1ea694b54a8f96a3e97e Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Thu, 16 Apr 2020 20:30:53 +0200
 Subject: [PATCH] arm64: dts: rockchip: add bus-width properties to mmc nodes
@@ -3186,7 +2737,7 @@ index adc9b8bf5eaa..a6b8427156d5 100644
  		max-frequency = <150000000>;
  		pinctrl-names = "default";
 
-From cbed48821189566fec7fc794f847d37864b84a8b Mon Sep 17 00:00:00 2001
+From d392b227be9eeafe5dc0e1558f8f8f2242fe8ad5 Mon Sep 17 00:00:00 2001
 From: Justin Swartz <justin.swartz@risingedge.co.za>
 Date: Mon, 6 Apr 2020 13:50:04 +0000
 Subject: [PATCH] ARM: dts: enable WLAN for Mecer Xtreme Mini S6
@@ -3246,7 +2797,7 @@ index 637245324a5e..17a547fe8e3c 100644
  	cap-mmc-highspeed;
  	disable-wp;
 
-From 8a8225b677d45d3fd9a683447ae08fe729789593 Mon Sep 17 00:00:00 2001
+From e81673423c715de3a3e61ca63e45229674809e61 Mon Sep 17 00:00:00 2001
 From: Justin Swartz <justin.swartz@risingedge.co.za>
 Date: Mon, 6 Apr 2020 13:50:05 +0000
 Subject: [PATCH] ARM: dts: remove disable-wp from rk3229-xms6 emmc
@@ -3278,7 +2829,7 @@ index 17a547fe8e3c..263393ac4fa6 100644
  	status = "okay";
  };
 
-From 6d03d3fb5c5ae4760549d428ceb0ace0c6dd5b57 Mon Sep 17 00:00:00 2001
+From 7f98cddafd269a3ebc29e28564fef6268d975e3f Mon Sep 17 00:00:00 2001
 From: Justin Swartz <justin.swartz@risingedge.co.za>
 Date: Sun, 19 Apr 2020 12:51:33 +0000
 Subject: [PATCH] ARM: dts: rockchip: add rga node for rk322x
@@ -3316,7 +2867,7 @@ index 5485a9918da6..b0fd92befdeb 100644
  		compatible = "rockchip,iommu";
  		reg = <0x20070800 0x100>;
 
-From 895cd23b800f934da3f5d49feef3c72d3aa84f0d Mon Sep 17 00:00:00 2001
+From 05ffa87cb1aef07ccd416786ca33a07c8448d35a Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Tue, 28 Apr 2020 22:30:03 +0200
 Subject: [PATCH] arm64: dts: rockchip: fix pd_tcpc0 and pd_tcpc1 node position
@@ -3375,7 +2926,7 @@ index e6442d249abf..2581e9cc7a1d 100644
  					reg = <RK3399_PD_VO>;
  					#address-cells = <1>;
 
-From 0a5518e8a60d1ba9a38b22735f092aa846699d55 Mon Sep 17 00:00:00 2001
+From 1411210c38ff62ee2506789a22d3c1a98be1aa48 Mon Sep 17 00:00:00 2001
 From: Johan Jonker <jbx6244@gmail.com>
 Date: Tue, 19 May 2020 13:14:44 +0200
 Subject: [PATCH] arm64: dts: rockchip: fix pinctrl-names for gpio-leds node on
@@ -3407,3 +2958,60 @@ index 46826b6e237f..b3a8f936578f 100644
  		pinctrl-0 = <&blue_led_pin>;
  
  		blue_led: led-0 {
+
+From 66a61be2083b2d466064d3c3a38b8691e1b69535 Mon Sep 17 00:00:00 2001
+From: Yu-Hsuan Hsu <yuhsuan@chromium.org>
+Date: Tue, 30 Jun 2020 17:16:15 +0800
+Subject: [PATCH] ASoC: rockchip: add format and rate constraints on rk3399
+
+S8 and S24 formats does not work on this machine driver so force to use
+S16_LE instead.
+
+In addition, add constraint to limit the max value of rate because the
+rate higher than 96000(172000, 192000) is not stable either.
+
+Signed-off-by: Yu-Hsuan Hsu <yuhsuan@chromium.org>
+Link: https://lore.kernel.org/r/20200630091615.4020059-1-yuhsuan@chromium.org
+Signed-off-by: Mark Brown <broonie@kernel.org>
+(cherry picked from commit 1eb96c198aff13162de4857e19f9488d59c4acb1)
+---
+ sound/soc/rockchip/rk3399_gru_sound.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/sound/soc/rockchip/rk3399_gru_sound.c b/sound/soc/rockchip/rk3399_gru_sound.c
+index f45e5aaa4b30..9539b0d024fe 100644
+--- a/sound/soc/rockchip/rk3399_gru_sound.c
++++ b/sound/soc/rockchip/rk3399_gru_sound.c
+@@ -219,19 +219,32 @@ static int rockchip_sound_dmic_hw_params(struct snd_pcm_substream *substream,
+ 	return 0;
+ }
+ 
++static int rockchip_sound_startup(struct snd_pcm_substream *substream)
++{
++	struct snd_pcm_runtime *runtime = substream->runtime;
++
++	runtime->hw.formats = SNDRV_PCM_FMTBIT_S16_LE;
++	return snd_pcm_hw_constraint_minmax(runtime, SNDRV_PCM_HW_PARAM_RATE,
++			8000, 96000);
++}
++
+ static const struct snd_soc_ops rockchip_sound_max98357a_ops = {
++	.startup = rockchip_sound_startup,
+ 	.hw_params = rockchip_sound_max98357a_hw_params,
+ };
+ 
+ static const struct snd_soc_ops rockchip_sound_rt5514_ops = {
++	.startup = rockchip_sound_startup,
+ 	.hw_params = rockchip_sound_rt5514_hw_params,
+ };
+ 
+ static const struct snd_soc_ops rockchip_sound_da7219_ops = {
++	.startup = rockchip_sound_startup,
+ 	.hw_params = rockchip_sound_da7219_hw_params,
+ };
+ 
+ static const struct snd_soc_ops rockchip_sound_dmic_ops = {
++	.startup = rockchip_sound_startup,
+ 	.hw_params = rockchip_sound_dmic_hw_params,
+ };
+ 

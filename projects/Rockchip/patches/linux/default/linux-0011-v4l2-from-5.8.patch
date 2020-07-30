@@ -1,4 +1,4 @@
-From 33f924acf6b0b4778810b2a25189b02c30b60234 Mon Sep 17 00:00:00 2001
+From 2778d31f9d812a0c5e53a556411f41a9522db97e Mon Sep 17 00:00:00 2001
 From: Ezequiel Garcia <ezequiel@collabora.com>
 Date: Wed, 25 Mar 2020 22:34:32 +0100
 Subject: [PATCH] media: v4l2-mem2mem: return CAPTURE buffer first
@@ -55,7 +55,7 @@ index 8986c31176e9..62ac9424c92a 100644
  unlock:
  	spin_unlock_irqrestore(&m2m_dev->job_spinlock, flags);
 
-From 7afc11962aa5f0be37913db8f510481fc365a6f3 Mon Sep 17 00:00:00 2001
+From c64570e9593b50d1e1300913920d3f3abb2c5d78 Mon Sep 17 00:00:00 2001
 From: Ezequiel Garcia <ezequiel@collabora.com>
 Date: Wed, 25 Mar 2020 22:34:33 +0100
 Subject: [PATCH] media: hantro: Set buffers' zeroth plane payload in
@@ -113,7 +113,7 @@ index f4ae2cee0f18..3142ab6697d5 100644
  
  static void hantro_buf_queue(struct vb2_buffer *vb)
 
-From 7c92154bc9dcdefedfdaeea0d12ca95b0b800188 Mon Sep 17 00:00:00 2001
+From 0d233a3b9b11b37f5ae73d97012395a1218f7215 Mon Sep 17 00:00:00 2001
 From: Ezequiel Garcia <ezequiel@collabora.com>
 Date: Wed, 25 Mar 2020 22:34:34 +0100
 Subject: [PATCH] media: hantro: Use v4l2_m2m_buf_done_and_job_finish
@@ -168,7 +168,7 @@ index ace13973e2d0..d0097c5fe7d9 100644
  
  void hantro_irq_done(struct hantro_dev *vpu, unsigned int bytesused,
 
-From fc2058179fcab5ab2bbaa2b654562890a8076684 Mon Sep 17 00:00:00 2001
+From 05f521c09c965740ab07e03f858c4aa92dfb89c9 Mon Sep 17 00:00:00 2001
 From: Ezequiel Garcia <ezequiel@collabora.com>
 Date: Wed, 25 Mar 2020 22:34:35 +0100
 Subject: [PATCH] media: hantro: Remove unneeded hantro_dec_buf_finish
@@ -214,7 +214,7 @@ index d0097c5fe7d9..0db8ad455160 100644
  		ret = -ENODEV;
  		goto err_ctx_free;
 
-From c89a32acae32073d01df707edef1551ca9052858 Mon Sep 17 00:00:00 2001
+From 6eff2bb25664e293675107087d9c0bf4a7890232 Mon Sep 17 00:00:00 2001
 From: Ezequiel Garcia <ezequiel@collabora.com>
 Date: Wed, 25 Mar 2020 22:34:36 +0100
 Subject: [PATCH] media: hantro: Move H264 motion vector calculation to a
@@ -337,7 +337,7 @@ index 3142ab6697d5..458b502ff01b 100644
  		/*
  		 * For coded formats the application can specify
 
-From b14f424b8dc02bff91351231870b95ccc91c32ec Mon Sep 17 00:00:00 2001
+From e1c323fa242c37e72cd6f43aa2c41ecede14799d Mon Sep 17 00:00:00 2001
 From: Ezequiel Garcia <ezequiel@collabora.com>
 Date: Wed, 25 Mar 2020 22:34:37 +0100
 Subject: [PATCH] media: hantro: Refactor for V4L2 API spec compliancy
@@ -543,7 +543,7 @@ index 458b502ff01b..f28a94e2fa93 100644
  	.vidioc_querycap = vidioc_querycap,
  	.vidioc_enum_framesizes = vidioc_enum_framesizes,
 
-From 9d1f636edd321ed8a8a6bbe852d56dc01b275109 Mon Sep 17 00:00:00 2001
+From cd311efa9155e7c50775fac86cff96873aaefc58 Mon Sep 17 00:00:00 2001
 From: Dafna Hirschfeld <dafna.hirschfeld@collabora.com>
 Date: Mon, 23 Mar 2020 18:36:18 +0100
 Subject: [PATCH] media: v4l2-common: change the pixel_enc of V4L2_PIX_FMT_GREY
@@ -582,7 +582,7 @@ index d0e5ebc736f9..054f2e607dff 100644
  		/* YUV planar formats, non contiguous variant */
  		{ .format = V4L2_PIX_FMT_YUV420M, .pixel_enc = V4L2_PIXEL_ENC_YUV, .mem_planes = 3, .comp_planes = 3, .bpp = { 1, 1, 1, 0 }, .hdiv = 2, .vdiv = 2 },
 
-From 4d0508cfc89d1c462c1ecf7b8714242be9c08d94 Mon Sep 17 00:00:00 2001
+From e226ac71326fc8df5cddc49c78d67817cea0010c Mon Sep 17 00:00:00 2001
 From: Dafna Hirschfeld <dafna.hirschfeld@collabora.com>
 Date: Mon, 16 Mar 2020 08:01:23 +0100
 Subject: [PATCH] media: v4l2-common: Add BGR666 to v4l2_format_info
@@ -611,7 +611,7 @@ index 054f2e607dff..9e8eb45a5b03 100644
  		/* YUV packed formats */
  		{ .format = V4L2_PIX_FMT_YUYV,    .pixel_enc = V4L2_PIXEL_ENC_YUV, .mem_planes = 1, .comp_planes = 1, .bpp = { 2, 0, 0, 0 }, .hdiv = 2, .vdiv = 1 },
 
-From dbdcb1168a4a2ca7722ba274816cd5c829a640f8 Mon Sep 17 00:00:00 2001
+From 9ad343ef0336acf8de6b36e2de976f071d3fc09a Mon Sep 17 00:00:00 2001
 From: Philipp Zabel <p.zabel@pengutronix.de>
 Date: Wed, 18 Mar 2020 19:35:32 +0100
 Subject: [PATCH] media: add v4l2 JPEG helpers
@@ -1448,7 +1448,7 @@ index 000000000000..ddba2a56c321
 +
 +#endif
 
-From 035031da98faeb8a01069ac2a0ba3925b72a451f Mon Sep 17 00:00:00 2001
+From 79755a22482e292b94c698bc6f6cf88ed2a2572b Mon Sep 17 00:00:00 2001
 From: Maheshwar Ajja <majja@codeaurora.org>
 Date: Mon, 16 Mar 2020 23:42:30 +0100
 Subject: [PATCH] media: v4l2-ctrl: Add H264 profile and levels
@@ -1466,7 +1466,7 @@ Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
  2 files changed, 10 insertions(+)
 
 diff --git a/drivers/media/v4l2-core/v4l2-ctrls.c b/drivers/media/v4l2-core/v4l2-ctrls.c
-index 93d33d1db4e8..0186ba85aac7 100644
+index 99fd377f9b81..d9d6e107334a 100644
 --- a/drivers/media/v4l2-core/v4l2-ctrls.c
 +++ b/drivers/media/v4l2-core/v4l2-ctrls.c
 @@ -336,6 +336,10 @@ const char * const *v4l2_ctrl_get_menu(u32 id)
@@ -1512,7 +1512,7 @@ index 1a58d7cc4ccc..0ba1005c9651 100644
  #define V4L2_CID_MPEG_VIDEO_H264_VUI_EXT_SAR_HEIGHT	(V4L2_CID_MPEG_BASE+364)
  #define V4L2_CID_MPEG_VIDEO_H264_VUI_EXT_SAR_WIDTH	(V4L2_CID_MPEG_BASE+365)
 
-From 8d940ad30dccc2eba7b79e2498291afe1c6d6a59 Mon Sep 17 00:00:00 2001
+From c17c5482dbd3b2713f84550f81cfcfb00b1c7e26 Mon Sep 17 00:00:00 2001
 From: Boris Brezillon <boris.brezillon@collabora.com>
 Date: Sat, 4 Apr 2020 00:13:41 +0200
 Subject: [PATCH] media: v4l2-core: Add helpers to build the H264 P/B0/B1
@@ -1963,7 +1963,7 @@ index 000000000000..bc9ebb560ccf
 +
 +#endif /* _MEDIA_V4L2_H264_H */
 
-From c3231ffe9e7b695ae37bcc0ce9e686100d06a0e0 Mon Sep 17 00:00:00 2001
+From 2d18e24cc54a35bbefe59cc7b8d57d84bd97652c Mon Sep 17 00:00:00 2001
 From: Boris Brezillon <boris.brezillon@collabora.com>
 Date: Sat, 4 Apr 2020 00:13:42 +0200
 Subject: [PATCH] media: hantro: h264: Use the generic H264 reflist builder
@@ -2263,7 +2263,7 @@ index f2d3e81fb6ce..d561f125085a 100644
  }
  
 
-From b07a96a7a7c9018cf822c65f0bfbcab9be94798d Mon Sep 17 00:00:00 2001
+From 0dfa6ed4ef0ccc234eb640299d142a7283f8e038 Mon Sep 17 00:00:00 2001
 From: Boris Brezillon <boris.brezillon@collabora.com>
 Date: Sat, 4 Apr 2020 00:13:44 +0200
 Subject: [PATCH] media: rkvdec: Add the rkvdec driver
@@ -5018,7 +5018,7 @@ index 000000000000..2fc9f46b6910
 +extern const struct rkvdec_coded_fmt_ops rkvdec_h264_fmt_ops;
 +#endif /* RKVDEC_H_ */
 
-From 663f227c908199937a37cea794b3387725dc953b Mon Sep 17 00:00:00 2001
+From 49c06285b863730c8f126af32525634883f2755b Mon Sep 17 00:00:00 2001
 From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
 Date: Tue, 3 Mar 2020 12:02:00 +0100
 Subject: [PATCH] media: v4l2-ctrls: add __v4l2_ctrl_s_ctrl_compound()
@@ -5037,7 +5037,7 @@ Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
  2 files changed, 34 insertions(+), 25 deletions(-)
 
 diff --git a/drivers/media/v4l2-core/v4l2-ctrls.c b/drivers/media/v4l2-core/v4l2-ctrls.c
-index 77b0132d9f6f..1c617b42a944 100644
+index d9d6e107334a..d021729e55d1 100644
 --- a/drivers/media/v4l2-core/v4l2-ctrls.c
 +++ b/drivers/media/v4l2-core/v4l2-ctrls.c
 @@ -4253,18 +4253,18 @@ int __v4l2_ctrl_s_ctrl_string(struct v4l2_ctrl *ctrl, const char *s)
@@ -5144,224 +5144,39 @@ index 7db9e719a583..75a8daacb4c4 100644
  extern const struct v4l2_subscribed_event_ops v4l2_ctrl_sub_ev_ops;
  
 
-From 8e8bc31ca973c638d5dca39cb9f6ac2bb86e355e Mon Sep 17 00:00:00 2001
-From: Jacopo Mondi <jacopo@jmondi.org>
-Date: Thu, 7 May 2020 17:12:50 +0200
-Subject: [PATCH] media: v4l2-dev: Add v4l2_device_register_ro_subdev_node()
+From be061e0061a98e3c0ca65788f15489e7f1c39c5d Mon Sep 17 00:00:00 2001
+From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Date: Thu, 23 Apr 2020 13:42:32 +0200
+Subject: [PATCH] media: v4l2-ctrls.h: clarify the p_def argument of
+ v4l2_ctrl_new_std_compound
 
-Add to the V4L2 core a function to register device nodes for video
-subdevices in read-only mode.
+It was not sufficiently clear how to create and use p_def.
+Improve the documentation.
 
-Registering a device node in read-only mode is useful to expose to
-userspace the current sub-device configuration, without allowing
-application to change it by using the V4L2 subdevice ioctls.
-
-Acked-by: Sakari Ailus <sakari.ailus@linux.intel.com>
-Signed-off-by: Jacopo Mondi <jacopo@jmondi.org>
 Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
 Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-(cherry picked from commit f75c431e54e2e43c91fe267097b974ff2e5dc668)
+(cherry picked from commit e51759f56d314d28c25be7606b03791f048e44c7)
 ---
- drivers/media/v4l2-core/v4l2-device.c |  7 +++--
- drivers/media/v4l2-core/v4l2-subdev.c | 19 +++++++++++++
- include/media/v4l2-dev.h              |  7 +++++
- include/media/v4l2-device.h           | 50 ++++++++++++++++++++++++++++++++---
- 4 files changed, 77 insertions(+), 6 deletions(-)
+ include/media/v4l2-ctrls.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/media/v4l2-core/v4l2-device.c b/drivers/media/v4l2-core/v4l2-device.c
-index c69941214bb2..de4287251a89 100644
---- a/drivers/media/v4l2-core/v4l2-device.c
-+++ b/drivers/media/v4l2-core/v4l2-device.c
-@@ -186,7 +186,8 @@ static void v4l2_device_release_subdev_node(struct video_device *vdev)
- 	kfree(vdev);
- }
- 
--int v4l2_device_register_subdev_nodes(struct v4l2_device *v4l2_dev)
-+int __v4l2_device_register_subdev_nodes(struct v4l2_device *v4l2_dev,
-+					bool read_only)
- {
- 	struct video_device *vdev;
- 	struct v4l2_subdev *sd;
-@@ -215,6 +216,8 @@ int v4l2_device_register_subdev_nodes(struct v4l2_device *v4l2_dev)
- 		vdev->fops = &v4l2_subdev_fops;
- 		vdev->release = v4l2_device_release_subdev_node;
- 		vdev->ctrl_handler = sd->ctrl_handler;
-+		if (read_only)
-+			set_bit(V4L2_FL_SUBDEV_RO_DEVNODE, &vdev->flags);
- 		err = __video_register_device(vdev, VFL_TYPE_SUBDEV, -1, 1,
- 					      sd->owner);
- 		if (err < 0) {
-@@ -252,7 +255,7 @@ int v4l2_device_register_subdev_nodes(struct v4l2_device *v4l2_dev)
- 
- 	return err;
- }
--EXPORT_SYMBOL_GPL(v4l2_device_register_subdev_nodes);
-+EXPORT_SYMBOL_GPL(__v4l2_device_register_subdev_nodes);
- 
- void v4l2_device_unregister_subdev(struct v4l2_subdev *sd)
- {
-diff --git a/drivers/media/v4l2-core/v4l2-subdev.c b/drivers/media/v4l2-core/v4l2-subdev.c
-index a376b351135f..1dc263c2ca0a 100644
---- a/drivers/media/v4l2-core/v4l2-subdev.c
-+++ b/drivers/media/v4l2-core/v4l2-subdev.c
-@@ -331,6 +331,7 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
- 	struct v4l2_fh *vfh = file->private_data;
- #if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
- 	struct v4l2_subdev_fh *subdev_fh = to_v4l2_subdev_fh(vfh);
-+	bool ro_subdev = test_bit(V4L2_FL_SUBDEV_RO_DEVNODE, &vdev->flags);
- #endif
- 	int rval;
- 
-@@ -477,6 +478,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
- 	case VIDIOC_SUBDEV_S_FMT: {
- 		struct v4l2_subdev_format *format = arg;
- 
-+		if (format->which != V4L2_SUBDEV_FORMAT_TRY && ro_subdev)
-+			return -EPERM;
-+
- 		memset(format->reserved, 0, sizeof(format->reserved));
- 		memset(format->format.reserved, 0, sizeof(format->format.reserved));
- 		return v4l2_subdev_call(sd, pad, set_fmt, subdev_fh->pad, format);
-@@ -504,6 +508,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
- 		struct v4l2_subdev_crop *crop = arg;
- 		struct v4l2_subdev_selection sel;
- 
-+		if (crop->which != V4L2_SUBDEV_FORMAT_TRY && ro_subdev)
-+			return -EPERM;
-+
- 		memset(crop->reserved, 0, sizeof(crop->reserved));
- 		memset(&sel, 0, sizeof(sel));
- 		sel.which = crop->which;
-@@ -545,6 +552,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
- 	case VIDIOC_SUBDEV_S_FRAME_INTERVAL: {
- 		struct v4l2_subdev_frame_interval *fi = arg;
- 
-+		if (ro_subdev)
-+			return -EPERM;
-+
- 		memset(fi->reserved, 0, sizeof(fi->reserved));
- 		return v4l2_subdev_call(sd, video, s_frame_interval, arg);
- 	}
-@@ -568,6 +578,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
- 	case VIDIOC_SUBDEV_S_SELECTION: {
- 		struct v4l2_subdev_selection *sel = arg;
- 
-+		if (sel->which != V4L2_SUBDEV_FORMAT_TRY && ro_subdev)
-+			return -EPERM;
-+
- 		memset(sel->reserved, 0, sizeof(sel->reserved));
- 		return v4l2_subdev_call(
- 			sd, pad, set_selection, subdev_fh->pad, sel);
-@@ -604,6 +617,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
- 		return v4l2_subdev_call(sd, video, g_dv_timings, arg);
- 
- 	case VIDIOC_SUBDEV_S_DV_TIMINGS:
-+		if (ro_subdev)
-+			return -EPERM;
-+
- 		return v4l2_subdev_call(sd, video, s_dv_timings, arg);
- 
- 	case VIDIOC_SUBDEV_G_STD:
-@@ -612,6 +628,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
- 	case VIDIOC_SUBDEV_S_STD: {
- 		v4l2_std_id *std = arg;
- 
-+		if (ro_subdev)
-+			return -EPERM;
-+
- 		return v4l2_subdev_call(sd, video, s_std, *std);
- 	}
- 
-diff --git a/include/media/v4l2-dev.h b/include/media/v4l2-dev.h
-index 4602c15ff878..ad2d41952442 100644
---- a/include/media/v4l2-dev.h
-+++ b/include/media/v4l2-dev.h
-@@ -82,11 +82,18 @@ struct v4l2_ctrl_handler;
-  *	but the old crop API will still work as expected in order to preserve
-  *	backwards compatibility.
-  *	Never set this flag for new drivers.
-+ * @V4L2_FL_SUBDEV_RO_DEVNODE:
-+ *	indicates that the video device node is registered in read-only mode.
-+ *	The flag only applies to device nodes registered for sub-devices, it is
-+ *	set by the core when the sub-devices device nodes are registered with
-+ *	v4l2_device_register_ro_subdev_nodes() and used by the sub-device ioctl
-+ *	handler to restrict access to some ioctl calls.
-  */
- enum v4l2_video_device_flags {
- 	V4L2_FL_REGISTERED		= 0,
- 	V4L2_FL_USES_V4L2_FH		= 1,
- 	V4L2_FL_QUIRK_INVERTED_CROP	= 2,
-+	V4L2_FL_SUBDEV_RO_DEVNODE	= 3,
- };
- 
- /* Priority helper functions */
-diff --git a/include/media/v4l2-device.h b/include/media/v4l2-device.h
-index 7c912b7d2870..64ec4de948e9 100644
---- a/include/media/v4l2-device.h
-+++ b/include/media/v4l2-device.h
-@@ -174,14 +174,56 @@ int __must_check v4l2_device_register_subdev(struct v4l2_device *v4l2_dev,
- void v4l2_device_unregister_subdev(struct v4l2_subdev *sd);
- 
- /**
-- * v4l2_device_register_subdev_nodes - Registers device nodes for all subdevs
-- *	of the v4l2 device that are marked with
-- *	the %V4L2_SUBDEV_FL_HAS_DEVNODE flag.
-+ * __v4l2_device_register_ro_subdev_nodes - Registers device nodes for
-+ *      all subdevs of the v4l2 device that are marked with the
-+ *      %V4L2_SUBDEV_FL_HAS_DEVNODE flag.
+diff --git a/include/media/v4l2-ctrls.h b/include/media/v4l2-ctrls.h
+index 75a8daacb4c4..757a713bad41 100644
+--- a/include/media/v4l2-ctrls.h
++++ b/include/media/v4l2-ctrls.h
+@@ -685,7 +685,9 @@ struct v4l2_ctrl *v4l2_ctrl_new_std_menu_items(struct v4l2_ctrl_handler *hdl,
+  * @p_def:     The control's default value.
   *
-  * @v4l2_dev: pointer to struct v4l2_device
-+ * @read_only: subdevices read-only flag. True to register the subdevices
-+ *	device nodes in read-only mode, false to allow full access to the
-+ *	subdevice userspace API.
+  * Sames as v4l2_ctrl_new_std(), but with support to compound controls, thanks
+- * to the @p_def field.
++ * to the @p_def field. Use v4l2_ctrl_ptr_create() to create @p_def from a
++ * pointer. Use v4l2_ctrl_ptr_create(NULL) if the default value of the
++ * compound control should be all zeroes.
+  *
   */
- int __must_check
--v4l2_device_register_subdev_nodes(struct v4l2_device *v4l2_dev);
-+__v4l2_device_register_subdev_nodes(struct v4l2_device *v4l2_dev,
-+				    bool read_only);
-+
-+/**
-+ * v4l2_device_register_subdev_nodes - Registers subdevices device nodes with
-+ *	unrestricted access to the subdevice userspace operations
-+ *
-+ * Internally calls __v4l2_device_register_subdev_nodes(). See its documentation
-+ * for more details.
-+ *
-+ * @v4l2_dev: pointer to struct v4l2_device
-+ */
-+static inline int __must_check
-+v4l2_device_register_subdev_nodes(struct v4l2_device *v4l2_dev)
-+{
-+#if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
-+	return __v4l2_device_register_subdev_nodes(v4l2_dev, false);
-+#else
-+	return 0;
-+#endif
-+}
-+
-+/**
-+ * v4l2_device_register_ro_subdev_nodes - Registers subdevices device nodes
-+ *	in read-only mode
-+ *
-+ * Internally calls __v4l2_device_register_subdev_nodes(). See its documentation
-+ * for more details.
-+ *
-+ * @v4l2_dev: pointer to struct v4l2_device
-+ */
-+static inline int __must_check
-+v4l2_device_register_ro_subdev_nodes(struct v4l2_device *v4l2_dev)
-+{
-+#if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
-+	return __v4l2_device_register_subdev_nodes(v4l2_dev, true);
-+#else
-+	return 0;
-+#endif
-+}
- 
- /**
-  * v4l2_subdev_notify - Sends a notification to v4l2_device.
+ struct v4l2_ctrl *v4l2_ctrl_new_std_compound(struct v4l2_ctrl_handler *hdl,
 
-From c5a7a6073492bc86823e9078f978ce2d91dde923 Mon Sep 17 00:00:00 2001
+From 47e4ac5c33e3ccb764671d3fb56f2df9224467b5 Mon Sep 17 00:00:00 2001
 From: Jacopo Mondi <jacopo@jmondi.org>
 Date: Sat, 9 May 2020 11:04:48 +0200
 Subject: [PATCH] media: v4l2-ctrls: Add camera orientation and rotation
@@ -5381,7 +5196,7 @@ Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
  2 files changed, 20 insertions(+)
 
 diff --git a/drivers/media/v4l2-core/v4l2-ctrls.c b/drivers/media/v4l2-core/v4l2-ctrls.c
-index 1c617b42a944..92c3e39efc28 100644
+index d021729e55d1..e7fc8d6faadd 100644
 --- a/drivers/media/v4l2-core/v4l2-ctrls.c
 +++ b/drivers/media/v4l2-core/v4l2-ctrls.c
 @@ -583,6 +583,12 @@ const char * const *v4l2_ctrl_get_menu(u32 id)
@@ -5451,7 +5266,47 @@ index 0ba1005c9651..62271418c1be 100644
  
  #define V4L2_CID_FM_TX_CLASS_BASE		(V4L2_CTRL_CLASS_FM_TX | 0x900)
 
-From b3c5ddc2e3fed3ed89a69a484616af9851a2f744 Mon Sep 17 00:00:00 2001
+From 351a80e266ea8c3720f261c7d0b1494f4f1dc6bb Mon Sep 17 00:00:00 2001
+From: Jacopo Mondi <jacopo@jmondi.org>
+Date: Sat, 9 May 2020 11:04:50 +0200
+Subject: [PATCH] media: include: v4l2-ctrl: Sort forward declarations
+
+Before adding a new forward declaration to the v4l2-ctrls.h header file,
+sort the existing ones alphabetically.
+
+Signed-off-by: Jacopo Mondi <jacopo@jmondi.org>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+(cherry picked from commit ae6ff16cf745a56b7ef88a7177e5e8257849feb7)
+---
+ include/media/v4l2-ctrls.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/include/media/v4l2-ctrls.h b/include/media/v4l2-ctrls.h
+index 757a713bad41..224c10823bbf 100644
+--- a/include/media/v4l2-ctrls.h
++++ b/include/media/v4l2-ctrls.h
+@@ -25,14 +25,14 @@
+ 
+ /* forward references */
+ struct file;
++struct poll_table_struct;
++struct v4l2_ctrl;
+ struct v4l2_ctrl_handler;
+ struct v4l2_ctrl_helper;
+-struct v4l2_ctrl;
+-struct video_device;
++struct v4l2_fh;
+ struct v4l2_subdev;
+ struct v4l2_subscribed_event;
+-struct v4l2_fh;
+-struct poll_table_struct;
++struct video_device;
+ 
+ /**
+  * union v4l2_ctrl_ptr - A pointer to a control value.
+
+From 113f9048b4a080b73c8b44b6a9b9613717de6c65 Mon Sep 17 00:00:00 2001
 From: Jacopo Mondi <jacopo@jmondi.org>
 Date: Sat, 9 May 2020 11:04:51 +0200
 Subject: [PATCH] media: v4l2-ctrls: Sort includes alphabetically
@@ -5468,7 +5323,7 @@ Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/media/v4l2-core/v4l2-ctrls.c b/drivers/media/v4l2-core/v4l2-ctrls.c
-index 92c3e39efc28..4273d56dac65 100644
+index e7fc8d6faadd..47b195a974e6 100644
 --- a/drivers/media/v4l2-core/v4l2-ctrls.c
 +++ b/drivers/media/v4l2-core/v4l2-ctrls.c
 @@ -9,14 +9,14 @@
@@ -5491,7 +5346,7 @@ index 92c3e39efc28..4273d56dac65 100644
  #define dprintk(vdev, fmt, arg...) do {					\
  	if (!WARN_ON(!(vdev)) && ((vdev)->dev_debug & V4L2_DEV_DEBUG_CTRL)) \
 
-From 7e2b4a7ef9b0d8f5613de16bfbbf9a28058f7444 Mon Sep 17 00:00:00 2001
+From 81ea56c4cb7869dee59b88b308daa08b15598263 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Fri, 22 May 2020 22:21:33 +0200
 Subject: [PATCH] media: rkvdec: Fix H264 scaling list order

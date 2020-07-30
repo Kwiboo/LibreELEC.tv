@@ -1,4 +1,1129 @@
-From abd39f808afe2c9a6174dc4b69d18972eb3a3ce1 Mon Sep 17 00:00:00 2001
+From b40b91b17d1f8ba9a2dcf49bd63eb567f81d91e9 Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Date: Wed, 11 Mar 2020 15:55:36 +0100
+Subject: [PATCH] drm/core: Allow drivers allocate a subclass of struct
+ drm_framebuffer
+
+Allow allocating a specialized version of struct drm_framebuffer
+by moving the actual fb allocation out of drm_gem_fb_create_with_funcs();
+the respective functions names are adjusted to reflect that fact.
+Please note, though, that standard size checks are performed on buffers,
+so the drm_gem_fb_init_with_funcs() is useful for cases where those
+standard size checks are appropriate or at least don't conflict the
+checks to be performed in the specialized case.
+
+Thanks to this change the drivers can call drm_gem_fb_init_with_funcs()
+having allocated their special version of struct drm_framebuffer, exactly
+the way the new version of drm_gem_fb_create_with_funcs() does.
+
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Reviewed-by: Emil Velikov <emil.velikov@collabora.com>
+Reviewed-by: James Qian Wang <james.qian.wang@arm.com>
+Acked-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200311145541.29186-2-andrzej.p@collabora.com
+(cherry picked from commit f2b816d78a94319b7230430c3d1f99d9f1cb5bd0)
+---
+ drivers/gpu/drm/drm_gem_framebuffer_helper.c | 87 ++++++++++++++++++++--------
+ include/drm/drm_gem_framebuffer_helper.h     |  5 ++
+ 2 files changed, 67 insertions(+), 25 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_gem_framebuffer_helper.c b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+index 3a7ace19a902..86c1907c579a 100644
+--- a/drivers/gpu/drm/drm_gem_framebuffer_helper.c
++++ b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+@@ -54,19 +54,15 @@ struct drm_gem_object *drm_gem_fb_get_obj(struct drm_framebuffer *fb,
+ }
+ EXPORT_SYMBOL_GPL(drm_gem_fb_get_obj);
+ 
+-static struct drm_framebuffer *
+-drm_gem_fb_alloc(struct drm_device *dev,
++static int
++drm_gem_fb_init(struct drm_device *dev,
++		 struct drm_framebuffer *fb,
+ 		 const struct drm_mode_fb_cmd2 *mode_cmd,
+ 		 struct drm_gem_object **obj, unsigned int num_planes,
+ 		 const struct drm_framebuffer_funcs *funcs)
+ {
+-	struct drm_framebuffer *fb;
+ 	int ret, i;
+ 
+-	fb = kzalloc(sizeof(*fb), GFP_KERNEL);
+-	if (!fb)
+-		return ERR_PTR(-ENOMEM);
+-
+ 	drm_helper_mode_fill_fb_struct(dev, fb, mode_cmd);
+ 
+ 	for (i = 0; i < num_planes; i++)
+@@ -76,10 +72,9 @@ drm_gem_fb_alloc(struct drm_device *dev,
+ 	if (ret) {
+ 		drm_err(dev, "Failed to init framebuffer: %d\n", ret);
+ 		kfree(fb);
+-		return ERR_PTR(ret);
+ 	}
+ 
+-	return fb;
++	return ret;
+ }
+ 
+ /**
+@@ -123,10 +118,13 @@ int drm_gem_fb_create_handle(struct drm_framebuffer *fb, struct drm_file *file,
+ EXPORT_SYMBOL(drm_gem_fb_create_handle);
+ 
+ /**
+- * drm_gem_fb_create_with_funcs() - Helper function for the
+- *                                  &drm_mode_config_funcs.fb_create
+- *                                  callback
++ * drm_gem_fb_init_with_funcs() - Helper function for implementing
++ *				  &drm_mode_config_funcs.fb_create
++ *				  callback in cases when the driver
++ *				  allocates a subclass of
++ *				  struct drm_framebuffer
+  * @dev: DRM device
++ * @fb: framebuffer object
+  * @file: DRM file that holds the GEM handle(s) backing the framebuffer
+  * @mode_cmd: Metadata from the userspace framebuffer creation request
+  * @funcs: vtable to be used for the new framebuffer object
+@@ -134,23 +132,26 @@ EXPORT_SYMBOL(drm_gem_fb_create_handle);
+  * This function can be used to set &drm_framebuffer_funcs for drivers that need
+  * custom framebuffer callbacks. Use drm_gem_fb_create() if you don't need to
+  * change &drm_framebuffer_funcs. The function does buffer size validation.
++ * The buffer size validation is for a general case, though, so users should
++ * pay attention to the checks being appropriate for them or, at least,
++ * non-conflicting.
+  *
+  * Returns:
+- * Pointer to a &drm_framebuffer on success or an error pointer on failure.
++ * Zero or a negative error code.
+  */
+-struct drm_framebuffer *
+-drm_gem_fb_create_with_funcs(struct drm_device *dev, struct drm_file *file,
+-			     const struct drm_mode_fb_cmd2 *mode_cmd,
+-			     const struct drm_framebuffer_funcs *funcs)
++int drm_gem_fb_init_with_funcs(struct drm_device *dev,
++			       struct drm_framebuffer *fb,
++			       struct drm_file *file,
++			       const struct drm_mode_fb_cmd2 *mode_cmd,
++			       const struct drm_framebuffer_funcs *funcs)
+ {
+ 	const struct drm_format_info *info;
+ 	struct drm_gem_object *objs[4];
+-	struct drm_framebuffer *fb;
+ 	int ret, i;
+ 
+ 	info = drm_get_format_info(dev, mode_cmd);
+ 	if (!info)
+-		return ERR_PTR(-EINVAL);
++		return -EINVAL;
+ 
+ 	for (i = 0; i < info->num_planes; i++) {
+ 		unsigned int width = mode_cmd->width / (i ? info->hsub : 1);
+@@ -175,19 +176,55 @@ drm_gem_fb_create_with_funcs(struct drm_device *dev, struct drm_file *file,
+ 		}
+ 	}
+ 
+-	fb = drm_gem_fb_alloc(dev, mode_cmd, objs, i, funcs);
+-	if (IS_ERR(fb)) {
+-		ret = PTR_ERR(fb);
++	ret = drm_gem_fb_init(dev, fb, mode_cmd, objs, i, funcs);
++	if (ret)
+ 		goto err_gem_object_put;
+-	}
+ 
+-	return fb;
++	return 0;
+ 
+ err_gem_object_put:
+ 	for (i--; i >= 0; i--)
+ 		drm_gem_object_put_unlocked(objs[i]);
+ 
+-	return ERR_PTR(ret);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(drm_gem_fb_init_with_funcs);
++
++/**
++ * drm_gem_fb_create_with_funcs() - Helper function for the
++ *                                  &drm_mode_config_funcs.fb_create
++ *                                  callback
++ * @dev: DRM device
++ * @file: DRM file that holds the GEM handle(s) backing the framebuffer
++ * @mode_cmd: Metadata from the userspace framebuffer creation request
++ * @funcs: vtable to be used for the new framebuffer object
++ *
++ * This function can be used to set &drm_framebuffer_funcs for drivers that need
++ * custom framebuffer callbacks. Use drm_gem_fb_create() if you don't need to
++ * change &drm_framebuffer_funcs. The function does buffer size validation.
++ *
++ * Returns:
++ * Pointer to a &drm_framebuffer on success or an error pointer on failure.
++ */
++struct drm_framebuffer *
++drm_gem_fb_create_with_funcs(struct drm_device *dev, struct drm_file *file,
++			     const struct drm_mode_fb_cmd2 *mode_cmd,
++			     const struct drm_framebuffer_funcs *funcs)
++{
++	struct drm_framebuffer *fb;
++	int ret;
++
++	fb = kzalloc(sizeof(*fb), GFP_KERNEL);
++	if (!fb)
++		return ERR_PTR(-ENOMEM);
++
++	ret = drm_gem_fb_init_with_funcs(dev, fb, file, mode_cmd, funcs);
++	if (ret) {
++		kfree(fb);
++		return ERR_PTR(ret);
++	}
++
++	return fb;
+ }
+ EXPORT_SYMBOL_GPL(drm_gem_fb_create_with_funcs);
+ 
+diff --git a/include/drm/drm_gem_framebuffer_helper.h b/include/drm/drm_gem_framebuffer_helper.h
+index d9f13fd25b0a..c029c1618661 100644
+--- a/include/drm/drm_gem_framebuffer_helper.h
++++ b/include/drm/drm_gem_framebuffer_helper.h
+@@ -18,6 +18,11 @@ void drm_gem_fb_destroy(struct drm_framebuffer *fb);
+ int drm_gem_fb_create_handle(struct drm_framebuffer *fb, struct drm_file *file,
+ 			     unsigned int *handle);
+ 
++int drm_gem_fb_init_with_funcs(struct drm_device *dev,
++			       struct drm_framebuffer *fb,
++			       struct drm_file *file,
++			       const struct drm_mode_fb_cmd2 *mode_cmd,
++			       const struct drm_framebuffer_funcs *funcs);
+ struct drm_framebuffer *
+ drm_gem_fb_create_with_funcs(struct drm_device *dev, struct drm_file *file,
+ 			     const struct drm_mode_fb_cmd2 *mode_cmd,
+
+From 3d992d6bed57d54b7929d6ebed9b1960f163071a Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Date: Wed, 11 Mar 2020 15:55:37 +0100
+Subject: [PATCH] drm/core: Add drm_afbc_framebuffer and a corresponding helper
+
+The new struct contains afbc-specific data.
+
+The new function can be used by drivers which support afbc to complete
+the preparation of struct drm_afbc_framebuffer. It must be called after
+allocating the said struct and calling drm_gem_fb_init_with_funcs().
+
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Reviewed-by: Emil Velikov <emil.velikov@collabora.com>
+Reviewed-by: James Qian Wang <james.qian.wang@arm.com>
+Acked-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200311145541.29186-3-andrzej.p@collabora.com
+(cherry picked from commit 55f7f72753abdd46f35d027a25b43969dba56fac)
+---
+ Documentation/gpu/todo.rst                   |  15 ++++
+ drivers/gpu/drm/drm_gem_framebuffer_helper.c | 108 +++++++++++++++++++++++++++
+ include/drm/drm_framebuffer.h                |  45 +++++++++++
+ include/drm/drm_gem_framebuffer_helper.h     |  10 +++
+ 4 files changed, 178 insertions(+)
+
+diff --git a/Documentation/gpu/todo.rst b/Documentation/gpu/todo.rst
+index 439656f55c5d..37a3a023c114 100644
+--- a/Documentation/gpu/todo.rst
++++ b/Documentation/gpu/todo.rst
+@@ -404,6 +404,21 @@ Contact: Laurent Pinchart, respective driver maintainers
+ 
+ Level: Intermediate
+ 
++Encode cpp properly in malidp
++-----------------------------
++
++cpp (chars per pixel) is not encoded properly in malidp, zero is
++used instead. afbc implementation needs bpp or cpp, but if it is
++zero it needs to be provided elsewhere, and so the bpp field exists
++in struct drm_afbc_framebuffer.
++
++Properly encode cpp in malidp and remove the bpp field in struct
++drm_afbc_framebuffer.
++
++Contact: malidp maintainers
++
++Level: Intermediate
++
+ Core refactorings
+ =================
+ 
+diff --git a/drivers/gpu/drm/drm_gem_framebuffer_helper.c b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+index 86c1907c579a..7e3982c36baa 100644
+--- a/drivers/gpu/drm/drm_gem_framebuffer_helper.c
++++ b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+@@ -21,6 +21,13 @@
+ #include <drm/drm_modeset_helper.h>
+ #include <drm/drm_simple_kms_helper.h>
+ 
++#define AFBC_HEADER_SIZE		16
++#define AFBC_TH_LAYOUT_ALIGNMENT	8
++#define AFBC_HDR_ALIGN			64
++#define AFBC_SUPERBLOCK_PIXELS		256
++#define AFBC_SUPERBLOCK_ALIGNMENT	128
++#define AFBC_TH_BODY_START_ALIGNMENT	4096
++
+ /**
+  * DOC: overview
+  *
+@@ -302,6 +309,107 @@ drm_gem_fb_create_with_dirty(struct drm_device *dev, struct drm_file *file,
+ }
+ EXPORT_SYMBOL_GPL(drm_gem_fb_create_with_dirty);
+ 
++static int drm_gem_afbc_min_size(struct drm_device *dev,
++				 const struct drm_mode_fb_cmd2 *mode_cmd,
++				 struct drm_afbc_framebuffer *afbc_fb)
++{
++	const struct drm_format_info *info;
++	__u32 n_blocks, w_alignment, h_alignment, hdr_alignment;
++	/* remove bpp when all users properly encode cpp in drm_format_info */
++	__u32 bpp;
++
++	switch (mode_cmd->modifier[0] & AFBC_FORMAT_MOD_BLOCK_SIZE_MASK) {
++	case AFBC_FORMAT_MOD_BLOCK_SIZE_16x16:
++		afbc_fb->block_width = 16;
++		afbc_fb->block_height = 16;
++		break;
++	case AFBC_FORMAT_MOD_BLOCK_SIZE_32x8:
++		afbc_fb->block_width = 32;
++		afbc_fb->block_height = 8;
++		break;
++	/* no user exists yet - fall through */
++	case AFBC_FORMAT_MOD_BLOCK_SIZE_64x4:
++	case AFBC_FORMAT_MOD_BLOCK_SIZE_32x8_64x4:
++	default:
++		DRM_DEBUG_KMS("Invalid AFBC_FORMAT_MOD_BLOCK_SIZE: %lld.\n",
++			      mode_cmd->modifier[0]
++			      & AFBC_FORMAT_MOD_BLOCK_SIZE_MASK);
++		return -EINVAL;
++	}
++
++	/* tiled header afbc */
++	w_alignment = afbc_fb->block_width;
++	h_alignment = afbc_fb->block_height;
++	hdr_alignment = AFBC_HDR_ALIGN;
++	if (mode_cmd->modifier[0] & AFBC_FORMAT_MOD_TILED) {
++		w_alignment *= AFBC_TH_LAYOUT_ALIGNMENT;
++		h_alignment *= AFBC_TH_LAYOUT_ALIGNMENT;
++		hdr_alignment = AFBC_TH_BODY_START_ALIGNMENT;
++	}
++
++	afbc_fb->aligned_width = ALIGN(mode_cmd->width, w_alignment);
++	afbc_fb->aligned_height = ALIGN(mode_cmd->height, h_alignment);
++	afbc_fb->offset = mode_cmd->offsets[0];
++
++	info = drm_get_format_info(dev, mode_cmd);
++	/*
++	 * Change to always using info->cpp[0]
++	 * when all users properly encode it
++	 */
++	bpp = info->cpp[0] ? info->cpp[0] * 8 : afbc_fb->bpp;
++
++	n_blocks = (afbc_fb->aligned_width * afbc_fb->aligned_height)
++		   / AFBC_SUPERBLOCK_PIXELS;
++	afbc_fb->afbc_size = ALIGN(n_blocks * AFBC_HEADER_SIZE, hdr_alignment);
++	afbc_fb->afbc_size += n_blocks * ALIGN(bpp * AFBC_SUPERBLOCK_PIXELS / 8,
++					       AFBC_SUPERBLOCK_ALIGNMENT);
++
++	return 0;
++}
++
++/**
++ * drm_gem_fb_afbc_init() - Helper function for drivers using afbc to
++ *			    fill and validate all the afbc-specific
++ *			    struct drm_afbc_framebuffer members
++ *
++ * @dev: DRM device
++ * @afbc_fb: afbc-specific framebuffer
++ * @mode_cmd: Metadata from the userspace framebuffer creation request
++ * @afbc_fb: afbc framebuffer
++ *
++ * This function can be used by drivers which support afbc to complete
++ * the preparation of struct drm_afbc_framebuffer. It must be called after
++ * allocating the said struct and calling drm_gem_fb_init_with_funcs().
++ * It is caller's responsibility to put afbc_fb->base.obj objects in case
++ * the call is unsuccessful.
++ *
++ * Returns:
++ * Zero on success or a negative error value on failure.
++ */
++int drm_gem_fb_afbc_init(struct drm_device *dev,
++			 const struct drm_mode_fb_cmd2 *mode_cmd,
++			 struct drm_afbc_framebuffer *afbc_fb)
++{
++	const struct drm_format_info *info;
++	struct drm_gem_object **objs;
++	int ret;
++
++	objs = afbc_fb->base.obj;
++	info = drm_get_format_info(dev, mode_cmd);
++	if (!info)
++		return -EINVAL;
++
++	ret = drm_gem_afbc_min_size(dev, mode_cmd, afbc_fb);
++	if (ret < 0)
++		return ret;
++
++	if (objs[0]->size < afbc_fb->afbc_size)
++		return -EINVAL;
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(drm_gem_fb_afbc_init);
++
+ /**
+  * drm_gem_fb_prepare_fb() - Prepare a GEM backed framebuffer
+  * @plane: Plane
+diff --git a/include/drm/drm_framebuffer.h b/include/drm/drm_framebuffer.h
+index c0e0256e3e98..e9f1b0e2968d 100644
+--- a/include/drm/drm_framebuffer.h
++++ b/include/drm/drm_framebuffer.h
+@@ -297,4 +297,49 @@ int drm_framebuffer_plane_width(int width,
+ int drm_framebuffer_plane_height(int height,
+ 				 const struct drm_framebuffer *fb, int plane);
+ 
++/**
++ * struct drm_afbc_framebuffer - a special afbc frame buffer object
++ *
++ * A derived class of struct drm_framebuffer, dedicated for afbc use cases.
++ */
++struct drm_afbc_framebuffer {
++	/**
++	 * @base: base framebuffer structure.
++	 */
++	struct drm_framebuffer base;
++	/**
++	 * @block_widht: width of a single afbc block
++	 */
++	u32 block_width;
++	/**
++	 * @block_widht: height of a single afbc block
++	 */
++	u32 block_height;
++	/**
++	 * @aligned_width: aligned frame buffer width
++	 */
++	u32 aligned_width;
++	/**
++	 * @aligned_height: aligned frame buffer height
++	 */
++	u32 aligned_height;
++	/**
++	 * @offset: offset of the first afbc header
++	 */
++	u32 offset;
++	/**
++	 * @afbc_size: minimum size of afbc buffer
++	 */
++	u32 afbc_size;
++	/**
++	 * @bpp: bpp value for this afbc buffer
++	 * To be removed when users such as malidp
++	 * properly store the cpp in drm_format_info.
++	 * New users should not start using this field.
++	 */
++	u32 bpp;
++};
++
++#define fb_to_afbc_fb(x) container_of(x, struct drm_afbc_framebuffer, base)
++
+ #endif
+diff --git a/include/drm/drm_gem_framebuffer_helper.h b/include/drm/drm_gem_framebuffer_helper.h
+index c029c1618661..6b013154911d 100644
+--- a/include/drm/drm_gem_framebuffer_helper.h
++++ b/include/drm/drm_gem_framebuffer_helper.h
+@@ -1,6 +1,7 @@
+ #ifndef __DRM_GEM_FB_HELPER_H__
+ #define __DRM_GEM_FB_HELPER_H__
+ 
++struct drm_afbc_framebuffer;
+ struct drm_device;
+ struct drm_fb_helper_surface_size;
+ struct drm_file;
+@@ -12,6 +13,8 @@ struct drm_plane;
+ struct drm_plane_state;
+ struct drm_simple_display_pipe;
+ 
++#define AFBC_VENDOR_AND_TYPE_MASK	GENMASK_ULL(63, 52)
++
+ struct drm_gem_object *drm_gem_fb_get_obj(struct drm_framebuffer *fb,
+ 					  unsigned int plane);
+ void drm_gem_fb_destroy(struct drm_framebuffer *fb);
+@@ -34,6 +37,13 @@ struct drm_framebuffer *
+ drm_gem_fb_create_with_dirty(struct drm_device *dev, struct drm_file *file,
+ 			     const struct drm_mode_fb_cmd2 *mode_cmd);
+ 
++#define drm_is_afbc(modifier) \
++	(((modifier) & AFBC_VENDOR_AND_TYPE_MASK) == DRM_FORMAT_MOD_ARM_AFBC(0))
++
++int drm_gem_fb_afbc_init(struct drm_device *dev,
++			 const struct drm_mode_fb_cmd2 *mode_cmd,
++			 struct drm_afbc_framebuffer *afbc_fb);
++
+ int drm_gem_fb_prepare_fb(struct drm_plane *plane,
+ 			  struct drm_plane_state *state);
+ int drm_gem_fb_simple_display_pipe_prepare_fb(struct drm_simple_display_pipe *pipe,
+
+From 856269b84895cf25fbf5e4b42371726fd6106f66 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Fri, 13 Mar 2020 18:20:46 +0200
+Subject: [PATCH] drm: Constify topology id
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Make the topology id const since we don't want to change it.
+
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200313162054.16009-2-ville.syrjala@linux.intel.com
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit 267ea759b231e26611f87c8d23d2f3e5ea5a6e71)
+---
+ drivers/gpu/drm/drm_connector.c | 4 ++--
+ include/drm/drm_connector.h     | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_connector.c b/drivers/gpu/drm/drm_connector.c
+index ac9fd96c4c66..2bf12a32686e 100644
+--- a/drivers/gpu/drm/drm_connector.c
++++ b/drivers/gpu/drm/drm_connector.c
+@@ -2397,7 +2397,7 @@ EXPORT_SYMBOL(drm_mode_put_tile_group);
+  * tile group or NULL if not found.
+  */
+ struct drm_tile_group *drm_mode_get_tile_group(struct drm_device *dev,
+-					       char topology[8])
++					       const char topology[8])
+ {
+ 	struct drm_tile_group *tg;
+ 	int id;
+@@ -2427,7 +2427,7 @@ EXPORT_SYMBOL(drm_mode_get_tile_group);
+  * new tile group or NULL.
+  */
+ struct drm_tile_group *drm_mode_create_tile_group(struct drm_device *dev,
+-						  char topology[8])
++						  const char topology[8])
+ {
+ 	struct drm_tile_group *tg;
+ 	int ret;
+diff --git a/include/drm/drm_connector.h b/include/drm/drm_connector.h
+index 19ae6bb5c85b..fd543d1db9b2 100644
+--- a/include/drm/drm_connector.h
++++ b/include/drm/drm_connector.h
+@@ -1617,9 +1617,9 @@ struct drm_tile_group {
+ };
+ 
+ struct drm_tile_group *drm_mode_create_tile_group(struct drm_device *dev,
+-						  char topology[8]);
++						  const char topology[8]);
+ struct drm_tile_group *drm_mode_get_tile_group(struct drm_device *dev,
+-					       char topology[8]);
++					       const char topology[8]);
+ void drm_mode_put_tile_group(struct drm_device *dev,
+ 			     struct drm_tile_group *tg);
+ 
+
+From 6866ce7a86705c1dee930abb92dbbfa02e62c352 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Fri, 13 Mar 2020 18:20:48 +0200
+Subject: [PATCH] drm/edid: Remove idx==1 assumptions from all over the DispID
+ parsing
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The fact that the DispID starts at byte offset 1 is due to
+the DispID coming from and EDID extension block (the first byte
+being the extesion block tag). Instead of hadrdocoding that idx==1
+assumptions all over let's just have drm_find_displayid_extension()
+return it since it actually knows what it's talking about.
+
+If at some point someone comes across a DispID which is not embedded
+inside an EDID the function that returns the new type of DispID
+can return it's own byte offset without having to updated all the
+code.
+
+TODO: should probably just get rid of that idx thing altogether
+      and just return the thing we want directly.
+
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200313162054.16009-4-ville.syrjala@linux.intel.com
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit 3688118404add838a4c0e136f9609413dd61f8af)
+---
+ drivers/gpu/drm/drm_edid.c | 33 ++++++++++++++++++---------------
+ 1 file changed, 18 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index d96e3ce3e535..5f87bb42557a 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -3213,15 +3213,22 @@ static u8 *drm_find_edid_extension(const struct edid *edid, int ext_id)
+ }
+ 
+ 
+-static u8 *drm_find_displayid_extension(const struct edid *edid)
++static u8 *drm_find_displayid_extension(const struct edid *edid, int *idx)
+ {
+-	return drm_find_edid_extension(edid, DISPLAYID_EXT);
++	u8 *displayid = drm_find_edid_extension(edid, DISPLAYID_EXT);
++
++	if (!displayid)
++		return NULL;
++
++	*idx = 1;
++
++	return displayid;
+ }
+ 
+ static u8 *drm_find_cea_extension(const struct edid *edid)
+ {
+ 	int ret;
+-	int idx = 1;
++	int idx;
+ 	int length = EDID_LENGTH;
+ 	struct displayid_block *block;
+ 	u8 *cea;
+@@ -3233,7 +3240,7 @@ static u8 *drm_find_cea_extension(const struct edid *edid)
+ 		return cea;
+ 
+ 	/* CEA blocks can also be found embedded in a DisplayID block */
+-	displayid = drm_find_displayid_extension(edid);
++	displayid = drm_find_displayid_extension(edid, &idx);
+ 	if (!displayid)
+ 		return NULL;
+ 
+@@ -5182,12 +5189,12 @@ static int add_displayid_detailed_modes(struct drm_connector *connector,
+ {
+ 	u8 *displayid;
+ 	int ret;
+-	int idx = 1;
++	int idx;
+ 	int length = EDID_LENGTH;
+ 	struct displayid_block *block;
+ 	int num_modes = 0;
+ 
+-	displayid = drm_find_displayid_extension(edid);
++	displayid = drm_find_displayid_extension(edid, &idx);
+ 	if (!displayid)
+ 		return 0;
+ 
+@@ -5837,17 +5844,11 @@ static int drm_parse_tiled_block(struct drm_connector *connector,
+ }
+ 
+ static int drm_parse_display_id(struct drm_connector *connector,
+-				u8 *displayid, int length,
+-				bool is_edid_extension)
++				u8 *displayid, int length, int idx)
+ {
+-	/* if this is an EDID extension the first byte will be 0x70 */
+-	int idx = 0;
+ 	struct displayid_block *block;
+ 	int ret;
+ 
+-	if (is_edid_extension)
+-		idx = 1;
+-
+ 	ret = validate_displayid(displayid, length, idx);
+ 	if (ret)
+ 		return ret;
+@@ -5881,15 +5882,17 @@ static void drm_get_displayid(struct drm_connector *connector,
+ 			      struct edid *edid)
+ {
+ 	void *displayid = NULL;
++	int idx;
+ 	int ret;
++
+ 	connector->has_tile = false;
+-	displayid = drm_find_displayid_extension(edid);
++	displayid = drm_find_displayid_extension(edid, &idx);
+ 	if (!displayid) {
+ 		/* drop reference to any tile group we had */
+ 		goto out_drop_ref;
+ 	}
+ 
+-	ret = drm_parse_display_id(connector, displayid, EDID_LENGTH, true);
++	ret = drm_parse_display_id(connector, displayid, EDID_LENGTH, idx);
+ 	if (ret < 0)
+ 		goto out_drop_ref;
+ 	if (!connector->has_tile)
+
+From f0ac4f6a2ce120b1a1792a10aa9f0263d4879b7d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Fri, 13 Mar 2020 18:20:49 +0200
+Subject: [PATCH] drm/edid: Return DispID length from
+ drm_find_displayid_extension()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+As with the byte offset (idx) drm_find_displayid_extension() is
+the only one who actually knows how much data the resulting DispID
+block can contain. So return the length from therein instead of
+assuming it's the EDID block length all over.
+
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200313162054.16009-5-ville.syrjala@linux.intel.com
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit 23b03867a2201099f598a6d7800f7837620dfa94)
+---
+ drivers/gpu/drm/drm_edid.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index 5f87bb42557a..1717d57f6b11 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -3213,13 +3213,15 @@ static u8 *drm_find_edid_extension(const struct edid *edid, int ext_id)
+ }
+ 
+ 
+-static u8 *drm_find_displayid_extension(const struct edid *edid, int *idx)
++static u8 *drm_find_displayid_extension(const struct edid *edid,
++					int *length, int *idx)
+ {
+ 	u8 *displayid = drm_find_edid_extension(edid, DISPLAYID_EXT);
+ 
+ 	if (!displayid)
+ 		return NULL;
+ 
++	*length = EDID_LENGTH;
+ 	*idx = 1;
+ 
+ 	return displayid;
+@@ -3228,8 +3230,7 @@ static u8 *drm_find_displayid_extension(const struct edid *edid, int *idx)
+ static u8 *drm_find_cea_extension(const struct edid *edid)
+ {
+ 	int ret;
+-	int idx;
+-	int length = EDID_LENGTH;
++	int length, idx;
+ 	struct displayid_block *block;
+ 	u8 *cea;
+ 	u8 *displayid;
+@@ -3240,7 +3241,7 @@ static u8 *drm_find_cea_extension(const struct edid *edid)
+ 		return cea;
+ 
+ 	/* CEA blocks can also be found embedded in a DisplayID block */
+-	displayid = drm_find_displayid_extension(edid, &idx);
++	displayid = drm_find_displayid_extension(edid, &length, &idx);
+ 	if (!displayid)
+ 		return NULL;
+ 
+@@ -5189,12 +5190,11 @@ static int add_displayid_detailed_modes(struct drm_connector *connector,
+ {
+ 	u8 *displayid;
+ 	int ret;
+-	int idx;
+-	int length = EDID_LENGTH;
++	int length, idx;
+ 	struct displayid_block *block;
+ 	int num_modes = 0;
+ 
+-	displayid = drm_find_displayid_extension(edid, &idx);
++	displayid = drm_find_displayid_extension(edid, &length, &idx);
+ 	if (!displayid)
+ 		return 0;
+ 
+@@ -5882,17 +5882,17 @@ static void drm_get_displayid(struct drm_connector *connector,
+ 			      struct edid *edid)
+ {
+ 	void *displayid = NULL;
+-	int idx;
++	int length, idx;
+ 	int ret;
+ 
+ 	connector->has_tile = false;
+-	displayid = drm_find_displayid_extension(edid, &idx);
++	displayid = drm_find_displayid_extension(edid, &length, &idx);
+ 	if (!displayid) {
+ 		/* drop reference to any tile group we had */
+ 		goto out_drop_ref;
+ 	}
+ 
+-	ret = drm_parse_display_id(connector, displayid, EDID_LENGTH, idx);
++	ret = drm_parse_display_id(connector, displayid, length, idx);
+ 	if (ret < 0)
+ 		goto out_drop_ref;
+ 	if (!connector->has_tile)
+
+From 7fa48ee6e40522446aafa980980835432c12848c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Fri, 13 Mar 2020 18:20:50 +0200
+Subject: [PATCH] drm/edid: Move validate_displayid()
+ drm_find_displayid_extension()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Instead of everyone having to call validate_displayid() let's just
+have drm_find_displayid_extension() do it for them.
+
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200313162054.16009-6-ville.syrjala@linux.intel.com
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit ea0aa608a8e89f112761d6f91733f27513d2b657)
+---
+ drivers/gpu/drm/drm_edid.c | 19 +++++--------------
+ 1 file changed, 5 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index 1717d57f6b11..1306fd6e686c 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -3217,6 +3217,7 @@ static u8 *drm_find_displayid_extension(const struct edid *edid,
+ 					int *length, int *idx)
+ {
+ 	u8 *displayid = drm_find_edid_extension(edid, DISPLAYID_EXT);
++	int ret;
+ 
+ 	if (!displayid)
+ 		return NULL;
+@@ -3224,12 +3225,15 @@ static u8 *drm_find_displayid_extension(const struct edid *edid,
+ 	*length = EDID_LENGTH;
+ 	*idx = 1;
+ 
++	ret = validate_displayid(displayid, *length, *idx);
++	if (ret)
++		return NULL;
++
+ 	return displayid;
+ }
+ 
+ static u8 *drm_find_cea_extension(const struct edid *edid)
+ {
+-	int ret;
+ 	int length, idx;
+ 	struct displayid_block *block;
+ 	u8 *cea;
+@@ -3245,10 +3249,6 @@ static u8 *drm_find_cea_extension(const struct edid *edid)
+ 	if (!displayid)
+ 		return NULL;
+ 
+-	ret = validate_displayid(displayid, length, idx);
+-	if (ret)
+-		return NULL;
+-
+ 	idx += sizeof(struct displayid_hdr);
+ 	for_each_displayid_db(displayid, block, idx, length) {
+ 		if (block->tag == DATA_BLOCK_CTA) {
+@@ -5189,7 +5189,6 @@ static int add_displayid_detailed_modes(struct drm_connector *connector,
+ 					struct edid *edid)
+ {
+ 	u8 *displayid;
+-	int ret;
+ 	int length, idx;
+ 	struct displayid_block *block;
+ 	int num_modes = 0;
+@@ -5198,10 +5197,6 @@ static int add_displayid_detailed_modes(struct drm_connector *connector,
+ 	if (!displayid)
+ 		return 0;
+ 
+-	ret = validate_displayid(displayid, length, idx);
+-	if (ret)
+-		return 0;
+-
+ 	idx += sizeof(struct displayid_hdr);
+ 	for_each_displayid_db(displayid, block, idx, length) {
+ 		switch (block->tag) {
+@@ -5849,10 +5844,6 @@ static int drm_parse_display_id(struct drm_connector *connector,
+ 	struct displayid_block *block;
+ 	int ret;
+ 
+-	ret = validate_displayid(displayid, length, idx);
+-	if (ret)
+-		return ret;
+-
+ 	idx += sizeof(struct displayid_hdr);
+ 	for_each_displayid_db(displayid, block, idx, length) {
+ 		DRM_DEBUG_KMS("block id 0x%x, rev %d, len %d\n",
+
+From bffbb6491f665d413c0d421226cec1ca976871d4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Fri, 13 Mar 2020 18:20:51 +0200
+Subject: [PATCH] drm/edid: Don't parse garbage as DispID blocks
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Currently the code assumes that the entire EDID extesion block
+can be taken up by the DispID blocks. That is not true. There
+is at least always the DispID checksum, and potentially fill
+bytes if the extension block uses the interior fill scheme
+to pad out to fill EDID block size.
+
+So let's not parse the checksum or the fill bytes as DispID
+blocks by having drm_find_displayid_extension() return the
+actual length of the DispID data to the caller.
+
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200313162054.16009-7-ville.syrjala@linux.intel.com
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit 8e88c75245a3f84e3503bff2fa39a9178e8efb5f)
+---
+ drivers/gpu/drm/drm_edid.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index 1306fd6e686c..4a964bfbf116 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -3217,6 +3217,7 @@ static u8 *drm_find_displayid_extension(const struct edid *edid,
+ 					int *length, int *idx)
+ {
+ 	u8 *displayid = drm_find_edid_extension(edid, DISPLAYID_EXT);
++	struct displayid_hdr *base;
+ 	int ret;
+ 
+ 	if (!displayid)
+@@ -3229,6 +3230,9 @@ static u8 *drm_find_displayid_extension(const struct edid *edid,
+ 	if (ret)
+ 		return NULL;
+ 
++	base = (struct displayid_hdr *)&displayid[*idx];
++	*length = *idx + sizeof(*base) + base->bytes;
++
+ 	return displayid;
+ }
+ 
+
+From ad5c1bc88707365756b78ed92ba1f4a6b346ea66 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Fri, 13 Mar 2020 18:20:52 +0200
+Subject: [PATCH] drm/edid: Don't include ext block csum in DispID size
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The EDID extension block checksum byte is not part of the
+actual DispID data, so don't use it in validate_displayid().
+
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200313162054.16009-8-ville.syrjala@linux.intel.com
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit 5f706b4a3bd68e5982879bb60f7bb27698e759b3)
+---
+ drivers/gpu/drm/drm_edid.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index 4a964bfbf116..9063cbe6a665 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -3223,7 +3223,8 @@ static u8 *drm_find_displayid_extension(const struct edid *edid,
+ 	if (!displayid)
+ 		return NULL;
+ 
+-	*length = EDID_LENGTH;
++	/* EDID extensions block checksum isn't for us */
++	*length = EDID_LENGTH - 1;
+ 	*idx = 1;
+ 
+ 	ret = validate_displayid(displayid, *length, *idx);
+
+From d43950162c2182cb7601a67a9551d5117b513f4d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Fri, 13 Mar 2020 18:20:53 +0200
+Subject: [PATCH] drm/edid: Clarify validate_displayid()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Throw out the magic '5' from validate_displayid() and replace with
+the actual thing we mean sizeof(header)+checksum. Also rewrite the
+checksum loop to be less hard to parse for mere mortals.
+
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200313162054.16009-9-ville.syrjala@linux.intel.com
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit bd1f64df3135ea50827a36dfa3b15d81249e1a37)
+---
+ drivers/gpu/drm/drm_edid.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index 9063cbe6a665..fa7b36be0b96 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -5098,7 +5098,7 @@ u32 drm_add_display_info(struct drm_connector *connector, const struct edid *edi
+ 
+ static int validate_displayid(u8 *displayid, int length, int idx)
+ {
+-	int i;
++	int i, dispid_length;
+ 	u8 csum = 0;
+ 	struct displayid_hdr *base;
+ 
+@@ -5107,15 +5107,18 @@ static int validate_displayid(u8 *displayid, int length, int idx)
+ 	DRM_DEBUG_KMS("base revision 0x%x, length %d, %d %d\n",
+ 		      base->rev, base->bytes, base->prod_id, base->ext_count);
+ 
+-	if (base->bytes + 5 > length - idx)
++	/* +1 for DispID checksum */
++	dispid_length = sizeof(*base) + base->bytes + 1;
++	if (dispid_length > length - idx)
+ 		return -EINVAL;
+-	for (i = idx; i <= base->bytes + 5; i++) {
+-		csum += displayid[i];
+-	}
++
++	for (i = 0; i < dispid_length; i++)
++		csum += displayid[idx + i];
+ 	if (csum) {
+ 		DRM_NOTE("DisplayID checksum invalid, remainder is %d\n", csum);
+ 		return -EINVAL;
+ 	}
++
+ 	return 0;
+ }
+ 
+
+From 4b83caaa63825872de46721a26a531518883bdd0 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
+Date: Fri, 13 Mar 2020 18:20:54 +0200
+Subject: [PATCH] drm/edid: Fix DispID tile parsing for override EDID
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Currently the DispID tile block gets parsed in drm_get_edid(), which
+is an odd place for it considering we parse nothing else there. Also
+this doesn't work for override EDIDs since
+drm_connector_update_edid_property() refuses to do its job twice
+in such cases. Thus we never update the tile property with results
+of the DispID tile block parsing during drm_get_edid().
+
+To fix this let's just move the tile block parsing to happen during
+drm_connector_update_edid_property(), which is where we parse a bunch
+of other stuff as well (and where we update both the EDID and tile
+properties).
+
+Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200313162054.16009-10-ville.syrjala@linux.intel.com
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit 092c367ac6c621cf882061f46e21a5ab2c814a5d)
+---
+ drivers/gpu/drm/drm_connector.c     |  2 ++
+ drivers/gpu/drm/drm_crtc_internal.h |  1 +
+ drivers/gpu/drm/drm_edid.c          | 33 ++++++++++-----------------------
+ 3 files changed, 13 insertions(+), 23 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_connector.c b/drivers/gpu/drm/drm_connector.c
+index 2bf12a32686e..d877ddc6dc57 100644
+--- a/drivers/gpu/drm/drm_connector.c
++++ b/drivers/gpu/drm/drm_connector.c
+@@ -1975,6 +1975,8 @@ int drm_connector_update_edid_property(struct drm_connector *connector,
+ 	else
+ 		drm_reset_display_info(connector);
+ 
++	drm_update_tile_info(connector, edid);
++
+ 	drm_object_property_set_value(&connector->base,
+ 				      dev->mode_config.non_desktop_property,
+ 				      connector->display_info.non_desktop);
+diff --git a/drivers/gpu/drm/drm_crtc_internal.h b/drivers/gpu/drm/drm_crtc_internal.h
+index 16f2413403aa..feba683c12a6 100644
+--- a/drivers/gpu/drm/drm_crtc_internal.h
++++ b/drivers/gpu/drm/drm_crtc_internal.h
+@@ -278,3 +278,4 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
+ void drm_mode_fixup_1366x768(struct drm_display_mode *mode);
+ void drm_reset_display_info(struct drm_connector *connector);
+ u32 drm_add_display_info(struct drm_connector *connector, const struct edid *edid);
++void drm_update_tile_info(struct drm_connector *connector, const struct edid *edid);
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index fa7b36be0b96..099011b507bd 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -1584,8 +1584,6 @@ module_param_named(edid_fixup, edid_fixup, int, 0400);
+ MODULE_PARM_DESC(edid_fixup,
+ 		 "Minimum number of valid EDID header bytes (0-8, default 6)");
+ 
+-static void drm_get_displayid(struct drm_connector *connector,
+-			      struct edid *edid);
+ static int validate_displayid(u8 *displayid, int length, int idx);
+ 
+ static int drm_edid_block_checksum(const u8 *raw_edid)
+@@ -2019,18 +2017,13 @@ EXPORT_SYMBOL(drm_probe_ddc);
+ struct edid *drm_get_edid(struct drm_connector *connector,
+ 			  struct i2c_adapter *adapter)
+ {
+-	struct edid *edid;
+-
+ 	if (connector->force == DRM_FORCE_OFF)
+ 		return NULL;
+ 
+ 	if (connector->force == DRM_FORCE_UNSPECIFIED && !drm_probe_ddc(adapter))
+ 		return NULL;
+ 
+-	edid = drm_do_get_edid(connector, drm_do_probe_ddc_edid, adapter);
+-	if (edid)
+-		drm_get_displayid(connector, edid);
+-	return edid;
++	return drm_do_get_edid(connector, drm_do_probe_ddc_edid, adapter);
+ }
+ EXPORT_SYMBOL(drm_get_edid);
+ 
+@@ -5793,9 +5786,9 @@ drm_hdmi_vendor_infoframe_from_display_mode(struct hdmi_vendor_infoframe *frame,
+ EXPORT_SYMBOL(drm_hdmi_vendor_infoframe_from_display_mode);
+ 
+ static int drm_parse_tiled_block(struct drm_connector *connector,
+-				 struct displayid_block *block)
++				 const struct displayid_block *block)
+ {
+-	struct displayid_tiled_block *tile = (struct displayid_tiled_block *)block;
++	const struct displayid_tiled_block *tile = (struct displayid_tiled_block *)block;
+ 	u16 w, h;
+ 	u8 tile_v_loc, tile_h_loc;
+ 	u8 num_v_tile, num_h_tile;
+@@ -5846,10 +5839,10 @@ static int drm_parse_tiled_block(struct drm_connector *connector,
+ 	return 0;
+ }
+ 
+-static int drm_parse_display_id(struct drm_connector *connector,
+-				u8 *displayid, int length, int idx)
++static int drm_displayid_parse_tiled(struct drm_connector *connector,
++				     const u8 *displayid, int length, int idx)
+ {
+-	struct displayid_block *block;
++	const struct displayid_block *block;
+ 	int ret;
+ 
+ 	idx += sizeof(struct displayid_hdr);
+@@ -5863,12 +5856,6 @@ static int drm_parse_display_id(struct drm_connector *connector,
+ 			if (ret)
+ 				return ret;
+ 			break;
+-		case DATA_BLOCK_TYPE_1_DETAILED_TIMING:
+-			/* handled in mode gathering code. */
+-			break;
+-		case DATA_BLOCK_CTA:
+-			/* handled in the cea parser code. */
+-			break;
+ 		default:
+ 			DRM_DEBUG_KMS("found DisplayID tag 0x%x, unhandled\n", block->tag);
+ 			break;
+@@ -5877,10 +5864,10 @@ static int drm_parse_display_id(struct drm_connector *connector,
+ 	return 0;
+ }
+ 
+-static void drm_get_displayid(struct drm_connector *connector,
+-			      struct edid *edid)
++void drm_update_tile_info(struct drm_connector *connector,
++			  const struct edid *edid)
+ {
+-	void *displayid = NULL;
++	const void *displayid = NULL;
+ 	int length, idx;
+ 	int ret;
+ 
+@@ -5891,7 +5878,7 @@ static void drm_get_displayid(struct drm_connector *connector,
+ 		goto out_drop_ref;
+ 	}
+ 
+-	ret = drm_parse_display_id(connector, displayid, length, idx);
++	ret = drm_displayid_parse_tiled(connector, displayid, length, idx);
+ 	if (ret < 0)
+ 		goto out_drop_ref;
+ 	if (!connector->has_tile)
+
+From 2ea90fb100fa3231456e1edadc25d65664142413 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Sat, 22 Feb 2020 10:42:06 +0800
 Subject: [PATCH] drm/lima: save process info for debug usage
@@ -53,7 +1178,7 @@ index 6154e5c9bfe4..74e2be09090f 100644
  
  struct lima_ctx_mgr {
 
-From 6bd6464811e273f2a7762e61d58de95dcb83150f Mon Sep 17 00:00:00 2001
+From 881ec4cc1c43e1d9e29dd2330ca55991581a609b Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Sat, 22 Feb 2020 10:42:07 +0800
 Subject: [PATCH] drm/lima: add max_error_tasks module parameter
@@ -105,7 +1230,7 @@ index f492ecc6a5d9..fdbd4077c768 100644
  struct lima_vm;
  struct lima_bo;
 
-From ebf8e20f3660b300f5fbd4b1731d61c2221234a6 Mon Sep 17 00:00:00 2001
+From 0661f4b49ef23b08ea5bcaea50db00f03a9fd619 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Sat, 7 Mar 2020 21:44:23 +0800
 Subject: [PATCH] drm/lima: save task info dump when task fail
@@ -449,7 +1574,7 @@ index d64393fb50a9..a1496cb7bc41 100644
  	struct drm_sched_job base;
  
 
-From ac6495c5c05c06f4e84fe746ec11227b99f127ba Mon Sep 17 00:00:00 2001
+From ba2a62bd91a7965792b7c2f375eb5f286ad6f349 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Sat, 22 Feb 2020 10:42:09 +0800
 Subject: [PATCH] drm/lima: add error sysfs to export error task dump
@@ -586,7 +1711,7 @@ index e235d4545b6c..97ed70c36340 100644
  	lima_device_fini(ldev);
  	drm_dev_put(ddev);
 
-From 1cccc638000e02f6dc64ad2707a9c2a2458cb283 Mon Sep 17 00:00:00 2001
+From 38f29904fff3cf34502cbae5fb222194a09337c4 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Sat, 7 Mar 2020 21:54:38 +0800
 Subject: [PATCH] drm/lima: add trace point for tasks
@@ -747,7 +1872,602 @@ index 000000000000..3a430e93d384
 +#define TRACE_INCLUDE_PATH ../../drivers/gpu/drm/lima
 +#include <trace/define_trace.h>
 
-From ab3fb4a5301fa97b5ccdb8c66906a3dd6d73488c Mon Sep 17 00:00:00 2001
+From e1ae3dcd5778069a61b4decc76d58a32fa61416e Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Date: Wed, 11 Mar 2020 15:55:41 +0100
+Subject: [PATCH] drm/rockchip: Add support for afbc
+
+This patch adds support for afbc handling. afbc is a compressed format
+which reduces the necessary memory bandwidth.
+
+Co-developed-by: Mark Yao <mark.yao@rock-chips.com>
+Signed-off-by: Mark Yao <mark.yao@rock-chips.com>
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Reviewed-by: Sandy Huang <hjc@rock-chips.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200311145541.29186-7-andrzej.p@collabora.com
+(cherry picked from commit 7707f7227f096162c724cc55f5db1b83cb94c105)
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_drv.h |   1 +
+ drivers/gpu/drm/rockchip/rockchip_drm_fb.c  |  43 ++++++++-
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.c | 137 +++++++++++++++++++++++++++-
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.h |  17 ++++
+ drivers/gpu/drm/rockchip/rockchip_vop_reg.c |  83 ++++++++++++++++-
+ 5 files changed, 276 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_drv.h b/drivers/gpu/drm/rockchip/rockchip_drm_drv.h
+index c5b06048124e..e33c2dcd0d4b 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_drv.h
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_drv.h
+@@ -30,6 +30,7 @@ struct rockchip_crtc_state {
+ 	int output_mode;
+ 	int output_bpc;
+ 	int output_flags;
++	bool enable_afbc;
+ };
+ #define to_rockchip_crtc_state(s) \
+ 		container_of(s, struct rockchip_crtc_state, base)
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_fb.c b/drivers/gpu/drm/rockchip/rockchip_drm_fb.c
+index 221e72e71432..9b13c784b347 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_fb.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_fb.c
+@@ -57,8 +57,49 @@ static const struct drm_mode_config_helper_funcs rockchip_mode_config_helpers =
+ 	.atomic_commit_tail = drm_atomic_helper_commit_tail_rpm,
+ };
+ 
++static struct drm_framebuffer *
++rockchip_fb_create(struct drm_device *dev, struct drm_file *file,
++		   const struct drm_mode_fb_cmd2 *mode_cmd)
++{
++	struct drm_afbc_framebuffer *afbc_fb;
++	const struct drm_format_info *info;
++	int ret;
++
++	info = drm_get_format_info(dev, mode_cmd);
++	if (!info)
++		return ERR_PTR(-ENOMEM);
++
++	afbc_fb = kzalloc(sizeof(*afbc_fb), GFP_KERNEL);
++	if (!afbc_fb)
++		return ERR_PTR(-ENOMEM);
++
++	ret = drm_gem_fb_init_with_funcs(dev, &afbc_fb->base, file, mode_cmd,
++					 &rockchip_drm_fb_funcs);
++	if (ret) {
++		kfree(afbc_fb);
++		return ERR_PTR(ret);
++	}
++
++	if (drm_is_afbc(mode_cmd->modifier[0])) {
++		int ret, i;
++
++		ret = drm_gem_fb_afbc_init(dev, mode_cmd, afbc_fb);
++		if (ret) {
++			struct drm_gem_object **obj = afbc_fb->base.obj;
++
++			for (i = 0; i < info->num_planes; ++i)
++				drm_gem_object_put_unlocked(obj[i]);
++
++			kfree(afbc_fb);
++			return ERR_PTR(ret);
++		}
++	}
++
++	return &afbc_fb->base;
++}
++
+ static const struct drm_mode_config_funcs rockchip_drm_mode_config_funcs = {
+-	.fb_create = drm_gem_fb_create_with_dirty,
++	.fb_create = rockchip_fb_create,
+ 	.output_poll_changed = drm_fb_helper_output_poll_changed,
+ 	.atomic_check = drm_atomic_helper_check,
+ 	.atomic_commit = drm_atomic_helper_commit,
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+index cecb2cc781f5..b87d22eb6ae1 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+@@ -91,9 +91,22 @@
+ #define VOP_WIN_TO_INDEX(vop_win) \
+ 	((vop_win) - (vop_win)->vop->win)
+ 
++#define VOP_AFBC_SET(vop, name, v) \
++	do { \
++		if ((vop)->data->afbc) \
++			vop_reg_set((vop), &(vop)->data->afbc->name, \
++				    0, ~0, v, #name); \
++	} while (0)
++
+ #define to_vop(x) container_of(x, struct vop, crtc)
+ #define to_vop_win(x) container_of(x, struct vop_win, base)
+ 
++#define AFBC_FMT_RGB565		0x0
++#define AFBC_FMT_U8U8U8U8	0x5
++#define AFBC_FMT_U8U8U8		0x4
++
++#define AFBC_TILE_16x16		BIT(4)
++
+ /*
+  * The coefficients of the following matrix are all fixed points.
+  * The format is S2.10 for the 3x3 part of the matrix, and S9.12 for the offsets.
+@@ -274,6 +287,29 @@ static enum vop_data_format vop_convert_format(uint32_t format)
+ 	}
+ }
+ 
++static int vop_convert_afbc_format(uint32_t format)
++{
++	switch (format) {
++	case DRM_FORMAT_XRGB8888:
++	case DRM_FORMAT_ARGB8888:
++	case DRM_FORMAT_XBGR8888:
++	case DRM_FORMAT_ABGR8888:
++		return AFBC_FMT_U8U8U8U8;
++	case DRM_FORMAT_RGB888:
++	case DRM_FORMAT_BGR888:
++		return AFBC_FMT_U8U8U8;
++	case DRM_FORMAT_RGB565:
++	case DRM_FORMAT_BGR565:
++		return AFBC_FMT_RGB565;
++	/* either of the below should not be reachable */
++	default:
++		DRM_WARN_ONCE("unsupported AFBC format[%08x]\n", format);
++		return -EINVAL;
++	}
++
++	return -EINVAL;
++}
++
+ static uint16_t scl_vop_cal_scale(enum scale_mode mode, uint32_t src,
+ 				  uint32_t dst, bool is_horizontal,
+ 				  int vsu_mode, int *vskiplines)
+@@ -598,6 +634,17 @@ static int vop_enable(struct drm_crtc *crtc, struct drm_crtc_state *old_state)
+ 			vop_win_disable(vop, vop_win);
+ 		}
+ 	}
++
++	if (vop->data->afbc) {
++		struct rockchip_crtc_state *s;
++		/*
++		 * Disable AFBC and forget there was a vop window with AFBC
++		 */
++		VOP_AFBC_SET(vop, enable, 0);
++		s = to_rockchip_crtc_state(crtc->state);
++		s->enable_afbc = false;
++	}
++
+ 	spin_unlock(&vop->reg_lock);
+ 
+ 	vop_cfg_done(vop);
+@@ -710,6 +757,26 @@ static void vop_plane_destroy(struct drm_plane *plane)
+ 	drm_plane_cleanup(plane);
+ }
+ 
++static inline bool rockchip_afbc(u64 modifier)
++{
++	return modifier == ROCKCHIP_AFBC_MOD;
++}
++
++static bool rockchip_mod_supported(struct drm_plane *plane,
++				   u32 format, u64 modifier)
++{
++	if (modifier == DRM_FORMAT_MOD_LINEAR)
++		return true;
++
++	if (!rockchip_afbc(modifier)) {
++		DRM_DEBUG_KMS("Unsupported format modifer 0x%llx\n", modifier);
++
++		return false;
++	}
++
++	return vop_convert_afbc_format(format) >= 0;
++}
++
+ static int vop_plane_atomic_check(struct drm_plane *plane,
+ 			   struct drm_plane_state *state)
+ {
+@@ -758,6 +825,30 @@ static int vop_plane_atomic_check(struct drm_plane *plane,
+ 		return -EINVAL;
+ 	}
+ 
++	if (rockchip_afbc(fb->modifier)) {
++		struct vop *vop = to_vop(crtc);
++
++		if (!vop->data->afbc) {
++			DRM_ERROR("vop does not support AFBC\n");
++			return -EINVAL;
++		}
++
++		ret = vop_convert_afbc_format(fb->format->format);
++		if (ret < 0)
++			return ret;
++
++		if (state->src.x1 || state->src.y1) {
++			DRM_ERROR("AFBC does not support offset display, xpos=%d, ypos=%d, offset=%d\n", state->src.x1, state->src.y1, fb->offsets[0]);
++			return -EINVAL;
++		}
++
++		if (state->rotation && state->rotation != DRM_MODE_ROTATE_0) {
++			DRM_ERROR("No rotation support in AFBC, rotation=%d\n",
++				  state->rotation);
++			return -EINVAL;
++		}
++	}
++
+ 	return 0;
+ }
+ 
+@@ -846,6 +937,16 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
+ 
+ 	spin_lock(&vop->reg_lock);
+ 
++	if (rockchip_afbc(fb->modifier)) {
++		int afbc_format = vop_convert_afbc_format(fb->format->format);
++
++		VOP_AFBC_SET(vop, format, afbc_format | AFBC_TILE_16x16);
++		VOP_AFBC_SET(vop, hreg_block_split, 0);
++		VOP_AFBC_SET(vop, win_sel, VOP_WIN_TO_INDEX(vop_win));
++		VOP_AFBC_SET(vop, hdr_ptr, dma_addr);
++		VOP_AFBC_SET(vop, pic_size, act_info);
++	}
++
+ 	VOP_WIN_SET(vop, win, format, format);
+ 	VOP_WIN_SET(vop, win, yrgb_vir, DIV_ROUND_UP(fb->pitches[0], 4));
+ 	VOP_WIN_SET(vop, win, yrgb_mst, dma_addr);
+@@ -1001,6 +1102,7 @@ static const struct drm_plane_funcs vop_plane_funcs = {
+ 	.reset = drm_atomic_helper_plane_reset,
+ 	.atomic_duplicate_state = drm_atomic_helper_plane_duplicate_state,
+ 	.atomic_destroy_state = drm_atomic_helper_plane_destroy_state,
++	.format_mod_supported = rockchip_mod_supported,
+ };
+ 
+ static int vop_crtc_enable_vblank(struct drm_crtc *crtc)
+@@ -1310,6 +1412,10 @@ static int vop_crtc_atomic_check(struct drm_crtc *crtc,
+ 				 struct drm_crtc_state *crtc_state)
+ {
+ 	struct vop *vop = to_vop(crtc);
++	struct drm_plane *plane;
++	struct drm_plane_state *plane_state;
++	struct rockchip_crtc_state *s;
++	int afbc_planes = 0;
+ 
+ 	if (vop->lut_regs && crtc_state->color_mgmt_changed &&
+ 	    crtc_state->gamma_lut) {
+@@ -1323,6 +1429,27 @@ static int vop_crtc_atomic_check(struct drm_crtc *crtc,
+ 		}
+ 	}
+ 
++	drm_atomic_crtc_state_for_each_plane(plane, crtc_state) {
++		plane_state =
++			drm_atomic_get_plane_state(crtc_state->state, plane);
++		if (IS_ERR(plane_state)) {
++			DRM_DEBUG_KMS("Cannot get plane state for plane %s\n",
++				      plane->name);
++			return PTR_ERR(plane_state);
++		}
++
++		if (drm_is_afbc(plane_state->fb->modifier))
++			++afbc_planes;
++	}
++
++	if (afbc_planes > 1) {
++		DRM_DEBUG_KMS("Invalid number of AFBC planes; got %d, expected at most 1\n", afbc_planes);
++		return -EINVAL;
++	}
++
++	s = to_rockchip_crtc_state(crtc_state);
++	s->enable_afbc = afbc_planes > 0;
++
+ 	return 0;
+ }
+ 
+@@ -1333,6 +1460,7 @@ static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
+ 	struct drm_plane_state *old_plane_state, *new_plane_state;
+ 	struct vop *vop = to_vop(crtc);
+ 	struct drm_plane *plane;
++	struct rockchip_crtc_state *s;
+ 	int i;
+ 
+ 	if (WARN_ON(!vop->is_enabled))
+@@ -1340,6 +1468,9 @@ static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
+ 
+ 	spin_lock(&vop->reg_lock);
+ 
++	/* Enable AFBC if there is some AFBC window, disable otherwise. */
++	s = to_rockchip_crtc_state(crtc->state);
++	VOP_AFBC_SET(vop, enable, s->enable_afbc);
+ 	vop_cfg_done(vop);
+ 
+ 	spin_unlock(&vop->reg_lock);
+@@ -1634,7 +1765,8 @@ static int vop_create_crtc(struct vop *vop)
+ 					       0, &vop_plane_funcs,
+ 					       win_data->phy->data_formats,
+ 					       win_data->phy->nformats,
+-					       NULL, win_data->type, NULL);
++					       win_data->phy->format_modifiers,
++					       win_data->type, NULL);
+ 		if (ret) {
+ 			DRM_DEV_ERROR(vop->dev, "failed to init plane %d\n",
+ 				      ret);
+@@ -1678,7 +1810,8 @@ static int vop_create_crtc(struct vop *vop)
+ 					       &vop_plane_funcs,
+ 					       win_data->phy->data_formats,
+ 					       win_data->phy->nformats,
+-					       NULL, win_data->type, NULL);
++					       win_data->phy->format_modifiers,
++					       win_data->type, NULL);
+ 		if (ret) {
+ 			DRM_DEV_ERROR(vop->dev, "failed to init overlay %d\n",
+ 				      ret);
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.h b/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
+index cc672620d6e0..d03bdb531ef2 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
+@@ -17,6 +17,11 @@
+ 
+ #define NUM_YUV2YUV_COEFFICIENTS 12
+ 
++#define ROCKCHIP_AFBC_MOD \
++	DRM_FORMAT_MOD_ARM_AFBC( \
++		AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 | AFBC_FORMAT_MOD_SPARSE \
++	)
++
+ enum vop_data_format {
+ 	VOP_FMT_ARGB8888 = 0,
+ 	VOP_FMT_RGB888,
+@@ -34,6 +39,16 @@ struct vop_reg {
+ 	bool relaxed;
+ };
+ 
++struct vop_afbc {
++	struct vop_reg enable;
++	struct vop_reg win_sel;
++	struct vop_reg format;
++	struct vop_reg hreg_block_split;
++	struct vop_reg pic_size;
++	struct vop_reg hdr_ptr;
++	struct vop_reg rstn;
++};
++
+ struct vop_modeset {
+ 	struct vop_reg htotal_pw;
+ 	struct vop_reg hact_st_end;
+@@ -134,6 +149,7 @@ struct vop_win_phy {
+ 	const struct vop_scl_regs *scl;
+ 	const uint32_t *data_formats;
+ 	uint32_t nformats;
++	const uint64_t *format_modifiers;
+ 
+ 	struct vop_reg enable;
+ 	struct vop_reg gate;
+@@ -173,6 +189,7 @@ struct vop_data {
+ 	const struct vop_misc *misc;
+ 	const struct vop_modeset *modeset;
+ 	const struct vop_output *output;
++	const struct vop_afbc *afbc;
+ 	const struct vop_win_yuv2yuv_data *win_yuv2yuv;
+ 	const struct vop_win_data *win;
+ 	unsigned int win_size;
+diff --git a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
+index 7a9d979c8d5d..2413deded22c 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
++++ b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
+@@ -50,6 +50,17 @@ static const uint32_t formats_win_full[] = {
+ 	DRM_FORMAT_NV24,
+ };
+ 
++static const uint64_t format_modifiers_win_full[] = {
++	DRM_FORMAT_MOD_LINEAR,
++	DRM_FORMAT_MOD_INVALID,
++};
++
++static const uint64_t format_modifiers_win_full_afbc[] = {
++	ROCKCHIP_AFBC_MOD,
++	DRM_FORMAT_MOD_LINEAR,
++	DRM_FORMAT_MOD_INVALID,
++};
++
+ static const uint32_t formats_win_lite[] = {
+ 	DRM_FORMAT_XRGB8888,
+ 	DRM_FORMAT_ARGB8888,
+@@ -61,6 +72,11 @@ static const uint32_t formats_win_lite[] = {
+ 	DRM_FORMAT_BGR565,
+ };
+ 
++static const uint64_t format_modifiers_win_lite[] = {
++	DRM_FORMAT_MOD_LINEAR,
++	DRM_FORMAT_MOD_INVALID,
++};
++
+ static const struct vop_scl_regs rk3036_win_scl = {
+ 	.scale_yrgb_x = VOP_REG(RK3036_WIN0_SCL_FACTOR_YRGB, 0xffff, 0x0),
+ 	.scale_yrgb_y = VOP_REG(RK3036_WIN0_SCL_FACTOR_YRGB, 0xffff, 16),
+@@ -72,6 +88,7 @@ static const struct vop_win_phy rk3036_win0_data = {
+ 	.scl = &rk3036_win_scl,
+ 	.data_formats = formats_win_full,
+ 	.nformats = ARRAY_SIZE(formats_win_full),
++	.format_modifiers = format_modifiers_win_full,
+ 	.enable = VOP_REG(RK3036_SYS_CTRL, 0x1, 0),
+ 	.format = VOP_REG(RK3036_SYS_CTRL, 0x7, 3),
+ 	.rb_swap = VOP_REG(RK3036_SYS_CTRL, 0x1, 15),
+@@ -87,6 +104,7 @@ static const struct vop_win_phy rk3036_win0_data = {
+ static const struct vop_win_phy rk3036_win1_data = {
+ 	.data_formats = formats_win_lite,
+ 	.nformats = ARRAY_SIZE(formats_win_lite),
++	.format_modifiers = format_modifiers_win_lite,
+ 	.enable = VOP_REG(RK3036_SYS_CTRL, 0x1, 1),
+ 	.format = VOP_REG(RK3036_SYS_CTRL, 0x7, 6),
+ 	.rb_swap = VOP_REG(RK3036_SYS_CTRL, 0x1, 19),
+@@ -153,6 +171,7 @@ static const struct vop_data rk3036_vop = {
+ static const struct vop_win_phy rk3126_win1_data = {
+ 	.data_formats = formats_win_lite,
+ 	.nformats = ARRAY_SIZE(formats_win_lite),
++	.format_modifiers = format_modifiers_win_lite,
+ 	.enable = VOP_REG(RK3036_SYS_CTRL, 0x1, 1),
+ 	.format = VOP_REG(RK3036_SYS_CTRL, 0x7, 6),
+ 	.rb_swap = VOP_REG(RK3036_SYS_CTRL, 0x1, 19),
+@@ -234,6 +253,7 @@ static const struct vop_win_phy px30_win0_data = {
+ 	.scl = &px30_win_scl,
+ 	.data_formats = formats_win_full,
+ 	.nformats = ARRAY_SIZE(formats_win_full),
++	.format_modifiers = format_modifiers_win_full,
+ 	.enable = VOP_REG(PX30_WIN0_CTRL0, 0x1, 0),
+ 	.format = VOP_REG(PX30_WIN0_CTRL0, 0x7, 1),
+ 	.rb_swap = VOP_REG(PX30_WIN0_CTRL0, 0x1, 12),
+@@ -249,6 +269,7 @@ static const struct vop_win_phy px30_win0_data = {
+ static const struct vop_win_phy px30_win1_data = {
+ 	.data_formats = formats_win_lite,
+ 	.nformats = ARRAY_SIZE(formats_win_lite),
++	.format_modifiers = format_modifiers_win_lite,
+ 	.enable = VOP_REG(PX30_WIN1_CTRL0, 0x1, 0),
+ 	.format = VOP_REG(PX30_WIN1_CTRL0, 0x7, 4),
+ 	.rb_swap = VOP_REG(PX30_WIN1_CTRL0, 0x1, 12),
+@@ -261,6 +282,7 @@ static const struct vop_win_phy px30_win1_data = {
+ static const struct vop_win_phy px30_win2_data = {
+ 	.data_formats = formats_win_lite,
+ 	.nformats = ARRAY_SIZE(formats_win_lite),
++	.format_modifiers = format_modifiers_win_lite,
+ 	.gate = VOP_REG(PX30_WIN2_CTRL0, 0x1, 4),
+ 	.enable = VOP_REG(PX30_WIN2_CTRL0, 0x1, 0),
+ 	.format = VOP_REG(PX30_WIN2_CTRL0, 0x3, 5),
+@@ -316,6 +338,7 @@ static const struct vop_win_phy rk3066_win0_data = {
+ 	.scl = &rk3066_win_scl,
+ 	.data_formats = formats_win_full,
+ 	.nformats = ARRAY_SIZE(formats_win_full),
++	.format_modifiers = format_modifiers_win_full,
+ 	.enable = VOP_REG(RK3066_SYS_CTRL1, 0x1, 0),
+ 	.format = VOP_REG(RK3066_SYS_CTRL0, 0x7, 4),
+ 	.rb_swap = VOP_REG(RK3066_SYS_CTRL0, 0x1, 19),
+@@ -332,6 +355,7 @@ static const struct vop_win_phy rk3066_win1_data = {
+ 	.scl = &rk3066_win_scl,
+ 	.data_formats = formats_win_full,
+ 	.nformats = ARRAY_SIZE(formats_win_full),
++	.format_modifiers = format_modifiers_win_full,
+ 	.enable = VOP_REG(RK3066_SYS_CTRL1, 0x1, 1),
+ 	.format = VOP_REG(RK3066_SYS_CTRL0, 0x7, 7),
+ 	.rb_swap = VOP_REG(RK3066_SYS_CTRL0, 0x1, 23),
+@@ -347,6 +371,7 @@ static const struct vop_win_phy rk3066_win1_data = {
+ static const struct vop_win_phy rk3066_win2_data = {
+ 	.data_formats = formats_win_lite,
+ 	.nformats = ARRAY_SIZE(formats_win_lite),
++	.format_modifiers = format_modifiers_win_lite,
+ 	.enable = VOP_REG(RK3066_SYS_CTRL1, 0x1, 2),
+ 	.format = VOP_REG(RK3066_SYS_CTRL0, 0x7, 10),
+ 	.rb_swap = VOP_REG(RK3066_SYS_CTRL0, 0x1, 27),
+@@ -426,6 +451,7 @@ static const struct vop_win_phy rk3188_win0_data = {
+ 	.scl = &rk3188_win_scl,
+ 	.data_formats = formats_win_full,
+ 	.nformats = ARRAY_SIZE(formats_win_full),
++	.format_modifiers = format_modifiers_win_full,
+ 	.enable = VOP_REG(RK3188_SYS_CTRL, 0x1, 0),
+ 	.format = VOP_REG(RK3188_SYS_CTRL, 0x7, 3),
+ 	.rb_swap = VOP_REG(RK3188_SYS_CTRL, 0x1, 15),
+@@ -440,6 +466,7 @@ static const struct vop_win_phy rk3188_win0_data = {
+ static const struct vop_win_phy rk3188_win1_data = {
+ 	.data_formats = formats_win_lite,
+ 	.nformats = ARRAY_SIZE(formats_win_lite),
++	.format_modifiers = format_modifiers_win_lite,
+ 	.enable = VOP_REG(RK3188_SYS_CTRL, 0x1, 1),
+ 	.format = VOP_REG(RK3188_SYS_CTRL, 0x7, 6),
+ 	.rb_swap = VOP_REG(RK3188_SYS_CTRL, 0x1, 19),
+@@ -545,6 +572,7 @@ static const struct vop_win_phy rk3288_win01_data = {
+ 	.scl = &rk3288_win_full_scl,
+ 	.data_formats = formats_win_full,
+ 	.nformats = ARRAY_SIZE(formats_win_full),
++	.format_modifiers = format_modifiers_win_full,
+ 	.enable = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 0),
+ 	.format = VOP_REG(RK3288_WIN0_CTRL0, 0x7, 1),
+ 	.rb_swap = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 12),
+@@ -563,6 +591,7 @@ static const struct vop_win_phy rk3288_win01_data = {
+ static const struct vop_win_phy rk3288_win23_data = {
+ 	.data_formats = formats_win_lite,
+ 	.nformats = ARRAY_SIZE(formats_win_lite),
++	.format_modifiers = format_modifiers_win_lite,
+ 	.enable = VOP_REG(RK3288_WIN2_CTRL0, 0x1, 4),
+ 	.gate = VOP_REG(RK3288_WIN2_CTRL0, 0x1, 0),
+ 	.format = VOP_REG(RK3288_WIN2_CTRL0, 0x7, 1),
+@@ -677,6 +706,7 @@ static const struct vop_win_phy rk3368_win01_data = {
+ 	.scl = &rk3288_win_full_scl,
+ 	.data_formats = formats_win_full,
+ 	.nformats = ARRAY_SIZE(formats_win_full),
++	.format_modifiers = format_modifiers_win_full,
+ 	.enable = VOP_REG(RK3368_WIN0_CTRL0, 0x1, 0),
+ 	.format = VOP_REG(RK3368_WIN0_CTRL0, 0x7, 1),
+ 	.rb_swap = VOP_REG(RK3368_WIN0_CTRL0, 0x1, 12),
+@@ -697,6 +727,7 @@ static const struct vop_win_phy rk3368_win01_data = {
+ static const struct vop_win_phy rk3368_win23_data = {
+ 	.data_formats = formats_win_lite,
+ 	.nformats = ARRAY_SIZE(formats_win_lite),
++	.format_modifiers = format_modifiers_win_lite,
+ 	.gate = VOP_REG(RK3368_WIN2_CTRL0, 0x1, 0),
+ 	.enable = VOP_REG(RK3368_WIN2_CTRL0, 0x1, 4),
+ 	.format = VOP_REG(RK3368_WIN2_CTRL0, 0x3, 5),
+@@ -817,6 +848,53 @@ static const struct vop_win_yuv2yuv_data rk3399_vop_big_win_yuv2yuv_data[] = {
+ 	  .y2r_en = VOP_REG(RK3399_YUV2YUV_WIN, 0x1, 9) },
+ 	{ .base = 0xC0, .phy = &rk3399_yuv2yuv_win23_data },
+ 	{ .base = 0x120, .phy = &rk3399_yuv2yuv_win23_data },
++
++};
++
++static const struct vop_win_phy rk3399_win01_data = {
++	.scl = &rk3288_win_full_scl,
++	.data_formats = formats_win_full,
++	.nformats = ARRAY_SIZE(formats_win_full),
++	.format_modifiers = format_modifiers_win_full_afbc,
++	.enable = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 0),
++	.format = VOP_REG(RK3288_WIN0_CTRL0, 0x7, 1),
++	.rb_swap = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 12),
++	.y_mir_en = VOP_REG(RK3288_WIN0_CTRL0, 0x1, 22),
++	.act_info = VOP_REG(RK3288_WIN0_ACT_INFO, 0x1fff1fff, 0),
++	.dsp_info = VOP_REG(RK3288_WIN0_DSP_INFO, 0x0fff0fff, 0),
++	.dsp_st = VOP_REG(RK3288_WIN0_DSP_ST, 0x1fff1fff, 0),
++	.yrgb_mst = VOP_REG(RK3288_WIN0_YRGB_MST, 0xffffffff, 0),
++	.uv_mst = VOP_REG(RK3288_WIN0_CBR_MST, 0xffffffff, 0),
++	.yrgb_vir = VOP_REG(RK3288_WIN0_VIR, 0x3fff, 0),
++	.uv_vir = VOP_REG(RK3288_WIN0_VIR, 0x3fff, 16),
++	.src_alpha_ctl = VOP_REG(RK3288_WIN0_SRC_ALPHA_CTRL, 0xff, 0),
++	.dst_alpha_ctl = VOP_REG(RK3288_WIN0_DST_ALPHA_CTRL, 0xff, 0),
++};
++
++/*
++ * rk3399 vop big windows register layout is same as rk3288, but we
++ * have a separate rk3399 win data array here so that we can advertise
++ * AFBC on the primary plane.
++ */
++static const struct vop_win_data rk3399_vop_win_data[] = {
++	{ .base = 0x00, .phy = &rk3399_win01_data,
++	  .type = DRM_PLANE_TYPE_PRIMARY },
++	{ .base = 0x40, .phy = &rk3288_win01_data,
++	  .type = DRM_PLANE_TYPE_OVERLAY },
++	{ .base = 0x00, .phy = &rk3288_win23_data,
++	  .type = DRM_PLANE_TYPE_OVERLAY },
++	{ .base = 0x50, .phy = &rk3288_win23_data,
++	  .type = DRM_PLANE_TYPE_CURSOR },
++};
++
++static const struct vop_afbc rk3399_vop_afbc = {
++	.rstn = VOP_REG(RK3399_AFBCD0_CTRL, 0x1, 3),
++	.enable = VOP_REG(RK3399_AFBCD0_CTRL, 0x1, 0),
++	.win_sel = VOP_REG(RK3399_AFBCD0_CTRL, 0x3, 1),
++	.format = VOP_REG(RK3399_AFBCD0_CTRL, 0x1f, 16),
++	.hreg_block_split = VOP_REG(RK3399_AFBCD0_CTRL, 0x1, 21),
++	.hdr_ptr = VOP_REG(RK3399_AFBCD0_HDR_PTR, 0xffffffff, 0),
++	.pic_size = VOP_REG(RK3399_AFBCD0_PIC_SIZE, 0xffffffff, 0),
+ };
+ 
+ static const struct vop_data rk3399_vop_big = {
+@@ -826,9 +904,10 @@ static const struct vop_data rk3399_vop_big = {
+ 	.common = &rk3288_common,
+ 	.modeset = &rk3288_modeset,
+ 	.output = &rk3399_output,
++	.afbc = &rk3399_vop_afbc,
+ 	.misc = &rk3368_misc,
+-	.win = rk3368_vop_win_data,
+-	.win_size = ARRAY_SIZE(rk3368_vop_win_data),
++	.win = rk3399_vop_win_data,
++	.win_size = ARRAY_SIZE(rk3399_vop_win_data),
+ 	.win_yuv2yuv = rk3399_vop_big_win_yuv2yuv_data,
+ };
+ 
+
+From bfb882b5b1cf9f2acb7048bd664212943eeaf611 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
 Date: Thu, 5 Mar 2020 00:25:10 +0100
 Subject: [PATCH] drm/bridge: dw-hdmi: do not force "none" scan mode
@@ -784,7 +2504,7 @@ index 383b1073d7de..cb4d7bed2d9c 100644
  	 * The Designware IP uses a different byte format from standard
  	 * AVI info frames, though generally the bits are in the correct
 
-From bf75586c3a0f9f2c4eb81150aba797a5ba4b94c8 Mon Sep 17 00:00:00 2001
+From 740599ce0d1887fa667a9fc7e9b6213e87677c66 Mon Sep 17 00:00:00 2001
 From: Jernej Skrabec <jernej.skrabec@siol.net>
 Date: Thu, 5 Mar 2020 00:25:11 +0100
 Subject: [PATCH] drm/bridge: dw-hdmi: Add support for RGB limited range
@@ -917,7 +2637,7 @@ index cb4d7bed2d9c..164ee8c353ab 100644
  	hdmi->hdmi_data.hdcp_enable = 0;
  	hdmi->hdmi_data.video_mode.mdataenablepolarity = true;
 
-From cc76b13e07c2e7900bf2963f23fb469517dfa1ec Mon Sep 17 00:00:00 2001
+From 2ae812b4b3ad9d541c83b790d8458f58ba39e592 Mon Sep 17 00:00:00 2001
 From: Jernej Skrabec <jernej.skrabec@siol.net>
 Date: Thu, 5 Mar 2020 00:25:12 +0100
 Subject: [PATCH] drm/bridge: dw-hdmi: rework csc related functions
@@ -1005,7 +2725,7 @@ index 164ee8c353ab..30681398cfb0 100644
  
  /* Workaround to clear the overflow condition */
 
-From 42c7d0e07348361a6d5d12a5012c8f4845d7a740 Mon Sep 17 00:00:00 2001
+From ad6e86e70cd025fde5bcecef453ec506fbd514e9 Mon Sep 17 00:00:00 2001
 From: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
 Date: Thu, 19 Mar 2020 21:34:27 +0100
 Subject: [PATCH] drm/lima: Add optional devfreq and cooling device support
@@ -1510,7 +3230,1993 @@ index 02dfa14d7083..90f03c48ef4a 100644
  	struct lima_vm *current_vm;
  
 
-From a88d271097a216df71ea1e105229896993bb416d Mon Sep 17 00:00:00 2001
+From 39c76869a7543200374d86a5e1d74e77220b3562 Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Date: Tue, 31 Mar 2020 17:53:07 +0200
+Subject: [PATCH] drm/core: Use proper debugging macro
+
+Use drm_dbg_kms() instead of DRM_DEBUG_KMS.
+
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Reviewed-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200331155308.6345-2-andrzej.p@collabora.com
+(cherry picked from commit 88f1b29a44b197852828d3aba5fefa0082d377ff)
+---
+ drivers/gpu/drm/drm_gem_framebuffer_helper.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_gem_framebuffer_helper.c b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+index 7e3982c36baa..6fb1841fa71c 100644
+--- a/drivers/gpu/drm/drm_gem_framebuffer_helper.c
++++ b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+@@ -331,9 +331,9 @@ static int drm_gem_afbc_min_size(struct drm_device *dev,
+ 	case AFBC_FORMAT_MOD_BLOCK_SIZE_64x4:
+ 	case AFBC_FORMAT_MOD_BLOCK_SIZE_32x8_64x4:
+ 	default:
+-		DRM_DEBUG_KMS("Invalid AFBC_FORMAT_MOD_BLOCK_SIZE: %lld.\n",
+-			      mode_cmd->modifier[0]
+-			      & AFBC_FORMAT_MOD_BLOCK_SIZE_MASK);
++		drm_dbg_kms(dev, "Invalid AFBC_FORMAT_MOD_BLOCK_SIZE: %lld.\n",
++			    mode_cmd->modifier[0]
++			    & AFBC_FORMAT_MOD_BLOCK_SIZE_MASK);
+ 		return -EINVAL;
+ 	}
+ 
+
+From 8d1a0ae1a874b7dc0154c78cc0131584c5fca2b3 Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Date: Tue, 31 Mar 2020 17:53:08 +0200
+Subject: [PATCH] drm/core: Calculate bpp in afbc helper
+
+Some drivers (komeda, malidp) don't set anything in cpp. If that is the
+case the right value can be inferred from the format. Then the "bpp" member
+can be eliminated from struct drm_afbc_framebuffer.
+
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Acked-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200331155308.6345-3-andrzej.p@collabora.com
+(cherry picked from commit bcf6293d7ae931159fac4fbd9924b0276f1edabd)
+---
+ Documentation/gpu/todo.rst                   | 15 -----------
+ drivers/gpu/drm/drm_gem_framebuffer_helper.c | 39 +++++++++++++++++++++++-----
+ include/drm/drm_framebuffer.h                |  7 -----
+ 3 files changed, 32 insertions(+), 29 deletions(-)
+
+diff --git a/Documentation/gpu/todo.rst b/Documentation/gpu/todo.rst
+index 37a3a023c114..439656f55c5d 100644
+--- a/Documentation/gpu/todo.rst
++++ b/Documentation/gpu/todo.rst
+@@ -404,21 +404,6 @@ Contact: Laurent Pinchart, respective driver maintainers
+ 
+ Level: Intermediate
+ 
+-Encode cpp properly in malidp
+------------------------------
+-
+-cpp (chars per pixel) is not encoded properly in malidp, zero is
+-used instead. afbc implementation needs bpp or cpp, but if it is
+-zero it needs to be provided elsewhere, and so the bpp field exists
+-in struct drm_afbc_framebuffer.
+-
+-Properly encode cpp in malidp and remove the bpp field in struct
+-drm_afbc_framebuffer.
+-
+-Contact: malidp maintainers
+-
+-Level: Intermediate
+-
+ Core refactorings
+ =================
+ 
+diff --git a/drivers/gpu/drm/drm_gem_framebuffer_helper.c b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+index 6fb1841fa71c..cac15294aef6 100644
+--- a/drivers/gpu/drm/drm_gem_framebuffer_helper.c
++++ b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+@@ -309,11 +309,37 @@ drm_gem_fb_create_with_dirty(struct drm_device *dev, struct drm_file *file,
+ }
+ EXPORT_SYMBOL_GPL(drm_gem_fb_create_with_dirty);
+ 
++static __u32 drm_gem_afbc_get_bpp(struct drm_device *dev,
++				  const struct drm_mode_fb_cmd2 *mode_cmd)
++{
++	const struct drm_format_info *info;
++
++	info = drm_get_format_info(dev, mode_cmd);
++
++	/* use whatever a driver has set */
++	if (info->cpp[0])
++		return info->cpp[0] * 8;
++
++	/* guess otherwise */
++	switch (info->format) {
++	case DRM_FORMAT_YUV420_8BIT:
++		return 12;
++	case DRM_FORMAT_YUV420_10BIT:
++		return 15;
++	case DRM_FORMAT_VUY101010:
++		return 30;
++	default:
++		break;
++	}
++
++	/* all attempts failed */
++	return 0;
++}
++
+ static int drm_gem_afbc_min_size(struct drm_device *dev,
+ 				 const struct drm_mode_fb_cmd2 *mode_cmd,
+ 				 struct drm_afbc_framebuffer *afbc_fb)
+ {
+-	const struct drm_format_info *info;
+ 	__u32 n_blocks, w_alignment, h_alignment, hdr_alignment;
+ 	/* remove bpp when all users properly encode cpp in drm_format_info */
+ 	__u32 bpp;
+@@ -351,12 +377,11 @@ static int drm_gem_afbc_min_size(struct drm_device *dev,
+ 	afbc_fb->aligned_height = ALIGN(mode_cmd->height, h_alignment);
+ 	afbc_fb->offset = mode_cmd->offsets[0];
+ 
+-	info = drm_get_format_info(dev, mode_cmd);
+-	/*
+-	 * Change to always using info->cpp[0]
+-	 * when all users properly encode it
+-	 */
+-	bpp = info->cpp[0] ? info->cpp[0] * 8 : afbc_fb->bpp;
++	bpp = drm_gem_afbc_get_bpp(dev, mode_cmd);
++	if (!bpp) {
++		drm_dbg_kms(dev, "Invalid AFBC bpp value: %d\n", bpp);
++		return -EINVAL;
++	}
+ 
+ 	n_blocks = (afbc_fb->aligned_width * afbc_fb->aligned_height)
+ 		   / AFBC_SUPERBLOCK_PIXELS;
+diff --git a/include/drm/drm_framebuffer.h b/include/drm/drm_framebuffer.h
+index e9f1b0e2968d..a73cffa44dc8 100644
+--- a/include/drm/drm_framebuffer.h
++++ b/include/drm/drm_framebuffer.h
+@@ -331,13 +331,6 @@ struct drm_afbc_framebuffer {
+ 	 * @afbc_size: minimum size of afbc buffer
+ 	 */
+ 	u32 afbc_size;
+-	/**
+-	 * @bpp: bpp value for this afbc buffer
+-	 * To be removed when users such as malidp
+-	 * properly store the cpp in drm_format_info.
+-	 * New users should not start using this field.
+-	 */
+-	u32 bpp;
+ };
+ 
+ #define fb_to_afbc_fb(x) container_of(x, struct drm_afbc_framebuffer, base)
+
+From 500b2da040fabed2bb7c56126d9e75b86a09baf7 Mon Sep 17 00:00:00 2001
+From: Thomas Zimmermann <tzimmermann@suse.de>
+Date: Thu, 5 Mar 2020 16:59:40 +0100
+Subject: [PATCH] drm/rockchip: Use simple encoder
+
+The rockchip driver uses empty implementations for its encoders. Replace
+the code with the generic simple encoder.
+
+Signed-off-by: Thomas Zimmermann <tzimmermann@suse.de>
+Reviewed-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Acked-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200305155950.2705-13-tzimmermann@suse.de
+(cherry picked from commit 0dbd735448bfdb078a429d5d63e1bd0ef2c5d0f0)
+---
+ drivers/gpu/drm/rockchip/analogix_dp-rockchip.c |  9 +++------
+ drivers/gpu/drm/rockchip/cdn-dp-core.c          |  9 +++------
+ drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c |  8 ++------
+ drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c     |  8 ++------
+ drivers/gpu/drm/rockchip/inno_hdmi.c            |  8 ++------
+ drivers/gpu/drm/rockchip/rk3066_hdmi.c          |  8 ++------
+ drivers/gpu/drm/rockchip/rockchip_lvds.c        | 10 +++-------
+ drivers/gpu/drm/rockchip/rockchip_rgb.c         |  8 ++------
+ 8 files changed, 19 insertions(+), 49 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/analogix_dp-rockchip.c b/drivers/gpu/drm/rockchip/analogix_dp-rockchip.c
+index ce98c08aa8b4..ade2327a10e2 100644
+--- a/drivers/gpu/drm/rockchip/analogix_dp-rockchip.c
++++ b/drivers/gpu/drm/rockchip/analogix_dp-rockchip.c
+@@ -26,6 +26,7 @@
+ #include <drm/drm_of.h>
+ #include <drm/drm_panel.h>
+ #include <drm/drm_probe_helper.h>
++#include <drm/drm_simple_kms_helper.h>
+ 
+ #include "rockchip_drm_drv.h"
+ #include "rockchip_drm_vop.h"
+@@ -258,10 +259,6 @@ static struct drm_encoder_helper_funcs rockchip_dp_encoder_helper_funcs = {
+ 	.atomic_check = rockchip_dp_drm_encoder_atomic_check,
+ };
+ 
+-static struct drm_encoder_funcs rockchip_dp_encoder_funcs = {
+-	.destroy = drm_encoder_cleanup,
+-};
+-
+ static int rockchip_dp_of_probe(struct rockchip_dp_device *dp)
+ {
+ 	struct device *dev = dp->dev;
+@@ -309,8 +306,8 @@ static int rockchip_dp_drm_create_encoder(struct rockchip_dp_device *dp)
+ 							     dev->of_node);
+ 	DRM_DEBUG_KMS("possible_crtcs = 0x%x\n", encoder->possible_crtcs);
+ 
+-	ret = drm_encoder_init(drm_dev, encoder, &rockchip_dp_encoder_funcs,
+-			       DRM_MODE_ENCODER_TMDS, NULL);
++	ret = drm_simple_encoder_init(drm_dev, encoder,
++				      DRM_MODE_ENCODER_TMDS);
+ 	if (ret) {
+ 		DRM_ERROR("failed to initialize encoder with drm\n");
+ 		return ret;
+diff --git a/drivers/gpu/drm/rockchip/cdn-dp-core.c b/drivers/gpu/drm/rockchip/cdn-dp-core.c
+index eed594bd38d3..06f85138b51b 100644
+--- a/drivers/gpu/drm/rockchip/cdn-dp-core.c
++++ b/drivers/gpu/drm/rockchip/cdn-dp-core.c
+@@ -20,6 +20,7 @@
+ #include <drm/drm_edid.h>
+ #include <drm/drm_of.h>
+ #include <drm/drm_probe_helper.h>
++#include <drm/drm_simple_kms_helper.h>
+ 
+ #include "cdn-dp-core.h"
+ #include "cdn-dp-reg.h"
+@@ -689,10 +690,6 @@ static const struct drm_encoder_helper_funcs cdn_dp_encoder_helper_funcs = {
+ 	.atomic_check = cdn_dp_encoder_atomic_check,
+ };
+ 
+-static const struct drm_encoder_funcs cdn_dp_encoder_funcs = {
+-	.destroy = drm_encoder_cleanup,
+-};
+-
+ static int cdn_dp_parse_dt(struct cdn_dp_device *dp)
+ {
+ 	struct device *dev = dp->dev;
+@@ -1030,8 +1027,8 @@ static int cdn_dp_bind(struct device *dev, struct device *master, void *data)
+ 							     dev->of_node);
+ 	DRM_DEBUG_KMS("possible_crtcs = 0x%x\n", encoder->possible_crtcs);
+ 
+-	ret = drm_encoder_init(drm_dev, encoder, &cdn_dp_encoder_funcs,
+-			       DRM_MODE_ENCODER_TMDS, NULL);
++	ret = drm_simple_encoder_init(drm_dev, encoder,
++				      DRM_MODE_ENCODER_TMDS);
+ 	if (ret) {
+ 		DRM_ERROR("failed to initialize encoder with drm\n");
+ 		return ret;
+diff --git a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+index 6e1270e45f97..3feff0c45b3f 100644
+--- a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+@@ -21,6 +21,7 @@
+ #include <drm/bridge/dw_mipi_dsi.h>
+ #include <drm/drm_mipi_dsi.h>
+ #include <drm/drm_of.h>
++#include <drm/drm_simple_kms_helper.h>
+ 
+ #include "rockchip_drm_drv.h"
+ #include "rockchip_drm_vop.h"
+@@ -789,10 +790,6 @@ dw_mipi_dsi_encoder_helper_funcs = {
+ 	.disable = dw_mipi_dsi_encoder_disable,
+ };
+ 
+-static const struct drm_encoder_funcs dw_mipi_dsi_encoder_funcs = {
+-	.destroy = drm_encoder_cleanup,
+-};
+-
+ static int rockchip_dsi_drm_create_encoder(struct dw_mipi_dsi_rockchip *dsi,
+ 					   struct drm_device *drm_dev)
+ {
+@@ -802,8 +799,7 @@ static int rockchip_dsi_drm_create_encoder(struct dw_mipi_dsi_rockchip *dsi,
+ 	encoder->possible_crtcs = drm_of_find_possible_crtcs(drm_dev,
+ 							     dsi->dev->of_node);
+ 
+-	ret = drm_encoder_init(drm_dev, encoder, &dw_mipi_dsi_encoder_funcs,
+-			       DRM_MODE_ENCODER_DSI, NULL);
++	ret = drm_simple_encoder_init(drm_dev, encoder, DRM_MODE_ENCODER_DSI);
+ 	if (ret) {
+ 		DRM_ERROR("Failed to initialize encoder with drm\n");
+ 		return ret;
+diff --git a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+index 7f56d8c3491d..121aa8a63a76 100644
+--- a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+@@ -14,6 +14,7 @@
+ #include <drm/drm_edid.h>
+ #include <drm/drm_of.h>
+ #include <drm/drm_probe_helper.h>
++#include <drm/drm_simple_kms_helper.h>
+ 
+ #include "rockchip_drm_drv.h"
+ #include "rockchip_drm_vop.h"
+@@ -237,10 +238,6 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
+ 	return (valid) ? MODE_OK : MODE_BAD;
+ }
+ 
+-static const struct drm_encoder_funcs dw_hdmi_rockchip_encoder_funcs = {
+-	.destroy = drm_encoder_cleanup,
+-};
+-
+ static void dw_hdmi_rockchip_encoder_disable(struct drm_encoder *encoder)
+ {
+ }
+@@ -546,8 +543,7 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
+ 	}
+ 
+ 	drm_encoder_helper_add(encoder, &dw_hdmi_rockchip_encoder_helper_funcs);
+-	drm_encoder_init(drm, encoder, &dw_hdmi_rockchip_encoder_funcs,
+-			 DRM_MODE_ENCODER_TMDS, NULL);
++	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
+ 
+ 	platform_set_drvdata(pdev, hdmi);
+ 
+diff --git a/drivers/gpu/drm/rockchip/inno_hdmi.c b/drivers/gpu/drm/rockchip/inno_hdmi.c
+index e5864e823020..7afdc54eb3ec 100644
+--- a/drivers/gpu/drm/rockchip/inno_hdmi.c
++++ b/drivers/gpu/drm/rockchip/inno_hdmi.c
+@@ -19,6 +19,7 @@
+ #include <drm/drm_edid.h>
+ #include <drm/drm_of.h>
+ #include <drm/drm_probe_helper.h>
++#include <drm/drm_simple_kms_helper.h>
+ 
+ #include "rockchip_drm_drv.h"
+ #include "rockchip_drm_vop.h"
+@@ -532,10 +533,6 @@ static struct drm_encoder_helper_funcs inno_hdmi_encoder_helper_funcs = {
+ 	.atomic_check = inno_hdmi_encoder_atomic_check,
+ };
+ 
+-static struct drm_encoder_funcs inno_hdmi_encoder_funcs = {
+-	.destroy = drm_encoder_cleanup,
+-};
+-
+ static enum drm_connector_status
+ inno_hdmi_connector_detect(struct drm_connector *connector, bool force)
+ {
+@@ -617,8 +614,7 @@ static int inno_hdmi_register(struct drm_device *drm, struct inno_hdmi *hdmi)
+ 		return -EPROBE_DEFER;
+ 
+ 	drm_encoder_helper_add(encoder, &inno_hdmi_encoder_helper_funcs);
+-	drm_encoder_init(drm, encoder, &inno_hdmi_encoder_funcs,
+-			 DRM_MODE_ENCODER_TMDS, NULL);
++	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
+ 
+ 	hdmi->connector.polled = DRM_CONNECTOR_POLL_HPD;
+ 
+diff --git a/drivers/gpu/drm/rockchip/rk3066_hdmi.c b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
+index fe203d38664e..1c546c3a8998 100644
+--- a/drivers/gpu/drm/rockchip/rk3066_hdmi.c
++++ b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
+@@ -6,6 +6,7 @@
+ 
+ #include <drm/drm_of.h>
+ #include <drm/drm_probe_helper.h>
++#include <drm/drm_simple_kms_helper.h>
+ 
+ #include <linux/clk.h>
+ #include <linux/mfd/syscon.h>
+@@ -451,10 +452,6 @@ struct drm_encoder_helper_funcs rk3066_hdmi_encoder_helper_funcs = {
+ 	.atomic_check = rk3066_hdmi_encoder_atomic_check,
+ };
+ 
+-static const struct drm_encoder_funcs rk3066_hdmi_encoder_funcs = {
+-	.destroy = drm_encoder_cleanup,
+-};
+-
+ static enum drm_connector_status
+ rk3066_hdmi_connector_detect(struct drm_connector *connector, bool force)
+ {
+@@ -557,8 +554,7 @@ rk3066_hdmi_register(struct drm_device *drm, struct rk3066_hdmi *hdmi)
+ 		return -EPROBE_DEFER;
+ 
+ 	drm_encoder_helper_add(encoder, &rk3066_hdmi_encoder_helper_funcs);
+-	drm_encoder_init(drm, encoder, &rk3066_hdmi_encoder_funcs,
+-			 DRM_MODE_ENCODER_TMDS, NULL);
++	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
+ 
+ 	hdmi->connector.polled = DRM_CONNECTOR_POLL_HPD;
+ 
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+index 449a62908d21..63f967902c2d 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+@@ -16,13 +16,14 @@
+ #include <linux/pm_runtime.h>
+ #include <linux/regmap.h>
+ #include <linux/reset.h>
++
+ #include <drm/drm_atomic_helper.h>
+ #include <drm/drm_bridge.h>
+-
+ #include <drm/drm_dp_helper.h>
+ #include <drm/drm_of.h>
+ #include <drm/drm_panel.h>
+ #include <drm/drm_probe_helper.h>
++#include <drm/drm_simple_kms_helper.h>
+ 
+ #include "rockchip_drm_drv.h"
+ #include "rockchip_drm_vop.h"
+@@ -435,10 +436,6 @@ struct drm_encoder_helper_funcs px30_lvds_encoder_helper_funcs = {
+ 	.atomic_check = rockchip_lvds_encoder_atomic_check,
+ };
+ 
+-static const struct drm_encoder_funcs rockchip_lvds_encoder_funcs = {
+-	.destroy = drm_encoder_cleanup,
+-};
+-
+ static int rk3288_lvds_probe(struct platform_device *pdev,
+ 			     struct rockchip_lvds *lvds)
+ {
+@@ -607,8 +604,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+ 	encoder->possible_crtcs = drm_of_find_possible_crtcs(drm_dev,
+ 							     dev->of_node);
+ 
+-	ret = drm_encoder_init(drm_dev, encoder, &rockchip_lvds_encoder_funcs,
+-			       DRM_MODE_ENCODER_LVDS, NULL);
++	ret = drm_simple_encoder_init(drm_dev, encoder, DRM_MODE_ENCODER_LVDS);
+ 	if (ret < 0) {
+ 		DRM_DEV_ERROR(drm_dev->dev,
+ 			      "failed to initialize encoder: %d\n", ret);
+diff --git a/drivers/gpu/drm/rockchip/rockchip_rgb.c b/drivers/gpu/drm/rockchip/rockchip_rgb.c
+index 90784781e515..9a771af5d0c9 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_rgb.c
++++ b/drivers/gpu/drm/rockchip/rockchip_rgb.c
+@@ -14,6 +14,7 @@
+ #include <drm/drm_of.h>
+ #include <drm/drm_panel.h>
+ #include <drm/drm_probe_helper.h>
++#include <drm/drm_simple_kms_helper.h>
+ 
+ #include "rockchip_drm_drv.h"
+ #include "rockchip_drm_vop.h"
+@@ -67,10 +68,6 @@ struct drm_encoder_helper_funcs rockchip_rgb_encoder_helper_funcs = {
+ 	.atomic_check = rockchip_rgb_encoder_atomic_check,
+ };
+ 
+-static const struct drm_encoder_funcs rockchip_rgb_encoder_funcs = {
+-	.destroy = drm_encoder_cleanup,
+-};
+-
+ struct rockchip_rgb *rockchip_rgb_init(struct device *dev,
+ 				       struct drm_crtc *crtc,
+ 				       struct drm_device *drm_dev)
+@@ -126,8 +123,7 @@ struct rockchip_rgb *rockchip_rgb_init(struct device *dev,
+ 	encoder = &rgb->encoder;
+ 	encoder->possible_crtcs = drm_crtc_mask(crtc);
+ 
+-	ret = drm_encoder_init(drm_dev, encoder, &rockchip_rgb_encoder_funcs,
+-			       DRM_MODE_ENCODER_NONE, NULL);
++	ret = drm_simple_encoder_init(drm_dev, encoder, DRM_MODE_ENCODER_NONE);
+ 	if (ret < 0) {
+ 		DRM_DEV_ERROR(drm_dev->dev,
+ 			      "failed to initialize encoder: %d\n", ret);
+
+From c9c579fc6027611089c668bfba4bbf52e9a3aa0c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Guido=20G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Thu, 9 Apr 2020 12:42:02 +0200
+Subject: [PATCH] drm/bridge: Add NWL MIPI DSI host controller support
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This adds initial support for the NWL MIPI DSI Host controller found on
+i.MX8 SoCs.
+
+It adds support for the i.MX8MQ but the same IP can be found on
+e.g. the i.MX8QXP.
+
+It has been tested on the Librem 5 devkit using mxsfb.
+
+Signed-off-by: Guido Günther <agx@sigxcpu.org>
+Co-developed-by: Robert Chiras <robert.chiras@nxp.com>
+Signed-off-by: Robert Chiras <robert.chiras@nxp.com>
+Tested-by: Robert Chiras <robert.chiras@nxp.com>
+Tested-by: Martin Kepplinger <martin.kepplinger@puri.sm>
+Reviewed-by: Fabio Estevam <festevam@gmail.com>
+Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
+Link: https://patchwork.freedesktop.org/patch/msgid/1cf5750f734e33d005564cd89c576eaf3c1c192b.1586427783.git.agx@sigxcpu.org
+(cherry picked from commit 44cfc6233447cb2cf47aeb99457de35826a363f6)
+---
+ drivers/gpu/drm/bridge/Kconfig   |   16 +
+ drivers/gpu/drm/bridge/Makefile  |    1 +
+ drivers/gpu/drm/bridge/nwl-dsi.c | 1213 ++++++++++++++++++++++++++++++++++++++
+ drivers/gpu/drm/bridge/nwl-dsi.h |  144 +++++
+ 4 files changed, 1374 insertions(+)
+ create mode 100644 drivers/gpu/drm/bridge/nwl-dsi.c
+ create mode 100644 drivers/gpu/drm/bridge/nwl-dsi.h
+
+diff --git a/drivers/gpu/drm/bridge/Kconfig b/drivers/gpu/drm/bridge/Kconfig
+index aaed2347ace9..6ec945f837b8 100644
+--- a/drivers/gpu/drm/bridge/Kconfig
++++ b/drivers/gpu/drm/bridge/Kconfig
+@@ -58,6 +58,22 @@ config DRM_MEGACHIPS_STDPXXXX_GE_B850V3_FW
+ 	  to DP++. This is used with the i.MX6 imx-ldb
+ 	  driver. You are likely to say N here.
+ 
++config DRM_NWL_MIPI_DSI
++	tristate "Northwest Logic MIPI DSI Host controller"
++	depends on DRM
++	depends on COMMON_CLK
++	depends on OF && HAS_IOMEM
++	select DRM_KMS_HELPER
++	select DRM_MIPI_DSI
++	select DRM_PANEL_BRIDGE
++	select GENERIC_PHY_MIPI_DPHY
++	select MFD_SYSCON
++	select MULTIPLEXER
++	select REGMAP_MMIO
++	help
++	  This enables the Northwest Logic MIPI DSI Host controller as
++	  for example found on NXP's i.MX8 Processors.
++
+ config DRM_NXP_PTN3460
+ 	tristate "NXP PTN3460 DP/LVDS bridge"
+ 	depends on OF
+diff --git a/drivers/gpu/drm/bridge/Makefile b/drivers/gpu/drm/bridge/Makefile
+index 6fb062b5b0f0..b04ac2dfa22c 100644
+--- a/drivers/gpu/drm/bridge/Makefile
++++ b/drivers/gpu/drm/bridge/Makefile
+@@ -18,6 +18,7 @@ obj-$(CONFIG_DRM_I2C_ADV7511) += adv7511/
+ obj-$(CONFIG_DRM_TI_SN65DSI86) += ti-sn65dsi86.o
+ obj-$(CONFIG_DRM_TI_TFP410) += ti-tfp410.o
+ obj-$(CONFIG_DRM_TI_TPD12S015) += ti-tpd12s015.o
++obj-$(CONFIG_DRM_NWL_MIPI_DSI) += nwl-dsi.o
+ 
+ obj-y += analogix/
+ obj-y += synopsys/
+diff --git a/drivers/gpu/drm/bridge/nwl-dsi.c b/drivers/gpu/drm/bridge/nwl-dsi.c
+new file mode 100644
+index 000000000000..b14d725bf609
+--- /dev/null
++++ b/drivers/gpu/drm/bridge/nwl-dsi.c
+@@ -0,0 +1,1213 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * i.MX8 NWL MIPI DSI host driver
++ *
++ * Copyright (C) 2017 NXP
++ * Copyright (C) 2020 Purism SPC
++ */
++
++#include <linux/bitfield.h>
++#include <linux/clk.h>
++#include <linux/irq.h>
++#include <linux/math64.h>
++#include <linux/mfd/syscon.h>
++#include <linux/module.h>
++#include <linux/mux/consumer.h>
++#include <linux/of.h>
++#include <linux/of_platform.h>
++#include <linux/phy/phy.h>
++#include <linux/regmap.h>
++#include <linux/reset.h>
++#include <linux/sys_soc.h>
++#include <linux/time64.h>
++
++#include <drm/drm_bridge.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_of.h>
++#include <drm/drm_panel.h>
++#include <drm/drm_print.h>
++
++#include <video/mipi_display.h>
++
++#include "nwl-dsi.h"
++
++#define DRV_NAME "nwl-dsi"
++
++/* i.MX8 NWL quirks */
++/* i.MX8MQ errata E11418 */
++#define E11418_HS_MODE_QUIRK	BIT(0)
++
++#define NWL_DSI_MIPI_FIFO_TIMEOUT msecs_to_jiffies(500)
++
++enum transfer_direction {
++	DSI_PACKET_SEND,
++	DSI_PACKET_RECEIVE,
++};
++
++#define NWL_DSI_ENDPOINT_LCDIF 0
++#define NWL_DSI_ENDPOINT_DCSS 1
++
++struct nwl_dsi_plat_clk_config {
++	const char *id;
++	struct clk *clk;
++	bool present;
++};
++
++struct nwl_dsi_transfer {
++	const struct mipi_dsi_msg *msg;
++	struct mipi_dsi_packet packet;
++	struct completion completed;
++
++	int status; /* status of transmission */
++	enum transfer_direction direction;
++	bool need_bta;
++	u8 cmd;
++	u16 rx_word_count;
++	size_t tx_len; /* in bytes */
++	size_t rx_len; /* in bytes */
++};
++
++struct nwl_dsi {
++	struct drm_bridge bridge;
++	struct mipi_dsi_host dsi_host;
++	struct drm_bridge *panel_bridge;
++	struct device *dev;
++	struct phy *phy;
++	union phy_configure_opts phy_cfg;
++	unsigned int quirks;
++
++	struct regmap *regmap;
++	int irq;
++	/*
++	 * The DSI host controller needs this reset sequence according to NWL:
++	 * 1. Deassert pclk reset to get access to DSI regs
++	 * 2. Configure DSI Host and DPHY and enable DPHY
++	 * 3. Deassert ESC and BYTE resets to allow host TX operations)
++	 * 4. Send DSI cmds to configure peripheral (handled by panel drv)
++	 * 5. Deassert DPI reset so DPI receives pixels and starts sending
++	 *    DSI data
++	 *
++	 * TODO: Since panel_bridges do their DSI setup in enable we
++	 * currently have 4. and 5. swapped.
++	 */
++	struct reset_control *rst_byte;
++	struct reset_control *rst_esc;
++	struct reset_control *rst_dpi;
++	struct reset_control *rst_pclk;
++	struct mux_control *mux;
++
++	/* DSI clocks */
++	struct clk *phy_ref_clk;
++	struct clk *rx_esc_clk;
++	struct clk *tx_esc_clk;
++	struct clk *core_clk;
++	/*
++	 * hardware bug: the i.MX8MQ needs this clock on during reset
++	 * even when not using LCDIF.
++	 */
++	struct clk *lcdif_clk;
++
++	/* dsi lanes */
++	u32 lanes;
++	enum mipi_dsi_pixel_format format;
++	struct drm_display_mode mode;
++	unsigned long dsi_mode_flags;
++	int error;
++
++	struct nwl_dsi_transfer *xfer;
++};
++
++static const struct regmap_config nwl_dsi_regmap_config = {
++	.reg_bits = 16,
++	.val_bits = 32,
++	.reg_stride = 4,
++	.max_register = NWL_DSI_IRQ_MASK2,
++	.name = DRV_NAME,
++};
++
++static inline struct nwl_dsi *bridge_to_dsi(struct drm_bridge *bridge)
++{
++	return container_of(bridge, struct nwl_dsi, bridge);
++}
++
++static int nwl_dsi_clear_error(struct nwl_dsi *dsi)
++{
++	int ret = dsi->error;
++
++	dsi->error = 0;
++	return ret;
++}
++
++static void nwl_dsi_write(struct nwl_dsi *dsi, unsigned int reg, u32 val)
++{
++	int ret;
++
++	if (dsi->error)
++		return;
++
++	ret = regmap_write(dsi->regmap, reg, val);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev,
++			      "Failed to write NWL DSI reg 0x%x: %d\n", reg,
++			      ret);
++		dsi->error = ret;
++	}
++}
++
++static u32 nwl_dsi_read(struct nwl_dsi *dsi, u32 reg)
++{
++	unsigned int val;
++	int ret;
++
++	if (dsi->error)
++		return 0;
++
++	ret = regmap_read(dsi->regmap, reg, &val);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to read NWL DSI reg 0x%x: %d\n",
++			      reg, ret);
++		dsi->error = ret;
++	}
++	return val;
++}
++
++static int nwl_dsi_get_dpi_pixel_format(enum mipi_dsi_pixel_format format)
++{
++	switch (format) {
++	case MIPI_DSI_FMT_RGB565:
++		return NWL_DSI_PIXEL_FORMAT_16;
++	case MIPI_DSI_FMT_RGB666:
++		return NWL_DSI_PIXEL_FORMAT_18L;
++	case MIPI_DSI_FMT_RGB666_PACKED:
++		return NWL_DSI_PIXEL_FORMAT_18;
++	case MIPI_DSI_FMT_RGB888:
++		return NWL_DSI_PIXEL_FORMAT_24;
++	default:
++		return -EINVAL;
++	}
++}
++
++/*
++ * ps2bc - Picoseconds to byte clock cycles
++ */
++static u32 ps2bc(struct nwl_dsi *dsi, unsigned long long ps)
++{
++	u32 bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
++
++	return DIV64_U64_ROUND_UP(ps * dsi->mode.clock * bpp,
++				  dsi->lanes * 8 * NSEC_PER_SEC);
++}
++
++/*
++ * ui2bc - UI time periods to byte clock cycles
++ */
++static u32 ui2bc(struct nwl_dsi *dsi, unsigned long long ui)
++{
++	u32 bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
++
++	return DIV64_U64_ROUND_UP(ui * dsi->lanes,
++				  dsi->mode.clock * 1000 * bpp);
++}
++
++/*
++ * us2bc - micro seconds to lp clock cycles
++ */
++static u32 us2lp(u32 lp_clk_rate, unsigned long us)
++{
++	return DIV_ROUND_UP(us * lp_clk_rate, USEC_PER_SEC);
++}
++
++static int nwl_dsi_config_host(struct nwl_dsi *dsi)
++{
++	u32 cycles;
++	struct phy_configure_opts_mipi_dphy *cfg = &dsi->phy_cfg.mipi_dphy;
++
++	if (dsi->lanes < 1 || dsi->lanes > 4)
++		return -EINVAL;
++
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "DSI Lanes %d\n", dsi->lanes);
++	nwl_dsi_write(dsi, NWL_DSI_CFG_NUM_LANES, dsi->lanes - 1);
++
++	if (dsi->dsi_mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS) {
++		nwl_dsi_write(dsi, NWL_DSI_CFG_NONCONTINUOUS_CLK, 0x01);
++		nwl_dsi_write(dsi, NWL_DSI_CFG_AUTOINSERT_EOTP, 0x01);
++	} else {
++		nwl_dsi_write(dsi, NWL_DSI_CFG_NONCONTINUOUS_CLK, 0x00);
++		nwl_dsi_write(dsi, NWL_DSI_CFG_AUTOINSERT_EOTP, 0x00);
++	}
++
++	/* values in byte clock cycles */
++	cycles = ui2bc(dsi, cfg->clk_pre);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "cfg_t_pre: 0x%x\n", cycles);
++	nwl_dsi_write(dsi, NWL_DSI_CFG_T_PRE, cycles);
++	cycles = ps2bc(dsi, cfg->lpx + cfg->clk_prepare + cfg->clk_zero);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "cfg_tx_gap (pre): 0x%x\n", cycles);
++	cycles += ui2bc(dsi, cfg->clk_pre);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "cfg_t_post: 0x%x\n", cycles);
++	nwl_dsi_write(dsi, NWL_DSI_CFG_T_POST, cycles);
++	cycles = ps2bc(dsi, cfg->hs_exit);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "cfg_tx_gap: 0x%x\n", cycles);
++	nwl_dsi_write(dsi, NWL_DSI_CFG_TX_GAP, cycles);
++
++	nwl_dsi_write(dsi, NWL_DSI_CFG_EXTRA_CMDS_AFTER_EOTP, 0x01);
++	nwl_dsi_write(dsi, NWL_DSI_CFG_HTX_TO_COUNT, 0x00);
++	nwl_dsi_write(dsi, NWL_DSI_CFG_LRX_H_TO_COUNT, 0x00);
++	nwl_dsi_write(dsi, NWL_DSI_CFG_BTA_H_TO_COUNT, 0x00);
++	/* In LP clock cycles */
++	cycles = us2lp(cfg->lp_clk_rate, cfg->wakeup);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "cfg_twakeup: 0x%x\n", cycles);
++	nwl_dsi_write(dsi, NWL_DSI_CFG_TWAKEUP, cycles);
++
++	return nwl_dsi_clear_error(dsi);
++}
++
++static int nwl_dsi_config_dpi(struct nwl_dsi *dsi)
++{
++	u32 mode;
++	int color_format;
++	bool burst_mode;
++	int hfront_porch, hback_porch, vfront_porch, vback_porch;
++	int hsync_len, vsync_len;
++
++	hfront_porch = dsi->mode.hsync_start - dsi->mode.hdisplay;
++	hsync_len = dsi->mode.hsync_end - dsi->mode.hsync_start;
++	hback_porch = dsi->mode.htotal - dsi->mode.hsync_end;
++
++	vfront_porch = dsi->mode.vsync_start - dsi->mode.vdisplay;
++	vsync_len = dsi->mode.vsync_end - dsi->mode.vsync_start;
++	vback_porch = dsi->mode.vtotal - dsi->mode.vsync_end;
++
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "hfront_porch = %d\n", hfront_porch);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "hback_porch = %d\n", hback_porch);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "hsync_len = %d\n", hsync_len);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "hdisplay = %d\n", dsi->mode.hdisplay);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "vfront_porch = %d\n", vfront_porch);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "vback_porch = %d\n", vback_porch);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "vsync_len = %d\n", vsync_len);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "vactive = %d\n", dsi->mode.vdisplay);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "clock = %d kHz\n", dsi->mode.clock);
++
++	color_format = nwl_dsi_get_dpi_pixel_format(dsi->format);
++	if (color_format < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Invalid color format 0x%x\n",
++			      dsi->format);
++		return color_format;
++	}
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "pixel fmt = %d\n", dsi->format);
++
++	nwl_dsi_write(dsi, NWL_DSI_INTERFACE_COLOR_CODING, NWL_DSI_DPI_24_BIT);
++	nwl_dsi_write(dsi, NWL_DSI_PIXEL_FORMAT, color_format);
++	/*
++	 * Adjusting input polarity based on the video mode results in
++	 * a black screen so always pick active low:
++	 */
++	nwl_dsi_write(dsi, NWL_DSI_VSYNC_POLARITY,
++		      NWL_DSI_VSYNC_POLARITY_ACTIVE_LOW);
++	nwl_dsi_write(dsi, NWL_DSI_HSYNC_POLARITY,
++		      NWL_DSI_HSYNC_POLARITY_ACTIVE_LOW);
++
++	burst_mode = (dsi->dsi_mode_flags & MIPI_DSI_MODE_VIDEO_BURST) &&
++		     !(dsi->dsi_mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE);
++
++	if (burst_mode) {
++		nwl_dsi_write(dsi, NWL_DSI_VIDEO_MODE, NWL_DSI_VM_BURST_MODE);
++		nwl_dsi_write(dsi, NWL_DSI_PIXEL_FIFO_SEND_LEVEL, 256);
++	} else {
++		mode = ((dsi->dsi_mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE) ?
++				NWL_DSI_VM_BURST_MODE_WITH_SYNC_PULSES :
++				NWL_DSI_VM_NON_BURST_MODE_WITH_SYNC_EVENTS);
++		nwl_dsi_write(dsi, NWL_DSI_VIDEO_MODE, mode);
++		nwl_dsi_write(dsi, NWL_DSI_PIXEL_FIFO_SEND_LEVEL,
++			      dsi->mode.hdisplay);
++	}
++
++	nwl_dsi_write(dsi, NWL_DSI_HFP, hfront_porch);
++	nwl_dsi_write(dsi, NWL_DSI_HBP, hback_porch);
++	nwl_dsi_write(dsi, NWL_DSI_HSA, hsync_len);
++
++	nwl_dsi_write(dsi, NWL_DSI_ENABLE_MULT_PKTS, 0x0);
++	nwl_dsi_write(dsi, NWL_DSI_BLLP_MODE, 0x1);
++	nwl_dsi_write(dsi, NWL_DSI_USE_NULL_PKT_BLLP, 0x0);
++	nwl_dsi_write(dsi, NWL_DSI_VC, 0x0);
++
++	nwl_dsi_write(dsi, NWL_DSI_PIXEL_PAYLOAD_SIZE, dsi->mode.hdisplay);
++	nwl_dsi_write(dsi, NWL_DSI_VACTIVE, dsi->mode.vdisplay - 1);
++	nwl_dsi_write(dsi, NWL_DSI_VBP, vback_porch);
++	nwl_dsi_write(dsi, NWL_DSI_VFP, vfront_porch);
++
++	return nwl_dsi_clear_error(dsi);
++}
++
++static int nwl_dsi_init_interrupts(struct nwl_dsi *dsi)
++{
++	u32 irq_enable;
++
++	nwl_dsi_write(dsi, NWL_DSI_IRQ_MASK, 0xffffffff);
++	nwl_dsi_write(dsi, NWL_DSI_IRQ_MASK2, 0x7);
++
++	irq_enable = ~(u32)(NWL_DSI_TX_PKT_DONE_MASK |
++			    NWL_DSI_RX_PKT_HDR_RCVD_MASK |
++			    NWL_DSI_TX_FIFO_OVFLW_MASK |
++			    NWL_DSI_HS_TX_TIMEOUT_MASK);
++
++	nwl_dsi_write(dsi, NWL_DSI_IRQ_MASK, irq_enable);
++
++	return nwl_dsi_clear_error(dsi);
++}
++
++static int nwl_dsi_host_attach(struct mipi_dsi_host *dsi_host,
++			       struct mipi_dsi_device *device)
++{
++	struct nwl_dsi *dsi = container_of(dsi_host, struct nwl_dsi, dsi_host);
++	struct device *dev = dsi->dev;
++
++	DRM_DEV_INFO(dev, "lanes=%u, format=0x%x flags=0x%lx\n", device->lanes,
++		     device->format, device->mode_flags);
++
++	if (device->lanes < 1 || device->lanes > 4)
++		return -EINVAL;
++
++	dsi->lanes = device->lanes;
++	dsi->format = device->format;
++	dsi->dsi_mode_flags = device->mode_flags;
++
++	return 0;
++}
++
++static bool nwl_dsi_read_packet(struct nwl_dsi *dsi, u32 status)
++{
++	struct device *dev = dsi->dev;
++	struct nwl_dsi_transfer *xfer = dsi->xfer;
++	int err;
++	u8 *payload = xfer->msg->rx_buf;
++	u32 val;
++	u16 word_count;
++	u8 channel;
++	u8 data_type;
++
++	xfer->status = 0;
++
++	if (xfer->rx_word_count == 0) {
++		if (!(status & NWL_DSI_RX_PKT_HDR_RCVD))
++			return false;
++		/* Get the RX header and parse it */
++		val = nwl_dsi_read(dsi, NWL_DSI_RX_PKT_HEADER);
++		err = nwl_dsi_clear_error(dsi);
++		if (err)
++			xfer->status = err;
++		word_count = NWL_DSI_WC(val);
++		channel = NWL_DSI_RX_VC(val);
++		data_type = NWL_DSI_RX_DT(val);
++
++		if (channel != xfer->msg->channel) {
++			DRM_DEV_ERROR(dev,
++				      "[%02X] Channel mismatch (%u != %u)\n",
++				      xfer->cmd, channel, xfer->msg->channel);
++			xfer->status = -EINVAL;
++			return true;
++		}
++
++		switch (data_type) {
++		case MIPI_DSI_RX_GENERIC_SHORT_READ_RESPONSE_2BYTE:
++			fallthrough;
++		case MIPI_DSI_RX_DCS_SHORT_READ_RESPONSE_2BYTE:
++			if (xfer->msg->rx_len > 1) {
++				/* read second byte */
++				payload[1] = word_count >> 8;
++				++xfer->rx_len;
++			}
++			fallthrough;
++		case MIPI_DSI_RX_GENERIC_SHORT_READ_RESPONSE_1BYTE:
++			fallthrough;
++		case MIPI_DSI_RX_DCS_SHORT_READ_RESPONSE_1BYTE:
++			if (xfer->msg->rx_len > 0) {
++				/* read first byte */
++				payload[0] = word_count & 0xff;
++				++xfer->rx_len;
++			}
++			xfer->status = xfer->rx_len;
++			return true;
++		case MIPI_DSI_RX_ACKNOWLEDGE_AND_ERROR_REPORT:
++			word_count &= 0xff;
++			DRM_DEV_ERROR(dev, "[%02X] DSI error report: 0x%02x\n",
++				      xfer->cmd, word_count);
++			xfer->status = -EPROTO;
++			return true;
++		}
++
++		if (word_count > xfer->msg->rx_len) {
++			DRM_DEV_ERROR(dev,
++				"[%02X] Receive buffer too small: %zu (< %u)\n",
++				xfer->cmd, xfer->msg->rx_len, word_count);
++			xfer->status = -EINVAL;
++			return true;
++		}
++
++		xfer->rx_word_count = word_count;
++	} else {
++		/* Set word_count from previous header read */
++		word_count = xfer->rx_word_count;
++	}
++
++	/* If RX payload is not yet received, wait for it */
++	if (!(status & NWL_DSI_RX_PKT_PAYLOAD_DATA_RCVD))
++		return false;
++
++	/* Read the RX payload */
++	while (word_count >= 4) {
++		val = nwl_dsi_read(dsi, NWL_DSI_RX_PAYLOAD);
++		payload[0] = (val >> 0) & 0xff;
++		payload[1] = (val >> 8) & 0xff;
++		payload[2] = (val >> 16) & 0xff;
++		payload[3] = (val >> 24) & 0xff;
++		payload += 4;
++		xfer->rx_len += 4;
++		word_count -= 4;
++	}
++
++	if (word_count > 0) {
++		val = nwl_dsi_read(dsi, NWL_DSI_RX_PAYLOAD);
++		switch (word_count) {
++		case 3:
++			payload[2] = (val >> 16) & 0xff;
++			++xfer->rx_len;
++			fallthrough;
++		case 2:
++			payload[1] = (val >> 8) & 0xff;
++			++xfer->rx_len;
++			fallthrough;
++		case 1:
++			payload[0] = (val >> 0) & 0xff;
++			++xfer->rx_len;
++			break;
++		}
++	}
++
++	xfer->status = xfer->rx_len;
++	err = nwl_dsi_clear_error(dsi);
++	if (err)
++		xfer->status = err;
++
++	return true;
++}
++
++static void nwl_dsi_finish_transmission(struct nwl_dsi *dsi, u32 status)
++{
++	struct nwl_dsi_transfer *xfer = dsi->xfer;
++	bool end_packet = false;
++
++	if (!xfer)
++		return;
++
++	if (xfer->direction == DSI_PACKET_SEND &&
++	    status & NWL_DSI_TX_PKT_DONE) {
++		xfer->status = xfer->tx_len;
++		end_packet = true;
++	} else if (status & NWL_DSI_DPHY_DIRECTION &&
++		   ((status & (NWL_DSI_RX_PKT_HDR_RCVD |
++			       NWL_DSI_RX_PKT_PAYLOAD_DATA_RCVD)))) {
++		end_packet = nwl_dsi_read_packet(dsi, status);
++	}
++
++	if (end_packet)
++		complete(&xfer->completed);
++}
++
++static void nwl_dsi_begin_transmission(struct nwl_dsi *dsi)
++{
++	struct nwl_dsi_transfer *xfer = dsi->xfer;
++	struct mipi_dsi_packet *pkt = &xfer->packet;
++	const u8 *payload;
++	size_t length;
++	u16 word_count;
++	u8 hs_mode;
++	u32 val;
++	u32 hs_workaround = 0;
++
++	/* Send the payload, if any */
++	length = pkt->payload_length;
++	payload = pkt->payload;
++
++	while (length >= 4) {
++		val = *(u32 *)payload;
++		hs_workaround |= !(val & 0xFFFF00);
++		nwl_dsi_write(dsi, NWL_DSI_TX_PAYLOAD, val);
++		payload += 4;
++		length -= 4;
++	}
++	/* Send the rest of the payload */
++	val = 0;
++	switch (length) {
++	case 3:
++		val |= payload[2] << 16;
++		fallthrough;
++	case 2:
++		val |= payload[1] << 8;
++		hs_workaround |= !(val & 0xFFFF00);
++		fallthrough;
++	case 1:
++		val |= payload[0];
++		nwl_dsi_write(dsi, NWL_DSI_TX_PAYLOAD, val);
++		break;
++	}
++	xfer->tx_len = pkt->payload_length;
++
++	/*
++	 * Send the header
++	 * header[0] = Virtual Channel + Data Type
++	 * header[1] = Word Count LSB (LP) or first param (SP)
++	 * header[2] = Word Count MSB (LP) or second param (SP)
++	 */
++	word_count = pkt->header[1] | (pkt->header[2] << 8);
++	if (hs_workaround && (dsi->quirks & E11418_HS_MODE_QUIRK)) {
++		DRM_DEV_DEBUG_DRIVER(dsi->dev,
++				     "Using hs mode workaround for cmd 0x%x\n",
++				     xfer->cmd);
++		hs_mode = 1;
++	} else {
++		hs_mode = (xfer->msg->flags & MIPI_DSI_MSG_USE_LPM) ? 0 : 1;
++	}
++	val = NWL_DSI_WC(word_count) | NWL_DSI_TX_VC(xfer->msg->channel) |
++	      NWL_DSI_TX_DT(xfer->msg->type) | NWL_DSI_HS_SEL(hs_mode) |
++	      NWL_DSI_BTA_TX(xfer->need_bta);
++	nwl_dsi_write(dsi, NWL_DSI_PKT_CONTROL, val);
++
++	/* Send packet command */
++	nwl_dsi_write(dsi, NWL_DSI_SEND_PACKET, 0x1);
++}
++
++static ssize_t nwl_dsi_host_transfer(struct mipi_dsi_host *dsi_host,
++				     const struct mipi_dsi_msg *msg)
++{
++	struct nwl_dsi *dsi = container_of(dsi_host, struct nwl_dsi, dsi_host);
++	struct nwl_dsi_transfer xfer;
++	ssize_t ret = 0;
++
++	/* Create packet to be sent */
++	dsi->xfer = &xfer;
++	ret = mipi_dsi_create_packet(&xfer.packet, msg);
++	if (ret < 0) {
++		dsi->xfer = NULL;
++		return ret;
++	}
++
++	if ((msg->type & MIPI_DSI_GENERIC_READ_REQUEST_0_PARAM ||
++	     msg->type & MIPI_DSI_GENERIC_READ_REQUEST_1_PARAM ||
++	     msg->type & MIPI_DSI_GENERIC_READ_REQUEST_2_PARAM ||
++	     msg->type & MIPI_DSI_DCS_READ) &&
++	    msg->rx_len > 0 && msg->rx_buf)
++		xfer.direction = DSI_PACKET_RECEIVE;
++	else
++		xfer.direction = DSI_PACKET_SEND;
++
++	xfer.need_bta = (xfer.direction == DSI_PACKET_RECEIVE);
++	xfer.need_bta |= (msg->flags & MIPI_DSI_MSG_REQ_ACK) ? 1 : 0;
++	xfer.msg = msg;
++	xfer.status = -ETIMEDOUT;
++	xfer.rx_word_count = 0;
++	xfer.rx_len = 0;
++	xfer.cmd = 0x00;
++	if (msg->tx_len > 0)
++		xfer.cmd = ((u8 *)(msg->tx_buf))[0];
++	init_completion(&xfer.completed);
++
++	ret = clk_prepare_enable(dsi->rx_esc_clk);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to enable rx_esc clk: %zd\n",
++			      ret);
++		return ret;
++	}
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "Enabled rx_esc clk @%lu Hz\n",
++			     clk_get_rate(dsi->rx_esc_clk));
++
++	/* Initiate the DSI packet transmision */
++	nwl_dsi_begin_transmission(dsi);
++
++	if (!wait_for_completion_timeout(&xfer.completed,
++					 NWL_DSI_MIPI_FIFO_TIMEOUT)) {
++		DRM_DEV_ERROR(dsi_host->dev, "[%02X] DSI transfer timed out\n",
++			      xfer.cmd);
++		ret = -ETIMEDOUT;
++	} else {
++		ret = xfer.status;
++	}
++
++	clk_disable_unprepare(dsi->rx_esc_clk);
++
++	return ret;
++}
++
++static const struct mipi_dsi_host_ops nwl_dsi_host_ops = {
++	.attach = nwl_dsi_host_attach,
++	.transfer = nwl_dsi_host_transfer,
++};
++
++static irqreturn_t nwl_dsi_irq_handler(int irq, void *data)
++{
++	u32 irq_status;
++	struct nwl_dsi *dsi = data;
++
++	irq_status = nwl_dsi_read(dsi, NWL_DSI_IRQ_STATUS);
++
++	if (irq_status & NWL_DSI_TX_FIFO_OVFLW)
++		DRM_DEV_ERROR_RATELIMITED(dsi->dev, "tx fifo overflow\n");
++
++	if (irq_status & NWL_DSI_HS_TX_TIMEOUT)
++		DRM_DEV_ERROR_RATELIMITED(dsi->dev, "HS tx timeout\n");
++
++	if (irq_status & NWL_DSI_TX_PKT_DONE ||
++	    irq_status & NWL_DSI_RX_PKT_HDR_RCVD ||
++	    irq_status & NWL_DSI_RX_PKT_PAYLOAD_DATA_RCVD)
++		nwl_dsi_finish_transmission(dsi, irq_status);
++
++	return IRQ_HANDLED;
++}
++
++static int nwl_dsi_enable(struct nwl_dsi *dsi)
++{
++	struct device *dev = dsi->dev;
++	union phy_configure_opts *phy_cfg = &dsi->phy_cfg;
++	int ret;
++
++	if (!dsi->lanes) {
++		DRM_DEV_ERROR(dev, "Need DSI lanes: %d\n", dsi->lanes);
++		return -EINVAL;
++	}
++
++	ret = phy_init(dsi->phy);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dev, "Failed to init DSI phy: %d\n", ret);
++		return ret;
++	}
++
++	ret = phy_configure(dsi->phy, phy_cfg);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dev, "Failed to configure DSI phy: %d\n", ret);
++		goto uninit_phy;
++	}
++
++	ret = clk_prepare_enable(dsi->tx_esc_clk);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to enable tx_esc clk: %d\n",
++			      ret);
++		goto uninit_phy;
++	}
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "Enabled tx_esc clk @%lu Hz\n",
++			     clk_get_rate(dsi->tx_esc_clk));
++
++	ret = nwl_dsi_config_host(dsi);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dev, "Failed to set up DSI: %d", ret);
++		goto disable_clock;
++	}
++
++	ret = nwl_dsi_config_dpi(dsi);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dev, "Failed to set up DPI: %d", ret);
++		goto disable_clock;
++	}
++
++	ret = phy_power_on(dsi->phy);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dev, "Failed to power on DPHY (%d)\n", ret);
++		goto disable_clock;
++	}
++
++	ret = nwl_dsi_init_interrupts(dsi);
++	if (ret < 0)
++		goto power_off_phy;
++
++	return ret;
++
++power_off_phy:
++	phy_power_off(dsi->phy);
++disable_clock:
++	clk_disable_unprepare(dsi->tx_esc_clk);
++uninit_phy:
++	phy_exit(dsi->phy);
++
++	return ret;
++}
++
++static int nwl_dsi_disable(struct nwl_dsi *dsi)
++{
++	struct device *dev = dsi->dev;
++
++	DRM_DEV_DEBUG_DRIVER(dev, "Disabling clocks and phy\n");
++
++	phy_power_off(dsi->phy);
++	phy_exit(dsi->phy);
++
++	/* Disabling the clock before the phy breaks enabling dsi again */
++	clk_disable_unprepare(dsi->tx_esc_clk);
++
++	return 0;
++}
++
++static void nwl_dsi_bridge_disable(struct drm_bridge *bridge)
++{
++	struct nwl_dsi *dsi = bridge_to_dsi(bridge);
++	int ret;
++
++	nwl_dsi_disable(dsi);
++
++	ret = reset_control_assert(dsi->rst_dpi);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to assert DPI: %d\n", ret);
++		return;
++	}
++	ret = reset_control_assert(dsi->rst_byte);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to assert ESC: %d\n", ret);
++		return;
++	}
++	ret = reset_control_assert(dsi->rst_esc);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to assert BYTE: %d\n", ret);
++		return;
++	}
++	ret = reset_control_assert(dsi->rst_pclk);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to assert PCLK: %d\n", ret);
++		return;
++	}
++
++	clk_disable_unprepare(dsi->core_clk);
++	clk_disable_unprepare(dsi->lcdif_clk);
++
++	pm_runtime_put(dsi->dev);
++}
++
++static int nwl_dsi_get_dphy_params(struct nwl_dsi *dsi,
++				   const struct drm_display_mode *mode,
++				   union phy_configure_opts *phy_opts)
++{
++	unsigned long rate;
++	int ret;
++
++	if (dsi->lanes < 1 || dsi->lanes > 4)
++		return -EINVAL;
++
++	/*
++	 * So far the DPHY spec minimal timings work for both mixel
++	 * dphy and nwl dsi host
++	 */
++	ret = phy_mipi_dphy_get_default_config(mode->clock * 1000,
++		mipi_dsi_pixel_format_to_bpp(dsi->format), dsi->lanes,
++		&phy_opts->mipi_dphy);
++	if (ret < 0)
++		return ret;
++
++	rate = clk_get_rate(dsi->tx_esc_clk);
++	DRM_DEV_DEBUG_DRIVER(dsi->dev, "LP clk is @%lu Hz\n", rate);
++	phy_opts->mipi_dphy.lp_clk_rate = rate;
++
++	return 0;
++}
++
++static bool nwl_dsi_bridge_mode_fixup(struct drm_bridge *bridge,
++				      const struct drm_display_mode *mode,
++				      struct drm_display_mode *adjusted_mode)
++{
++	/* At least LCDIF + NWL needs active high sync */
++	adjusted_mode->flags |= (DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC);
++	adjusted_mode->flags &= ~(DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_NVSYNC);
++
++	return true;
++}
++
++static enum drm_mode_status
++nwl_dsi_bridge_mode_valid(struct drm_bridge *bridge,
++			  const struct drm_display_mode *mode)
++{
++	struct nwl_dsi *dsi = bridge_to_dsi(bridge);
++	int bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
++
++	if (mode->clock * bpp > 15000000 * dsi->lanes)
++		return MODE_CLOCK_HIGH;
++
++	if (mode->clock * bpp < 80000 * dsi->lanes)
++		return MODE_CLOCK_LOW;
++
++	return MODE_OK;
++}
++
++static void
++nwl_dsi_bridge_mode_set(struct drm_bridge *bridge,
++			const struct drm_display_mode *mode,
++			const struct drm_display_mode *adjusted_mode)
++{
++	struct nwl_dsi *dsi = bridge_to_dsi(bridge);
++	struct device *dev = dsi->dev;
++	union phy_configure_opts new_cfg;
++	unsigned long phy_ref_rate;
++	int ret;
++
++	ret = nwl_dsi_get_dphy_params(dsi, adjusted_mode, &new_cfg);
++	if (ret < 0)
++		return;
++
++	/*
++	 * If hs clock is unchanged, we're all good - all parameters are
++	 * derived from it atm.
++	 */
++	if (new_cfg.mipi_dphy.hs_clk_rate == dsi->phy_cfg.mipi_dphy.hs_clk_rate)
++		return;
++
++	phy_ref_rate = clk_get_rate(dsi->phy_ref_clk);
++	DRM_DEV_DEBUG_DRIVER(dev, "PHY at ref rate: %lu\n", phy_ref_rate);
++	/* Save the new desired phy config */
++	memcpy(&dsi->phy_cfg, &new_cfg, sizeof(new_cfg));
++
++	memcpy(&dsi->mode, adjusted_mode, sizeof(dsi->mode));
++	drm_mode_debug_printmodeline(adjusted_mode);
++}
++
++static void nwl_dsi_bridge_pre_enable(struct drm_bridge *bridge)
++{
++	struct nwl_dsi *dsi = bridge_to_dsi(bridge);
++	int ret;
++
++	pm_runtime_get_sync(dsi->dev);
++
++	if (clk_prepare_enable(dsi->lcdif_clk) < 0)
++		return;
++	if (clk_prepare_enable(dsi->core_clk) < 0)
++		return;
++
++	/* Step 1 from DSI reset-out instructions */
++	ret = reset_control_deassert(dsi->rst_pclk);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to deassert PCLK: %d\n", ret);
++		return;
++	}
++
++	/* Step 2 from DSI reset-out instructions */
++	nwl_dsi_enable(dsi);
++
++	/* Step 3 from DSI reset-out instructions */
++	ret = reset_control_deassert(dsi->rst_esc);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to deassert ESC: %d\n", ret);
++		return;
++	}
++	ret = reset_control_deassert(dsi->rst_byte);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to deassert BYTE: %d\n", ret);
++		return;
++	}
++}
++
++static void nwl_dsi_bridge_enable(struct drm_bridge *bridge)
++{
++	struct nwl_dsi *dsi = bridge_to_dsi(bridge);
++	int ret;
++
++	/* Step 5 from DSI reset-out instructions */
++	ret = reset_control_deassert(dsi->rst_dpi);
++	if (ret < 0)
++		DRM_DEV_ERROR(dsi->dev, "Failed to deassert DPI: %d\n", ret);
++}
++
++static int nwl_dsi_bridge_attach(struct drm_bridge *bridge,
++				 enum drm_bridge_attach_flags flags)
++{
++	struct nwl_dsi *dsi = bridge_to_dsi(bridge);
++	struct drm_bridge *panel_bridge;
++	struct drm_panel *panel;
++	int ret;
++
++	if (flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR) {
++		DRM_ERROR("Fix bridge driver to make connector optional!");
++		return -EINVAL;
++	}
++
++	ret = drm_of_find_panel_or_bridge(dsi->dev->of_node, 1, 0, &panel,
++					  &panel_bridge);
++	if (ret)
++		return ret;
++
++	if (panel) {
++		panel_bridge = drm_panel_bridge_add(panel);
++		if (IS_ERR(panel_bridge))
++			return PTR_ERR(panel_bridge);
++	}
++	dsi->panel_bridge = panel_bridge;
++
++	if (!dsi->panel_bridge)
++		return -EPROBE_DEFER;
++
++	return drm_bridge_attach(bridge->encoder, dsi->panel_bridge, bridge,
++				 flags);
++}
++
++static void nwl_dsi_bridge_detach(struct drm_bridge *bridge)
++{	struct nwl_dsi *dsi = bridge_to_dsi(bridge);
++
++	drm_of_panel_bridge_remove(dsi->dev->of_node, 1, 0);
++}
++
++static const struct drm_bridge_funcs nwl_dsi_bridge_funcs = {
++	.pre_enable = nwl_dsi_bridge_pre_enable,
++	.enable     = nwl_dsi_bridge_enable,
++	.disable    = nwl_dsi_bridge_disable,
++	.mode_fixup = nwl_dsi_bridge_mode_fixup,
++	.mode_set   = nwl_dsi_bridge_mode_set,
++	.mode_valid = nwl_dsi_bridge_mode_valid,
++	.attach	    = nwl_dsi_bridge_attach,
++	.detach	    = nwl_dsi_bridge_detach,
++};
++
++static int nwl_dsi_parse_dt(struct nwl_dsi *dsi)
++{
++	struct platform_device *pdev = to_platform_device(dsi->dev);
++	struct clk *clk;
++	void __iomem *base;
++	int ret;
++
++	dsi->phy = devm_phy_get(dsi->dev, "dphy");
++	if (IS_ERR(dsi->phy)) {
++		ret = PTR_ERR(dsi->phy);
++		if (ret != -EPROBE_DEFER)
++			DRM_DEV_ERROR(dsi->dev, "Could not get PHY: %d\n", ret);
++		return ret;
++	}
++
++	clk = devm_clk_get(dsi->dev, "lcdif");
++	if (IS_ERR(clk)) {
++		ret = PTR_ERR(clk);
++		DRM_DEV_ERROR(dsi->dev, "Failed to get lcdif clock: %d\n",
++			      ret);
++		return ret;
++	}
++	dsi->lcdif_clk = clk;
++
++	clk = devm_clk_get(dsi->dev, "core");
++	if (IS_ERR(clk)) {
++		ret = PTR_ERR(clk);
++		DRM_DEV_ERROR(dsi->dev, "Failed to get core clock: %d\n",
++			      ret);
++		return ret;
++	}
++	dsi->core_clk = clk;
++
++	clk = devm_clk_get(dsi->dev, "phy_ref");
++	if (IS_ERR(clk)) {
++		ret = PTR_ERR(clk);
++		DRM_DEV_ERROR(dsi->dev, "Failed to get phy_ref clock: %d\n",
++			      ret);
++		return ret;
++	}
++	dsi->phy_ref_clk = clk;
++
++	clk = devm_clk_get(dsi->dev, "rx_esc");
++	if (IS_ERR(clk)) {
++		ret = PTR_ERR(clk);
++		DRM_DEV_ERROR(dsi->dev, "Failed to get rx_esc clock: %d\n",
++			      ret);
++		return ret;
++	}
++	dsi->rx_esc_clk = clk;
++
++	clk = devm_clk_get(dsi->dev, "tx_esc");
++	if (IS_ERR(clk)) {
++		ret = PTR_ERR(clk);
++		DRM_DEV_ERROR(dsi->dev, "Failed to get tx_esc clock: %d\n",
++			      ret);
++		return ret;
++	}
++	dsi->tx_esc_clk = clk;
++
++	dsi->mux = devm_mux_control_get(dsi->dev, NULL);
++	if (IS_ERR(dsi->mux)) {
++		ret = PTR_ERR(dsi->mux);
++		if (ret != -EPROBE_DEFER)
++			DRM_DEV_ERROR(dsi->dev, "Failed to get mux: %d\n", ret);
++		return ret;
++	}
++
++	base = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(base))
++		return PTR_ERR(base);
++
++	dsi->regmap =
++		devm_regmap_init_mmio(dsi->dev, base, &nwl_dsi_regmap_config);
++	if (IS_ERR(dsi->regmap)) {
++		ret = PTR_ERR(dsi->regmap);
++		DRM_DEV_ERROR(dsi->dev, "Failed to create NWL DSI regmap: %d\n",
++			      ret);
++		return ret;
++	}
++
++	dsi->irq = platform_get_irq(pdev, 0);
++	if (dsi->irq < 0) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to get device IRQ: %d\n",
++			      dsi->irq);
++		return dsi->irq;
++	}
++
++	dsi->rst_pclk = devm_reset_control_get_exclusive(dsi->dev, "pclk");
++	if (IS_ERR(dsi->rst_pclk)) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to get pclk reset: %ld\n",
++			      PTR_ERR(dsi->rst_pclk));
++		return PTR_ERR(dsi->rst_pclk);
++	}
++	dsi->rst_byte = devm_reset_control_get_exclusive(dsi->dev, "byte");
++	if (IS_ERR(dsi->rst_byte)) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to get byte reset: %ld\n",
++			      PTR_ERR(dsi->rst_byte));
++		return PTR_ERR(dsi->rst_byte);
++	}
++	dsi->rst_esc = devm_reset_control_get_exclusive(dsi->dev, "esc");
++	if (IS_ERR(dsi->rst_esc)) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to get esc reset: %ld\n",
++			      PTR_ERR(dsi->rst_esc));
++		return PTR_ERR(dsi->rst_esc);
++	}
++	dsi->rst_dpi = devm_reset_control_get_exclusive(dsi->dev, "dpi");
++	if (IS_ERR(dsi->rst_dpi)) {
++		DRM_DEV_ERROR(dsi->dev, "Failed to get dpi reset: %ld\n",
++			      PTR_ERR(dsi->rst_dpi));
++		return PTR_ERR(dsi->rst_dpi);
++	}
++	return 0;
++}
++
++static int nwl_dsi_select_input(struct nwl_dsi *dsi)
++{
++	struct device_node *remote;
++	u32 use_dcss = 1;
++	int ret;
++
++	remote = of_graph_get_remote_node(dsi->dev->of_node, 0,
++					  NWL_DSI_ENDPOINT_LCDIF);
++	if (remote) {
++		use_dcss = 0;
++	} else {
++		remote = of_graph_get_remote_node(dsi->dev->of_node, 0,
++						  NWL_DSI_ENDPOINT_DCSS);
++		if (!remote) {
++			DRM_DEV_ERROR(dsi->dev,
++				      "No valid input endpoint found\n");
++			return -EINVAL;
++		}
++	}
++
++	DRM_DEV_INFO(dsi->dev, "Using %s as input source\n",
++		     (use_dcss) ? "DCSS" : "LCDIF");
++	ret = mux_control_try_select(dsi->mux, use_dcss);
++	if (ret < 0)
++		DRM_DEV_ERROR(dsi->dev, "Failed to select input: %d\n", ret);
++
++	of_node_put(remote);
++	return ret;
++}
++
++static int nwl_dsi_deselect_input(struct nwl_dsi *dsi)
++{
++	int ret;
++
++	ret = mux_control_deselect(dsi->mux);
++	if (ret < 0)
++		DRM_DEV_ERROR(dsi->dev, "Failed to deselect input: %d\n", ret);
++
++	return ret;
++}
++
++static const struct drm_bridge_timings nwl_dsi_timings = {
++	.input_bus_flags = DRM_BUS_FLAG_DE_LOW,
++};
++
++static const struct of_device_id nwl_dsi_dt_ids[] = {
++	{ .compatible = "fsl,imx8mq-nwl-dsi", },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, nwl_dsi_dt_ids);
++
++static const struct soc_device_attribute nwl_dsi_quirks_match[] = {
++	{ .soc_id = "i.MX8MQ", .revision = "2.0",
++	  .data = (void *)E11418_HS_MODE_QUIRK },
++	{ /* sentinel. */ },
++};
++
++static int nwl_dsi_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	const struct soc_device_attribute *attr;
++	struct nwl_dsi *dsi;
++	int ret;
++
++	dsi = devm_kzalloc(dev, sizeof(*dsi), GFP_KERNEL);
++	if (!dsi)
++		return -ENOMEM;
++
++	dsi->dev = dev;
++
++	ret = nwl_dsi_parse_dt(dsi);
++	if (ret)
++		return ret;
++
++	ret = devm_request_irq(dev, dsi->irq, nwl_dsi_irq_handler, 0,
++			       dev_name(dev), dsi);
++	if (ret < 0) {
++		DRM_DEV_ERROR(dev, "Failed to request IRQ %d: %d\n", dsi->irq,
++			      ret);
++		return ret;
++	}
++
++	dsi->dsi_host.ops = &nwl_dsi_host_ops;
++	dsi->dsi_host.dev = dev;
++	ret = mipi_dsi_host_register(&dsi->dsi_host);
++	if (ret) {
++		DRM_DEV_ERROR(dev, "Failed to register MIPI host: %d\n", ret);
++		return ret;
++	}
++
++	attr = soc_device_match(nwl_dsi_quirks_match);
++	if (attr)
++		dsi->quirks = (uintptr_t)attr->data;
++
++	dsi->bridge.driver_private = dsi;
++	dsi->bridge.funcs = &nwl_dsi_bridge_funcs;
++	dsi->bridge.of_node = dev->of_node;
++	dsi->bridge.timings = &nwl_dsi_timings;
++
++	dev_set_drvdata(dev, dsi);
++	pm_runtime_enable(dev);
++
++	ret = nwl_dsi_select_input(dsi);
++	if (ret < 0) {
++		mipi_dsi_host_unregister(&dsi->dsi_host);
++		return ret;
++	}
++
++	drm_bridge_add(&dsi->bridge);
++	return 0;
++}
++
++static int nwl_dsi_remove(struct platform_device *pdev)
++{
++	struct nwl_dsi *dsi = platform_get_drvdata(pdev);
++
++	nwl_dsi_deselect_input(dsi);
++	mipi_dsi_host_unregister(&dsi->dsi_host);
++	drm_bridge_remove(&dsi->bridge);
++	pm_runtime_disable(&pdev->dev);
++	return 0;
++}
++
++static struct platform_driver nwl_dsi_driver = {
++	.probe		= nwl_dsi_probe,
++	.remove		= nwl_dsi_remove,
++	.driver		= {
++		.of_match_table = nwl_dsi_dt_ids,
++		.name	= DRV_NAME,
++	},
++};
++
++module_platform_driver(nwl_dsi_driver);
++
++MODULE_AUTHOR("NXP Semiconductor");
++MODULE_AUTHOR("Purism SPC");
++MODULE_DESCRIPTION("Northwest Logic MIPI-DSI driver");
++MODULE_LICENSE("GPL"); /* GPLv2 or later */
+diff --git a/drivers/gpu/drm/bridge/nwl-dsi.h b/drivers/gpu/drm/bridge/nwl-dsi.h
+new file mode 100644
+index 000000000000..a247a8a11c7c
+--- /dev/null
++++ b/drivers/gpu/drm/bridge/nwl-dsi.h
+@@ -0,0 +1,144 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
++/*
++ * NWL MIPI DSI host driver
++ *
++ * Copyright (C) 2017 NXP
++ * Copyright (C) 2019 Purism SPC
++ */
++#ifndef __NWL_DSI_H__
++#define __NWL_DSI_H__
++
++/* DSI HOST registers */
++#define NWL_DSI_CFG_NUM_LANES			0x0
++#define NWL_DSI_CFG_NONCONTINUOUS_CLK		0x4
++#define NWL_DSI_CFG_T_PRE			0x8
++#define NWL_DSI_CFG_T_POST			0xc
++#define NWL_DSI_CFG_TX_GAP			0x10
++#define NWL_DSI_CFG_AUTOINSERT_EOTP		0x14
++#define NWL_DSI_CFG_EXTRA_CMDS_AFTER_EOTP	0x18
++#define NWL_DSI_CFG_HTX_TO_COUNT		0x1c
++#define NWL_DSI_CFG_LRX_H_TO_COUNT		0x20
++#define NWL_DSI_CFG_BTA_H_TO_COUNT		0x24
++#define NWL_DSI_CFG_TWAKEUP			0x28
++#define NWL_DSI_CFG_STATUS_OUT			0x2c
++#define NWL_DSI_RX_ERROR_STATUS			0x30
++
++/* DSI DPI registers */
++#define NWL_DSI_PIXEL_PAYLOAD_SIZE		0x200
++#define NWL_DSI_PIXEL_FIFO_SEND_LEVEL		0x204
++#define NWL_DSI_INTERFACE_COLOR_CODING		0x208
++#define NWL_DSI_PIXEL_FORMAT			0x20c
++#define NWL_DSI_VSYNC_POLARITY			0x210
++#define NWL_DSI_VSYNC_POLARITY_ACTIVE_LOW	0
++#define NWL_DSI_VSYNC_POLARITY_ACTIVE_HIGH	BIT(1)
++
++#define NWL_DSI_HSYNC_POLARITY			0x214
++#define NWL_DSI_HSYNC_POLARITY_ACTIVE_LOW	0
++#define NWL_DSI_HSYNC_POLARITY_ACTIVE_HIGH	BIT(1)
++
++#define NWL_DSI_VIDEO_MODE			0x218
++#define NWL_DSI_HFP				0x21c
++#define NWL_DSI_HBP				0x220
++#define NWL_DSI_HSA				0x224
++#define NWL_DSI_ENABLE_MULT_PKTS		0x228
++#define NWL_DSI_VBP				0x22c
++#define NWL_DSI_VFP				0x230
++#define NWL_DSI_BLLP_MODE			0x234
++#define NWL_DSI_USE_NULL_PKT_BLLP		0x238
++#define NWL_DSI_VACTIVE				0x23c
++#define NWL_DSI_VC				0x240
++
++/* DSI APB PKT control */
++#define NWL_DSI_TX_PAYLOAD			0x280
++#define NWL_DSI_PKT_CONTROL			0x284
++#define NWL_DSI_SEND_PACKET			0x288
++#define NWL_DSI_PKT_STATUS			0x28c
++#define NWL_DSI_PKT_FIFO_WR_LEVEL		0x290
++#define NWL_DSI_PKT_FIFO_RD_LEVEL		0x294
++#define NWL_DSI_RX_PAYLOAD			0x298
++#define NWL_DSI_RX_PKT_HEADER			0x29c
++
++/* DSI IRQ handling */
++#define NWL_DSI_IRQ_STATUS			0x2a0
++#define NWL_DSI_SM_NOT_IDLE			BIT(0)
++#define NWL_DSI_TX_PKT_DONE			BIT(1)
++#define NWL_DSI_DPHY_DIRECTION			BIT(2)
++#define NWL_DSI_TX_FIFO_OVFLW			BIT(3)
++#define NWL_DSI_TX_FIFO_UDFLW			BIT(4)
++#define NWL_DSI_RX_FIFO_OVFLW			BIT(5)
++#define NWL_DSI_RX_FIFO_UDFLW			BIT(6)
++#define NWL_DSI_RX_PKT_HDR_RCVD			BIT(7)
++#define NWL_DSI_RX_PKT_PAYLOAD_DATA_RCVD	BIT(8)
++#define NWL_DSI_BTA_TIMEOUT			BIT(29)
++#define NWL_DSI_LP_RX_TIMEOUT			BIT(30)
++#define NWL_DSI_HS_TX_TIMEOUT			BIT(31)
++
++#define NWL_DSI_IRQ_STATUS2			0x2a4
++#define NWL_DSI_SINGLE_BIT_ECC_ERR		BIT(0)
++#define NWL_DSI_MULTI_BIT_ECC_ERR		BIT(1)
++#define NWL_DSI_CRC_ERR				BIT(2)
++
++#define NWL_DSI_IRQ_MASK			0x2a8
++#define NWL_DSI_SM_NOT_IDLE_MASK		BIT(0)
++#define NWL_DSI_TX_PKT_DONE_MASK		BIT(1)
++#define NWL_DSI_DPHY_DIRECTION_MASK		BIT(2)
++#define NWL_DSI_TX_FIFO_OVFLW_MASK		BIT(3)
++#define NWL_DSI_TX_FIFO_UDFLW_MASK		BIT(4)
++#define NWL_DSI_RX_FIFO_OVFLW_MASK		BIT(5)
++#define NWL_DSI_RX_FIFO_UDFLW_MASK		BIT(6)
++#define NWL_DSI_RX_PKT_HDR_RCVD_MASK		BIT(7)
++#define NWL_DSI_RX_PKT_PAYLOAD_DATA_RCVD_MASK	BIT(8)
++#define NWL_DSI_BTA_TIMEOUT_MASK		BIT(29)
++#define NWL_DSI_LP_RX_TIMEOUT_MASK		BIT(30)
++#define NWL_DSI_HS_TX_TIMEOUT_MASK		BIT(31)
++
++#define NWL_DSI_IRQ_MASK2			0x2ac
++#define NWL_DSI_SINGLE_BIT_ECC_ERR_MASK		BIT(0)
++#define NWL_DSI_MULTI_BIT_ECC_ERR_MASK		BIT(1)
++#define NWL_DSI_CRC_ERR_MASK			BIT(2)
++
++/*
++ * PKT_CONTROL format:
++ * [15: 0] - word count
++ * [17:16] - virtual channel
++ * [23:18] - data type
++ * [24]	   - LP or HS select (0 - LP, 1 - HS)
++ * [25]	   - perform BTA after packet is sent
++ * [26]	   - perform BTA only, no packet tx
++ */
++#define NWL_DSI_WC(x)		FIELD_PREP(GENMASK(15, 0), (x))
++#define NWL_DSI_TX_VC(x)	FIELD_PREP(GENMASK(17, 16), (x))
++#define NWL_DSI_TX_DT(x)	FIELD_PREP(GENMASK(23, 18), (x))
++#define NWL_DSI_HS_SEL(x)	FIELD_PREP(GENMASK(24, 24), (x))
++#define NWL_DSI_BTA_TX(x)	FIELD_PREP(GENMASK(25, 25), (x))
++#define NWL_DSI_BTA_NO_TX(x)	FIELD_PREP(GENMASK(26, 26), (x))
++
++/*
++ * RX_PKT_HEADER format:
++ * [15: 0] - word count
++ * [21:16] - data type
++ * [23:22] - virtual channel
++ */
++#define NWL_DSI_RX_DT(x)	FIELD_GET(GENMASK(21, 16), (x))
++#define NWL_DSI_RX_VC(x)	FIELD_GET(GENMASK(23, 22), (x))
++
++/* DSI Video mode */
++#define NWL_DSI_VM_BURST_MODE_WITH_SYNC_PULSES		0
++#define NWL_DSI_VM_NON_BURST_MODE_WITH_SYNC_EVENTS	BIT(0)
++#define NWL_DSI_VM_BURST_MODE				BIT(1)
++
++/* * DPI color coding */
++#define NWL_DSI_DPI_16_BIT_565_PACKED	0
++#define NWL_DSI_DPI_16_BIT_565_ALIGNED	1
++#define NWL_DSI_DPI_16_BIT_565_SHIFTED	2
++#define NWL_DSI_DPI_18_BIT_PACKED	3
++#define NWL_DSI_DPI_18_BIT_ALIGNED	4
++#define NWL_DSI_DPI_24_BIT		5
++
++/* * DPI Pixel format */
++#define NWL_DSI_PIXEL_FORMAT_16  0
++#define NWL_DSI_PIXEL_FORMAT_18  BIT(0)
++#define NWL_DSI_PIXEL_FORMAT_18L BIT(1)
++#define NWL_DSI_PIXEL_FORMAT_24  (BIT(0) | BIT(1))
++
++#endif /* __NWL_DSI_H__ */
+
+From 50c912c34affa02c1284121db51ef907b24ea586 Mon Sep 17 00:00:00 2001
+From: Colin Ian King <colin.king@canonical.com>
+Date: Wed, 15 Apr 2020 09:34:20 +0100
+Subject: [PATCH] drm/rockchip: fix spelling mistake "modifer" -> "modifier"
+
+There is a spelling mistake in a DRM_DEBUG_KMS debug message. Fix it.
+
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+Signed-off-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200415083420.366279-1-colin.king@canonical.com
+(cherry picked from commit 6472e4e25e573848be9d4b33237a994414e6a43a)
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+index b87d22eb6ae1..33463b79a37b 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+@@ -769,7 +769,7 @@ static bool rockchip_mod_supported(struct drm_plane *plane,
+ 		return true;
+ 
+ 	if (!rockchip_afbc(modifier)) {
+-		DRM_DEBUG_KMS("Unsupported format modifer 0x%llx\n", modifier);
++		DRM_DEBUG_KMS("Unsupported format modifier 0x%llx\n", modifier);
+ 
+ 		return false;
+ 	}
+
+From a492a7007930486f21aec1dc3a851a6770324a3f Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Date: Wed, 15 Apr 2020 19:20:24 +0200
+Subject: [PATCH] drm: Don't free a struct never allocated by drm_gem_fb_init()
+
+drm_gem_fb_init() is passed the fb and never allocates it, so it should be
+not the one freeing it. As it is now the second call to kfree() is possible
+with the same fb. Coverity reported the following:
+
+*** CID 1492613:  Memory - corruptions  (USE_AFTER_FREE)
+/drivers/gpu/drm/drm_gem_framebuffer_helper.c: 230 in drm_gem_fb_create_with_funcs()
+224     	fb = kzalloc(sizeof(*fb), GFP_KERNEL);
+225     	if (!fb)
+226     		return ERR_PTR(-ENOMEM);
+227
+228     	ret = drm_gem_fb_init_with_funcs(dev, fb, file, mode_cmd, funcs);
+229     	if (ret) {
+vvv     CID 1492613:  Memory - corruptions  (USE_AFTER_FREE)
+vvv     Calling "kfree" frees pointer "fb" which has already been freed. [Note: The source code implementation of the function has been overridden by a user model.]
+230     		kfree(fb);
+231     		return ERR_PTR(ret);
+232     	}
+233
+234     	return fb;
+235     }
+
+drm_gem_fb_init_with_funcs() calls drm_gem_fb_init()
+drm_gem_fb_init() calls kfree(fb)
+
+Reported-by: coverity-bot <keescook+coverity-bot@chromium.org>
+Addresses-Coverity-ID: 1492613 ("Memory - corruptions")
+Fixes: f2b816d78a94 ("drm/core: Allow drivers allocate a subclass of struct drm_framebuffer")
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Reviewed-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200415172024.24004-1-andrzej.p@collabora.com
+(cherry picked from commit 13e3d94110d82e318d640d0980896d32e02ba4d6)
+---
+ drivers/gpu/drm/drm_gem_framebuffer_helper.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_gem_framebuffer_helper.c b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+index cac15294aef6..ccc2c71fa491 100644
+--- a/drivers/gpu/drm/drm_gem_framebuffer_helper.c
++++ b/drivers/gpu/drm/drm_gem_framebuffer_helper.c
+@@ -76,10 +76,8 @@ drm_gem_fb_init(struct drm_device *dev,
+ 		fb->obj[i] = obj[i];
+ 
+ 	ret = drm_framebuffer_init(dev, fb, funcs);
+-	if (ret) {
++	if (ret)
+ 		drm_err(dev, "Failed to init framebuffer: %d\n", ret);
+-		kfree(fb);
+-	}
+ 
+ 	return ret;
+ }
+
+From 88b26f8bedad96443d02e62a08c831365e414479 Mon Sep 17 00:00:00 2001
 From: Robin Murphy <robin.murphy@arm.com>
 Date: Tue, 21 Apr 2020 23:51:36 +0100
 Subject: [PATCH] drm/lima: Clean up IRQ warnings
@@ -1555,7 +5261,7 @@ index 247f51fd40a2..c334d297796a 100644
  			goto out;
  		ip->irq = err;
 
-From 538de78c323ed1cff6e46e73756bd1fdd332a61e Mon Sep 17 00:00:00 2001
+From 96e4d91d76d79d190f9c682a3b92f1d5cd97defa Mon Sep 17 00:00:00 2001
 From: Robin Murphy <robin.murphy@arm.com>
 Date: Tue, 21 Apr 2020 23:51:37 +0100
 Subject: [PATCH] drm/lima: Clean up redundant pdev pointer
@@ -1653,7 +5359,7 @@ index bbbdc8455e2f..4e5dd75822c0 100644
  	ldev->id = (enum lima_gpu_id)of_device_get_match_data(&pdev->dev);
  
 
-From 15209ebd3f2bce9a30a5261868d3400762c55693 Mon Sep 17 00:00:00 2001
+From e534f2a64c0da37fb2f5c57bb9a10a18800b6bbf Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:42 +0800
 Subject: [PATCH] drm/lima: use module_platform_driver helper
@@ -1693,7 +5399,7 @@ index 4e5dd75822c0..3d63d496cfc2 100644
  MODULE_AUTHOR("Lima Project Developers");
  MODULE_DESCRIPTION("Lima DRM Driver");
 
-From 1a04f643449a17ec603c81f7c87587ec0dddc3d4 Mon Sep 17 00:00:00 2001
+From b966a122b320b4331f30e5d275f900f90ee7c470 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:43 +0800
 Subject: [PATCH] drm/lima: print process name and pid when task error
@@ -1725,7 +5431,7 @@ index a2db1c937424..387f9439450a 100644
  	}
  
 
-From 2de1ecdd54cc918c60a790a42aa2ca313d388b93 Mon Sep 17 00:00:00 2001
+From 0eba7c38c669be5b1e1e027f294c84c4a222d9a8 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:44 +0800
 Subject: [PATCH] drm/lima: check vm != NULL in lima_vm_put
@@ -1782,7 +5488,7 @@ index 22aeec77d84d..3a7c74822d8b 100644
  
  void lima_vm_print(struct lima_vm *vm);
 
-From 5ea849a4318381e84ffe009e0033259eafcd8708 Mon Sep 17 00:00:00 2001
+From 45c4c198993aa1f18d72c8fbe47629d212889422 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:45 +0800
 Subject: [PATCH] drm/lima: always set page directory when switch vm
@@ -1854,7 +5560,7 @@ index 3ac5797e31fc..eb46db0717cd 100644
  
  	pipe->error = false;
 
-From 39ad4523b059035b59cd5082409dabbecafba62d Mon Sep 17 00:00:00 2001
+From 276fab492f5e058c361b8eaeb81a380b9cf44c27 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:46 +0800
 Subject: [PATCH] drm/lima: add lima_devfreq_resume/suspend
@@ -1916,7 +5622,7 @@ index 8d71ba9fb22a..5eed2975a375 100644
 +
  #endif
 
-From 588dcb54eb7b406b9cfe2aadaa813b28b46bc53c Mon Sep 17 00:00:00 2001
+From 88f1e3e1700b2a8ccd8cb3e3774a3e1644940f79 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:47 +0800
 Subject: [PATCH] drm/lima: power down ip blocks when pmu exit
@@ -2027,7 +5733,7 @@ index 571f6d661581..d476569f2043 100644
 +	}
  }
 
-From 9bc4824a7756fcca51e1edb7324e0354889ad055 Mon Sep 17 00:00:00 2001
+From d1a0f369c3a158b0a3aef828fba61eae7b58289d Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:48 +0800
 Subject: [PATCH] drm/lima: add resume/suspend callback for each ip
@@ -2543,7 +6249,7 @@ index bf60c77b2633..16ec96de15a9 100644
  void lima_pp_bcast_fini(struct lima_ip *ip);
  
 
-From 9190b3bed7ccb96f6c8cfa25b3d058a2f9fe26d5 Mon Sep 17 00:00:00 2001
+From 45ed2d3e18fa178ac3e9c7ac5516da7887f5ea75 Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:49 +0800
 Subject: [PATCH] drm/lima: separate clk/regulator enable/disable function
@@ -2710,7 +6416,7 @@ index a2d4ec75b3b3..1d9b7f415da1 100644
  
  static int lima_init_ip(struct lima_device *dev, int index)
 
-From e713efb3f1f71c0ed9feabcd70d81ef307edaf76 Mon Sep 17 00:00:00 2001
+From 3fcf2df4f854a302f7b141b9ccf3f74b9ee5ff7f Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:50 +0800
 Subject: [PATCH] drm/lima: add pm resume/suspend ops
@@ -2880,7 +6586,7 @@ index 3d63d496cfc2..f3fe0a2f764b 100644
  	},
  };
 
-From c5775edca0fba03c638c6fb7c8aefca111b1294c Mon Sep 17 00:00:00 2001
+From f5775e70be85dd070f35e47fb448a04b0087f37f Mon Sep 17 00:00:00 2001
 From: Qiang Yu <yuq825@gmail.com>
 Date: Tue, 21 Apr 2020 21:35:51 +0800
 Subject: [PATCH] drm/lima: enable runtime pm
@@ -3064,3 +6770,1445 @@ index eb46db0717cd..e6cefda00279 100644
 +		lima_pm_idle(ldev);
  	}
  }
+
+From cdf6f4aff5a0c91e6f926c54da6c6e7182b1f9e8 Mon Sep 17 00:00:00 2001
+From: Enric Balletbo i Serra <enric.balletbo@collabora.com>
+Date: Sun, 26 Apr 2020 18:16:53 +0200
+Subject: [PATCH] drm/rockchip: cdn-dp-core: Make cdn_dp_core_suspend/resume
+ static
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This fixes the following warning detected when running make with W=1
+
+    drivers/gpu/drm/rockchip//cdn-dp-core.c:1112:5: warning: no previous
+    prototype for ‘cdn_dp_suspend’ [-Wmissing-prototypes]
+
+    drivers/gpu/drm/rockchip//cdn-dp-core.c:1126:5: warning: no previous
+    prototype for ‘cdn_dp_resume’ [-Wmissing-prototypes]
+
+Signed-off-by: Enric Balletbo i Serra <enric.balletbo@collabora.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200426161653.7710-1-enric.balletbo@collabora.com
+(cherry picked from commit 7c49abb4c2f8853520abc05b7f7e8b751fbb3086)
+---
+ drivers/gpu/drm/rockchip/cdn-dp-core.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/cdn-dp-core.c b/drivers/gpu/drm/rockchip/cdn-dp-core.c
+index 06f85138b51b..c634b95b50f7 100644
+--- a/drivers/gpu/drm/rockchip/cdn-dp-core.c
++++ b/drivers/gpu/drm/rockchip/cdn-dp-core.c
+@@ -1106,7 +1106,7 @@ static const struct component_ops cdn_dp_component_ops = {
+ 	.unbind = cdn_dp_unbind,
+ };
+ 
+-int cdn_dp_suspend(struct device *dev)
++static int cdn_dp_suspend(struct device *dev)
+ {
+ 	struct cdn_dp_device *dp = dev_get_drvdata(dev);
+ 	int ret = 0;
+@@ -1120,7 +1120,7 @@ int cdn_dp_suspend(struct device *dev)
+ 	return ret;
+ }
+ 
+-int cdn_dp_resume(struct device *dev)
++static int cdn_dp_resume(struct device *dev)
+ {
+ 	struct cdn_dp_device *dp = dev_get_drvdata(dev);
+ 
+
+From e94ff709d99ace94d2825893ac42df32c7fc9218 Mon Sep 17 00:00:00 2001
+From: Zheng Bin <zhengbin13@huawei.com>
+Date: Fri, 24 Apr 2020 15:44:10 +0800
+Subject: [PATCH] drm/rockchip: Remove unneeded semicolon
+
+Fixes coccicheck warning:
+
+drivers/gpu/drm/rockchip/cdn-dp-reg.c:604:2-3: Unneeded semicolon
+drivers/gpu/drm/rockchip/cdn-dp-reg.c:622:2-3: Unneeded semicolon
+drivers/gpu/drm/rockchip/cdn-dp-reg.c:703:2-3: Unneeded semicolon
+
+Reported-by: Hulk Robot <hulkci@huawei.com>
+Signed-off-by: Zheng Bin <zhengbin13@huawei.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200424074410.1070-1-zhengbin13@huawei.com
+(cherry picked from commit 611e22b1d9f61a8742c99433de9ff40795574c61)
+---
+ drivers/gpu/drm/rockchip/cdn-dp-reg.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/rockchip/cdn-dp-reg.c b/drivers/gpu/drm/rockchip/cdn-dp-reg.c
+index 7361c07cb4a7..9d2163ef4d6e 100644
+--- a/drivers/gpu/drm/rockchip/cdn-dp-reg.c
++++ b/drivers/gpu/drm/rockchip/cdn-dp-reg.c
+@@ -601,7 +601,7 @@ static int cdn_dp_get_msa_misc(struct video_info *video,
+ 	case YCBCR_4_2_0:
+ 		val[0] = 5;
+ 		break;
+-	};
++	}
+ 
+ 	switch (video->color_depth) {
+ 	case 6:
+@@ -619,7 +619,7 @@ static int cdn_dp_get_msa_misc(struct video_info *video,
+ 	case 16:
+ 		val[1] = 4;
+ 		break;
+-	};
++	}
+ 
+ 	msa_misc = 2 * val[0] + 32 * val[1] +
+ 		   ((video->color_fmt == Y_ONLY) ? (1 << 14) : 0);
+@@ -700,7 +700,7 @@ int cdn_dp_config_video(struct cdn_dp_device *dp)
+ 	case 16:
+ 		val = BCS_16;
+ 		break;
+-	};
++	}
+ 
+ 	val += video->color_fmt << 8;
+ 	ret = cdn_dp_reg_write(dp, DP_FRAMER_PXL_REPR, val);
+
+From afb41054e1a42b32eb2fd6387de8e304182489c7 Mon Sep 17 00:00:00 2001
+From: Lubomir Rintel <lkundrak@v3.sk>
+Date: Fri, 24 Apr 2020 23:35:39 +0200
+Subject: [PATCH] drm/bridge: chrontel-ch7033: Add a new driver
+
+This is a driver for video encoder with VGA and DVI/HDMI outputs.
+
+There is no documentation for the chip -- the operation was guessed from
+what was sniffed on a Dell Wyse 3020 ThinOS terminal, the register names
+come from the ch7035 driver in Mediatek's GPL code dump.
+
+Only bare minimum is implemented -- no fancy stuff, such as scaling. That
+would only worsen our misery. We don't load the firmware and we don't need
+to even bother enabling the MCU.  There are probably no distributable
+firmware images anyway.
+
+Tested with a handful of monitors ranging from 1024x768@75 to 1400x1050@60,
+with VGA as well as DVI.
+
+Signed-off-by: Lubomir Rintel <lkundrak@v3.sk>
+Acked-by: Sam Ravnborg <sam@ravnborg.org>
+Signed-off-by: Neil Armstrong <narmstrong@baylibre.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200424213539.93157-4-lkundrak@v3.sk
+(cherry picked from commit e7f12054a1b9cbf6b4923427dec5eeb32f7ac388)
+---
+ drivers/gpu/drm/bridge/Kconfig           |  10 +
+ drivers/gpu/drm/bridge/Makefile          |   1 +
+ drivers/gpu/drm/bridge/chrontel-ch7033.c | 620 +++++++++++++++++++++++++++++++
+ 3 files changed, 631 insertions(+)
+ create mode 100644 drivers/gpu/drm/bridge/chrontel-ch7033.c
+
+diff --git a/drivers/gpu/drm/bridge/Kconfig b/drivers/gpu/drm/bridge/Kconfig
+index 6ec945f837b8..04f876e985de 100644
+--- a/drivers/gpu/drm/bridge/Kconfig
++++ b/drivers/gpu/drm/bridge/Kconfig
+@@ -27,6 +27,16 @@ config DRM_CDNS_DSI
+ 	  Support Cadence DPI to DSI bridge. This is an internal
+ 	  bridge and is meant to be directly embedded in a SoC.
+ 
++config DRM_CHRONTEL_CH7033
++	tristate "Chrontel CH7033 Video Encoder"
++	depends on OF
++	select DRM_KMS_HELPER
++	help
++	  Enable support for the Chrontel CH7033 VGA/DVI/HDMI Encoder, as
++	  found in the Dell Wyse 3020 thin client.
++
++	  If in doubt, say "N".
++
+ config DRM_DISPLAY_CONNECTOR
+ 	tristate "Display connector support"
+ 	depends on OF
+diff --git a/drivers/gpu/drm/bridge/Makefile b/drivers/gpu/drm/bridge/Makefile
+index b04ac2dfa22c..d63d4b7e4347 100644
+--- a/drivers/gpu/drm/bridge/Makefile
++++ b/drivers/gpu/drm/bridge/Makefile
+@@ -1,5 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0
+ obj-$(CONFIG_DRM_CDNS_DSI) += cdns-dsi.o
++obj-$(CONFIG_DRM_CHRONTEL_CH7033) += chrontel-ch7033.o
+ obj-$(CONFIG_DRM_DISPLAY_CONNECTOR) += display-connector.o
+ obj-$(CONFIG_DRM_LVDS_CODEC) += lvds-codec.o
+ obj-$(CONFIG_DRM_MEGACHIPS_STDPXXXX_GE_B850V3_FW) += megachips-stdpxxxx-ge-b850v3-fw.o
+diff --git a/drivers/gpu/drm/bridge/chrontel-ch7033.c b/drivers/gpu/drm/bridge/chrontel-ch7033.c
+new file mode 100644
+index 000000000000..f8675d82974b
+--- /dev/null
++++ b/drivers/gpu/drm/bridge/chrontel-ch7033.c
+@@ -0,0 +1,620 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Chrontel CH7033 Video Encoder Driver
++ *
++ * Copyright (C) 2019,2020 Lubomir Rintel
++ */
++
++#include <linux/gpio/consumer.h>
++#include <linux/module.h>
++#include <linux/regmap.h>
++
++#include <drm/drm_atomic_helper.h>
++#include <drm/drm_bridge.h>
++#include <drm/drm_edid.h>
++#include <drm/drm_of.h>
++#include <drm/drm_print.h>
++#include <drm/drm_probe_helper.h>
++
++/* Page 0, Register 0x07 */
++enum {
++	DRI_PD		= BIT(3),
++	IO_PD		= BIT(5),
++};
++
++/* Page 0, Register 0x08 */
++enum {
++	DRI_PDDRI	= GENMASK(7, 4),
++	PDDAC		= GENMASK(3, 1),
++	PANEN		= BIT(0),
++};
++
++/* Page 0, Register 0x09 */
++enum {
++	DPD		= BIT(7),
++	GCKOFF		= BIT(6),
++	TV_BP		= BIT(5),
++	SCLPD		= BIT(4),
++	SDPD		= BIT(3),
++	VGA_PD		= BIT(2),
++	HDBKPD		= BIT(1),
++	HDMI_PD		= BIT(0),
++};
++
++/* Page 0, Register 0x0a */
++enum {
++	MEMINIT		= BIT(7),
++	MEMIDLE		= BIT(6),
++	MEMPD		= BIT(5),
++	STOP		= BIT(4),
++	LVDS_PD		= BIT(3),
++	HD_DVIB		= BIT(2),
++	HDCP_PD		= BIT(1),
++	MCU_PD		= BIT(0),
++};
++
++/* Page 0, Register 0x18 */
++enum {
++	IDF		= GENMASK(7, 4),
++	INTEN		= BIT(3),
++	SWAP		= GENMASK(2, 0),
++};
++
++enum {
++	BYTE_SWAP_RGB	= 0,
++	BYTE_SWAP_RBG	= 1,
++	BYTE_SWAP_GRB	= 2,
++	BYTE_SWAP_GBR	= 3,
++	BYTE_SWAP_BRG	= 4,
++	BYTE_SWAP_BGR	= 5,
++};
++
++/* Page 0, Register 0x19 */
++enum {
++	HPO_I		= BIT(5),
++	VPO_I		= BIT(4),
++	DEPO_I		= BIT(3),
++	CRYS_EN		= BIT(2),
++	GCLKFREQ	= GENMASK(2, 0),
++};
++
++/* Page 0, Register 0x2e */
++enum {
++	HFLIP		= BIT(7),
++	VFLIP		= BIT(6),
++	DEPO_O		= BIT(5),
++	HPO_O		= BIT(4),
++	VPO_O		= BIT(3),
++	TE		= GENMASK(2, 0),
++};
++
++/* Page 0, Register 0x2b */
++enum {
++	SWAPS		= GENMASK(7, 4),
++	VFMT		= GENMASK(3, 0),
++};
++
++/* Page 0, Register 0x54 */
++enum {
++	COMP_BP		= BIT(7),
++	DAC_EN_T	= BIT(6),
++	HWO_HDMI_HI	= GENMASK(5, 3),
++	HOO_HDMI_HI	= GENMASK(2, 0),
++};
++
++/* Page 0, Register 0x57 */
++enum {
++	FLDSEN		= BIT(7),
++	VWO_HDMI_HI	= GENMASK(5, 3),
++	VOO_HDMI_HI	= GENMASK(2, 0),
++};
++
++/* Page 0, Register 0x7e */
++enum {
++	HDMI_LVDS_SEL	= BIT(7),
++	DE_GEN		= BIT(6),
++	PWM_INDEX_HI	= BIT(5),
++	USE_DE		= BIT(4),
++	R_INT		= GENMASK(3, 0),
++};
++
++/* Page 1, Register 0x07 */
++enum {
++	BPCKSEL		= BIT(7),
++	DRI_CMFB_EN	= BIT(6),
++	CEC_PUEN	= BIT(5),
++	CEC_T		= BIT(3),
++	CKINV		= BIT(2),
++	CK_TVINV	= BIT(1),
++	DRI_CKS2	= BIT(0),
++};
++
++/* Page 1, Register 0x08 */
++enum {
++	DACG		= BIT(6),
++	DACKTST		= BIT(5),
++	DEDGEB		= BIT(4),
++	SYO		= BIT(3),
++	DRI_IT_LVDS	= GENMASK(2, 1),
++	DISPON		= BIT(0),
++};
++
++/* Page 1, Register 0x0c */
++enum {
++	DRI_PLL_CP	= GENMASK(7, 6),
++	DRI_PLL_DIVSEL	= BIT(5),
++	DRI_PLL_N1_1	= BIT(4),
++	DRI_PLL_N1_0	= BIT(3),
++	DRI_PLL_N3_1	= BIT(2),
++	DRI_PLL_N3_0	= BIT(1),
++	DRI_PLL_CKTSTEN = BIT(0),
++};
++
++/* Page 1, Register 0x6b */
++enum {
++	VCO3CS		= GENMASK(7, 6),
++	ICPGBK2_0	= GENMASK(5, 3),
++	DRI_VCO357SC	= BIT(2),
++	PDPLL2		= BIT(1),
++	DRI_PD_SER	= BIT(0),
++};
++
++/* Page 1, Register 0x6c */
++enum {
++	PLL2N11		= GENMASK(7, 4),
++	PLL2N5_4	= BIT(3),
++	PLL2N5_TOP	= BIT(2),
++	DRI_PLL_PD	= BIT(1),
++	PD_I2CM		= BIT(0),
++};
++
++/* Page 3, Register 0x28 */
++enum {
++	DIFF_EN		= GENMASK(7, 6),
++	CORREC_EN	= GENMASK(5, 4),
++	VGACLK_BP	= BIT(3),
++	HM_LV_SEL	= BIT(2),
++	HD_VGA_SEL	= BIT(1),
++};
++
++/* Page 3, Register 0x2a */
++enum {
++	LVDSCLK_BP	= BIT(7),
++	HDTVCLK_BP	= BIT(6),
++	HDMICLK_BP	= BIT(5),
++	HDTV_BP		= BIT(4),
++	HDMI_BP		= BIT(3),
++	THRWL		= GENMASK(2, 0),
++};
++
++/* Page 4, Register 0x52 */
++enum {
++	PGM_ARSTB	= BIT(7),
++	MCU_ARSTB	= BIT(6),
++	MCU_RETB	= BIT(2),
++	RESETIB		= BIT(1),
++	RESETDB		= BIT(0),
++};
++
++struct ch7033_priv {
++	struct regmap *regmap;
++	struct drm_bridge *next_bridge;
++	struct drm_bridge bridge;
++	struct drm_connector connector;
++};
++
++#define conn_to_ch7033_priv(x) \
++	container_of(x, struct ch7033_priv, connector)
++#define bridge_to_ch7033_priv(x) \
++	container_of(x, struct ch7033_priv, bridge)
++
++
++static enum drm_connector_status ch7033_connector_detect(
++	struct drm_connector *connector, bool force)
++{
++	struct ch7033_priv *priv = conn_to_ch7033_priv(connector);
++
++	return drm_bridge_detect(priv->next_bridge);
++}
++
++static const struct drm_connector_funcs ch7033_connector_funcs = {
++	.reset = drm_atomic_helper_connector_reset,
++	.fill_modes = drm_helper_probe_single_connector_modes,
++	.detect = ch7033_connector_detect,
++	.destroy = drm_connector_cleanup,
++	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
++	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
++};
++
++static int ch7033_connector_get_modes(struct drm_connector *connector)
++{
++	struct ch7033_priv *priv = conn_to_ch7033_priv(connector);
++	struct edid *edid;
++	int ret;
++
++	edid = drm_bridge_get_edid(priv->next_bridge, connector);
++	drm_connector_update_edid_property(connector, edid);
++	if (edid) {
++		ret = drm_add_edid_modes(connector, edid);
++		kfree(edid);
++	} else {
++		ret = drm_add_modes_noedid(connector, 1920, 1080);
++		drm_set_preferred_mode(connector, 1024, 768);
++	}
++
++	return ret;
++}
++
++static struct drm_encoder *ch7033_connector_best_encoder(
++			struct drm_connector *connector)
++{
++	struct ch7033_priv *priv = conn_to_ch7033_priv(connector);
++
++	return priv->bridge.encoder;
++}
++
++static const struct drm_connector_helper_funcs ch7033_connector_helper_funcs = {
++	.get_modes = ch7033_connector_get_modes,
++	.best_encoder = ch7033_connector_best_encoder,
++};
++
++static void ch7033_hpd_event(void *arg, enum drm_connector_status status)
++{
++	struct ch7033_priv *priv = arg;
++
++	if (priv->bridge.dev)
++		drm_helper_hpd_irq_event(priv->connector.dev);
++}
++
++static int ch7033_bridge_attach(struct drm_bridge *bridge,
++				enum drm_bridge_attach_flags flags)
++{
++	struct ch7033_priv *priv = bridge_to_ch7033_priv(bridge);
++	struct drm_connector *connector = &priv->connector;
++	int ret;
++
++	ret = drm_bridge_attach(bridge->encoder, priv->next_bridge, bridge,
++				DRM_BRIDGE_ATTACH_NO_CONNECTOR);
++	if (ret)
++		return ret;
++
++	if (flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)
++		return 0;
++
++	if (priv->next_bridge->ops & DRM_BRIDGE_OP_DETECT) {
++		connector->polled = DRM_CONNECTOR_POLL_HPD;
++	} else {
++		connector->polled = DRM_CONNECTOR_POLL_CONNECT |
++				    DRM_CONNECTOR_POLL_DISCONNECT;
++	}
++
++	if (priv->next_bridge->ops & DRM_BRIDGE_OP_HPD) {
++		drm_bridge_hpd_enable(priv->next_bridge, ch7033_hpd_event,
++				      priv);
++	}
++
++	drm_connector_helper_add(connector,
++				 &ch7033_connector_helper_funcs);
++	ret = drm_connector_init_with_ddc(bridge->dev, &priv->connector,
++					  &ch7033_connector_funcs,
++					  priv->next_bridge->type,
++					  priv->next_bridge->ddc);
++	if (ret) {
++		DRM_ERROR("Failed to initialize connector\n");
++		return ret;
++	}
++
++	return drm_connector_attach_encoder(&priv->connector, bridge->encoder);
++}
++
++static void ch7033_bridge_detach(struct drm_bridge *bridge)
++{
++	struct ch7033_priv *priv = bridge_to_ch7033_priv(bridge);
++
++	if (priv->next_bridge->ops & DRM_BRIDGE_OP_HPD)
++		drm_bridge_hpd_disable(priv->next_bridge);
++	drm_connector_cleanup(&priv->connector);
++}
++
++static enum drm_mode_status ch7033_bridge_mode_valid(struct drm_bridge *bridge,
++				     const struct drm_display_mode *mode)
++{
++	if (mode->clock > 165000)
++		return MODE_CLOCK_HIGH;
++	if (mode->hdisplay >= 1920)
++		return MODE_BAD_HVALUE;
++	if (mode->vdisplay >= 1080)
++		return MODE_BAD_VVALUE;
++	return MODE_OK;
++}
++
++static void ch7033_bridge_disable(struct drm_bridge *bridge)
++{
++	struct ch7033_priv *priv = bridge_to_ch7033_priv(bridge);
++
++	regmap_write(priv->regmap, 0x03, 0x04);
++	regmap_update_bits(priv->regmap, 0x52, RESETDB, 0x00);
++}
++
++static void ch7033_bridge_enable(struct drm_bridge *bridge)
++{
++	struct ch7033_priv *priv = bridge_to_ch7033_priv(bridge);
++
++	regmap_write(priv->regmap, 0x03, 0x04);
++	regmap_update_bits(priv->regmap, 0x52, RESETDB, RESETDB);
++}
++
++static void ch7033_bridge_mode_set(struct drm_bridge *bridge,
++				   const struct drm_display_mode *mode,
++				   const struct drm_display_mode *adjusted_mode)
++{
++	struct ch7033_priv *priv = bridge_to_ch7033_priv(bridge);
++	int hbporch = mode->hsync_start - mode->hdisplay;
++	int hsynclen = mode->hsync_end - mode->hsync_start;
++	int vbporch = mode->vsync_start - mode->vdisplay;
++	int vsynclen = mode->vsync_end - mode->vsync_start;
++
++	/*
++	 * Page 4
++	 */
++	regmap_write(priv->regmap, 0x03, 0x04);
++
++	/* Turn everything off to set all the registers to their defaults. */
++	regmap_write(priv->regmap, 0x52, 0x00);
++	/* Bring I/O block up. */
++	regmap_write(priv->regmap, 0x52, RESETIB);
++
++	/*
++	 * Page 0
++	 */
++	regmap_write(priv->regmap, 0x03, 0x00);
++
++	/* Bring up parts we need from the power down. */
++	regmap_update_bits(priv->regmap, 0x07, DRI_PD | IO_PD, 0);
++	regmap_update_bits(priv->regmap, 0x08, DRI_PDDRI | PDDAC | PANEN, 0);
++	regmap_update_bits(priv->regmap, 0x09, DPD | GCKOFF |
++					       HDMI_PD | VGA_PD, 0);
++	regmap_update_bits(priv->regmap, 0x0a, HD_DVIB, 0);
++
++	/* Horizontal input timing. */
++	regmap_write(priv->regmap, 0x0b, (mode->htotal >> 8) << 3 |
++					 (mode->hdisplay >> 8));
++	regmap_write(priv->regmap, 0x0c, mode->hdisplay);
++	regmap_write(priv->regmap, 0x0d, mode->htotal);
++	regmap_write(priv->regmap, 0x0e, (hsynclen >> 8) << 3 |
++					 (hbporch >> 8));
++	regmap_write(priv->regmap, 0x0f, hbporch);
++	regmap_write(priv->regmap, 0x10, hsynclen);
++
++	/* Vertical input timing. */
++	regmap_write(priv->regmap, 0x11, (mode->vtotal >> 8) << 3 |
++					 (mode->vdisplay >> 8));
++	regmap_write(priv->regmap, 0x12, mode->vdisplay);
++	regmap_write(priv->regmap, 0x13, mode->vtotal);
++	regmap_write(priv->regmap, 0x14, ((vsynclen >> 8) << 3) |
++					 (vbporch >> 8));
++	regmap_write(priv->regmap, 0x15, vbporch);
++	regmap_write(priv->regmap, 0x16, vsynclen);
++
++	/* Input color swap. */
++	regmap_update_bits(priv->regmap, 0x18, SWAP, BYTE_SWAP_BGR);
++
++	/* Input clock and sync polarity. */
++	regmap_update_bits(priv->regmap, 0x19, 0x1, mode->clock >> 16);
++	regmap_update_bits(priv->regmap, 0x19, HPO_I | VPO_I | GCLKFREQ,
++			   (mode->flags & DRM_MODE_FLAG_PHSYNC) ? HPO_I : 0 |
++			   (mode->flags & DRM_MODE_FLAG_PVSYNC) ? VPO_I : 0 |
++			   mode->clock >> 16);
++	regmap_write(priv->regmap, 0x1a, mode->clock >> 8);
++	regmap_write(priv->regmap, 0x1b, mode->clock);
++
++	/* Horizontal output timing. */
++	regmap_write(priv->regmap, 0x1f, (mode->htotal >> 8) << 3 |
++					 (mode->hdisplay >> 8));
++	regmap_write(priv->regmap, 0x20, mode->hdisplay);
++	regmap_write(priv->regmap, 0x21, mode->htotal);
++
++	/* Vertical output timing. */
++	regmap_write(priv->regmap, 0x25, (mode->vtotal >> 8) << 3 |
++					 (mode->vdisplay >> 8));
++	regmap_write(priv->regmap, 0x26, mode->vdisplay);
++	regmap_write(priv->regmap, 0x27, mode->vtotal);
++
++	/* VGA channel bypass */
++	regmap_update_bits(priv->regmap, 0x2b, VFMT, 9);
++
++	/* Output sync polarity. */
++	regmap_update_bits(priv->regmap, 0x2e, HPO_O | VPO_O,
++			   (mode->flags & DRM_MODE_FLAG_PHSYNC) ? HPO_O : 0 |
++			   (mode->flags & DRM_MODE_FLAG_PVSYNC) ? VPO_O : 0);
++
++	/* HDMI horizontal output timing. */
++	regmap_update_bits(priv->regmap, 0x54, HWO_HDMI_HI | HOO_HDMI_HI,
++					       (hsynclen >> 8) << 3 |
++					       (hbporch >> 8));
++	regmap_write(priv->regmap, 0x55, hbporch);
++	regmap_write(priv->regmap, 0x56, hsynclen);
++
++	/* HDMI vertical output timing. */
++	regmap_update_bits(priv->regmap, 0x57, VWO_HDMI_HI | VOO_HDMI_HI,
++					       (vsynclen >> 8) << 3 |
++					       (vbporch >> 8));
++	regmap_write(priv->regmap, 0x58, vbporch);
++	regmap_write(priv->regmap, 0x59, vsynclen);
++
++	/* Pick HDMI, not LVDS. */
++	regmap_update_bits(priv->regmap, 0x7e, HDMI_LVDS_SEL, HDMI_LVDS_SEL);
++
++	/*
++	 * Page 1
++	 */
++	regmap_write(priv->regmap, 0x03, 0x01);
++
++	/* No idea what these do, but VGA is wobbly and blinky without them. */
++	regmap_update_bits(priv->regmap, 0x07, CKINV, CKINV);
++	regmap_update_bits(priv->regmap, 0x08, DISPON, DISPON);
++
++	/* DRI PLL */
++	regmap_update_bits(priv->regmap, 0x0c, DRI_PLL_DIVSEL, DRI_PLL_DIVSEL);
++	if (mode->clock <= 40000) {
++		regmap_update_bits(priv->regmap, 0x0c, DRI_PLL_N1_1 |
++						       DRI_PLL_N1_0 |
++						       DRI_PLL_N3_1 |
++						       DRI_PLL_N3_0,
++						       0);
++	} else if (mode->clock < 80000) {
++		regmap_update_bits(priv->regmap, 0x0c, DRI_PLL_N1_1 |
++						       DRI_PLL_N1_0 |
++						       DRI_PLL_N3_1 |
++						       DRI_PLL_N3_0,
++						       DRI_PLL_N3_0 |
++						       DRI_PLL_N1_0);
++	} else {
++		regmap_update_bits(priv->regmap, 0x0c, DRI_PLL_N1_1 |
++						       DRI_PLL_N1_0 |
++						       DRI_PLL_N3_1 |
++						       DRI_PLL_N3_0,
++						       DRI_PLL_N3_1 |
++						       DRI_PLL_N1_1);
++	}
++
++	/* This seems to be color calibration for VGA. */
++	regmap_write(priv->regmap, 0x64, 0x29); /* LSB Blue */
++	regmap_write(priv->regmap, 0x65, 0x29); /* LSB Green */
++	regmap_write(priv->regmap, 0x66, 0x29); /* LSB Red */
++	regmap_write(priv->regmap, 0x67, 0x00); /* MSB Blue */
++	regmap_write(priv->regmap, 0x68, 0x00); /* MSB Green */
++	regmap_write(priv->regmap, 0x69, 0x00); /* MSB Red */
++
++	regmap_update_bits(priv->regmap, 0x6b, DRI_PD_SER, 0x00);
++	regmap_update_bits(priv->regmap, 0x6c, DRI_PLL_PD, 0x00);
++
++	/*
++	 * Page 3
++	 */
++	regmap_write(priv->regmap, 0x03, 0x03);
++
++	/* More bypasses and apparently another HDMI/LVDS selector. */
++	regmap_update_bits(priv->regmap, 0x28, VGACLK_BP | HM_LV_SEL,
++					       VGACLK_BP | HM_LV_SEL);
++	regmap_update_bits(priv->regmap, 0x2a, HDMICLK_BP | HDMI_BP,
++					       HDMICLK_BP | HDMI_BP);
++
++	/*
++	 * Page 4
++	 */
++	regmap_write(priv->regmap, 0x03, 0x04);
++
++	/* Output clock. */
++	regmap_write(priv->regmap, 0x10, mode->clock >> 16);
++	regmap_write(priv->regmap, 0x11, mode->clock >> 8);
++	regmap_write(priv->regmap, 0x12, mode->clock);
++}
++
++static const struct drm_bridge_funcs ch7033_bridge_funcs = {
++	.attach = ch7033_bridge_attach,
++	.detach = ch7033_bridge_detach,
++	.mode_valid = ch7033_bridge_mode_valid,
++	.disable = ch7033_bridge_disable,
++	.enable = ch7033_bridge_enable,
++	.mode_set = ch7033_bridge_mode_set,
++};
++
++static const struct regmap_config ch7033_regmap_config = {
++	.reg_bits = 8,
++	.val_bits = 8,
++	.max_register = 0x7f,
++};
++
++static int ch7033_probe(struct i2c_client *client,
++			const struct i2c_device_id *id)
++{
++	struct device *dev = &client->dev;
++	struct ch7033_priv *priv;
++	unsigned int val;
++	int ret;
++
++	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
++	if (!priv)
++		return -ENOMEM;
++
++	dev_set_drvdata(dev, priv);
++
++	ret = drm_of_find_panel_or_bridge(dev->of_node, 1, -1, NULL,
++					  &priv->next_bridge);
++	if (ret)
++		return ret;
++
++	priv->regmap = devm_regmap_init_i2c(client, &ch7033_regmap_config);
++	if (IS_ERR(priv->regmap)) {
++		dev_err(&client->dev, "regmap init failed\n");
++		return PTR_ERR(priv->regmap);
++	}
++
++	ret = regmap_read(priv->regmap, 0x00, &val);
++	if (ret < 0) {
++		dev_err(&client->dev, "error reading the model id: %d\n", ret);
++		return ret;
++	}
++	if ((val & 0xf7) != 0x56) {
++		dev_err(&client->dev, "the device is not a ch7033\n");
++		return -ENODEV;
++	}
++
++	regmap_write(priv->regmap, 0x03, 0x04);
++	ret = regmap_read(priv->regmap, 0x51, &val);
++	if (ret < 0) {
++		dev_err(&client->dev, "error reading the model id: %d\n", ret);
++		return ret;
++	}
++	if ((val & 0x0f) != 3) {
++		dev_err(&client->dev, "unknown revision %u\n", val);
++		return -ENODEV;
++	}
++
++	INIT_LIST_HEAD(&priv->bridge.list);
++	priv->bridge.funcs = &ch7033_bridge_funcs;
++	priv->bridge.of_node = dev->of_node;
++	drm_bridge_add(&priv->bridge);
++
++	dev_info(dev, "Chrontel CH7033 Video Encoder\n");
++	return 0;
++}
++
++static int ch7033_remove(struct i2c_client *client)
++{
++	struct device *dev = &client->dev;
++	struct ch7033_priv *priv = dev_get_drvdata(dev);
++
++	drm_bridge_remove(&priv->bridge);
++
++	return 0;
++}
++
++static const struct of_device_id ch7033_dt_ids[] = {
++	{ .compatible = "chrontel,ch7033", },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, ch7033_dt_ids);
++
++static const struct i2c_device_id ch7033_ids[] = {
++	{ "ch7033", 0 },
++	{ }
++};
++MODULE_DEVICE_TABLE(i2c, ch7033_ids);
++
++static struct i2c_driver ch7033_driver = {
++	.probe = ch7033_probe,
++	.remove = ch7033_remove,
++	.driver = {
++		.name = "ch7033",
++		.of_match_table = of_match_ptr(ch7033_dt_ids),
++	},
++	.id_table = ch7033_ids,
++};
++
++module_i2c_driver(ch7033_driver);
++
++MODULE_AUTHOR("Lubomir Rintel <lkundrak@v3.sk>");
++MODULE_DESCRIPTION("Chrontel CH7033 Video Encoder Driver");
++MODULE_LICENSE("GPL v2");
+
+From 028e2e585a8f7e54b391dd6e96a8e02227904386 Mon Sep 17 00:00:00 2001
+From: Neil Armstrong <narmstrong@baylibre.com>
+Date: Tue, 28 Apr 2020 11:21:47 +0200
+Subject: [PATCH] drm/meson: add mode selection limits against specific SoC
+ revisions
+
+The Amlogic S805X/Y uses the same die as the S905X, but with more
+limited graphics capabilities.
+
+This adds a soc version detection adding specific limitations on the HDMI
+mode selections.
+
+Here, we limit to HDMI 1.2a max HDMI PHY clock frequency.
+
+Changes sinces v1:
+- Moved frequency check in the vclk code, and also checks DMT modes
+
+Signed-off-by: Neil Armstrong <narmstrong@baylibre.com>
+Acked-by: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+[narmstrong: fixed commit message with HDMI 1.2a instead of HDMI 1.3a]
+Link: https://patchwork.freedesktop.org/patch/msgid/20200428092147.13698-1-narmstrong@baylibre.com
+(cherry picked from commit 8976eeee8de05f11eb424882a57084880b677525)
+---
+ drivers/gpu/drm/meson/meson_drv.c     | 29 ++++++++++++++++++++++++++++-
+ drivers/gpu/drm/meson/meson_drv.h     |  6 ++++++
+ drivers/gpu/drm/meson/meson_dw_hdmi.c |  2 +-
+ drivers/gpu/drm/meson/meson_vclk.c    | 16 +++++++++++++++-
+ drivers/gpu/drm/meson/meson_vclk.h    |  3 ++-
+ 5 files changed, 52 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/meson/meson_drv.c b/drivers/gpu/drm/meson/meson_drv.c
+index 8c2e1b47e81a..5326e4585f3b 100644
+--- a/drivers/gpu/drm/meson/meson_drv.c
++++ b/drivers/gpu/drm/meson/meson_drv.c
+@@ -11,6 +11,7 @@
+ #include <linux/component.h>
+ #include <linux/module.h>
+ #include <linux/of_graph.h>
++#include <linux/sys_soc.h>
+ #include <linux/platform_device.h>
+ #include <linux/soc/amlogic/meson-canvas.h>
+ 
+@@ -183,6 +184,24 @@ static void meson_remove_framebuffers(void)
+ 	kfree(ap);
+ }
+ 
++struct meson_drm_soc_attr {
++	struct meson_drm_soc_limits limits;
++	const struct soc_device_attribute *attrs;
++};
++
++static const struct meson_drm_soc_attr meson_drm_soc_attrs[] = {
++	/* S805X/S805Y HDMI PLL won't lock for HDMI PHY freq > 1,65GHz */
++	{
++		.limits = {
++			.max_hdmi_phy_freq = 1650000,
++		},
++		.attrs = (const struct soc_device_attribute []) {
++			{ .soc_id = "GXL (S805*)", },
++			{ /* sentinel */ },
++		}
++	},
++};
++
+ static int meson_drv_bind_master(struct device *dev, bool has_components)
+ {
+ 	struct platform_device *pdev = to_platform_device(dev);
+@@ -191,7 +210,7 @@ static int meson_drv_bind_master(struct device *dev, bool has_components)
+ 	struct drm_device *drm;
+ 	struct resource *res;
+ 	void __iomem *regs;
+-	int ret;
++	int ret, i;
+ 
+ 	/* Checks if an output connector is available */
+ 	if (!meson_vpu_has_available_connectors(dev)) {
+@@ -281,6 +300,14 @@ static int meson_drv_bind_master(struct device *dev, bool has_components)
+ 	if (ret)
+ 		goto free_drm;
+ 
++	/* Assign limits per soc revision/package */
++	for (i = 0 ; i < ARRAY_SIZE(meson_drm_soc_attrs) ; ++i) {
++		if (soc_device_match(meson_drm_soc_attrs[i].attrs)) {
++			priv->limits = &meson_drm_soc_attrs[i].limits;
++			break;
++		}
++	}
++
+ 	/* Remove early framebuffers (ie. simplefb) */
+ 	meson_remove_framebuffers();
+ 
+diff --git a/drivers/gpu/drm/meson/meson_drv.h b/drivers/gpu/drm/meson/meson_drv.h
+index 04fdf3826643..5b23704a80d6 100644
+--- a/drivers/gpu/drm/meson/meson_drv.h
++++ b/drivers/gpu/drm/meson/meson_drv.h
+@@ -30,6 +30,10 @@ struct meson_drm_match_data {
+ 	struct meson_afbcd_ops *afbcd_ops;
+ };
+ 
++struct meson_drm_soc_limits {
++	unsigned int max_hdmi_phy_freq;
++};
++
+ struct meson_drm {
+ 	struct device *dev;
+ 	enum vpu_compatible compat;
+@@ -48,6 +52,8 @@ struct meson_drm {
+ 	struct drm_plane *primary_plane;
+ 	struct drm_plane *overlay_plane;
+ 
++	const struct meson_drm_soc_limits *limits;
++
+ 	/* Components Data */
+ 	struct {
+ 		bool osd1_enabled;
+diff --git a/drivers/gpu/drm/meson/meson_dw_hdmi.c b/drivers/gpu/drm/meson/meson_dw_hdmi.c
+index 64cb6ba4bc42..24a12c453095 100644
+--- a/drivers/gpu/drm/meson/meson_dw_hdmi.c
++++ b/drivers/gpu/drm/meson/meson_dw_hdmi.c
+@@ -695,7 +695,7 @@ dw_hdmi_mode_valid(struct drm_connector *connector,
+ 	dev_dbg(connector->dev->dev, "%s: vclk:%d phy=%d venc=%d hdmi=%d\n",
+ 		__func__, phy_freq, vclk_freq, venc_freq, hdmi_freq);
+ 
+-	return meson_vclk_vic_supported_freq(phy_freq, vclk_freq);
++	return meson_vclk_vic_supported_freq(priv, phy_freq, vclk_freq);
+ }
+ 
+ /* Encoder */
+diff --git a/drivers/gpu/drm/meson/meson_vclk.c b/drivers/gpu/drm/meson/meson_vclk.c
+index fdf26dac9fa8..0eb86943a358 100644
+--- a/drivers/gpu/drm/meson/meson_vclk.c
++++ b/drivers/gpu/drm/meson/meson_vclk.c
+@@ -725,6 +725,13 @@ meson_vclk_dmt_supported_freq(struct meson_drm *priv, unsigned int freq)
+ 	/* In DMT mode, path after PLL is always /10 */
+ 	freq *= 10;
+ 
++	/* Check against soc revision/package limits */
++	if (priv->limits) {
++		if (priv->limits->max_hdmi_phy_freq &&
++		    freq > priv->limits->max_hdmi_phy_freq)
++			return MODE_CLOCK_HIGH;
++	}
++
+ 	if (meson_hdmi_pll_find_params(priv, freq, &m, &frac, &od))
+ 		return MODE_OK;
+ 
+@@ -762,7 +769,7 @@ static void meson_hdmi_pll_generic_set(struct meson_drm *priv,
+ }
+ 
+ enum drm_mode_status
+-meson_vclk_vic_supported_freq(unsigned int phy_freq,
++meson_vclk_vic_supported_freq(struct meson_drm *priv, unsigned int phy_freq,
+ 			      unsigned int vclk_freq)
+ {
+ 	int i;
+@@ -770,6 +777,13 @@ meson_vclk_vic_supported_freq(unsigned int phy_freq,
+ 	DRM_DEBUG_DRIVER("phy_freq = %d vclk_freq = %d\n",
+ 			 phy_freq, vclk_freq);
+ 
++	/* Check against soc revision/package limits */
++	if (priv->limits) {
++		if (priv->limits->max_hdmi_phy_freq &&
++		    phy_freq > priv->limits->max_hdmi_phy_freq)
++			return MODE_CLOCK_HIGH;
++	}
++
+ 	for (i = 0 ; params[i].pixel_freq ; ++i) {
+ 		DRM_DEBUG_DRIVER("i = %d pixel_freq = %d alt = %d\n",
+ 				 i, params[i].pixel_freq,
+diff --git a/drivers/gpu/drm/meson/meson_vclk.h b/drivers/gpu/drm/meson/meson_vclk.h
+index aed0ab2efa71..60617aaf18dd 100644
+--- a/drivers/gpu/drm/meson/meson_vclk.h
++++ b/drivers/gpu/drm/meson/meson_vclk.h
+@@ -25,7 +25,8 @@ enum {
+ enum drm_mode_status
+ meson_vclk_dmt_supported_freq(struct meson_drm *priv, unsigned int freq);
+ enum drm_mode_status
+-meson_vclk_vic_supported_freq(unsigned int phy_freq, unsigned int vclk_freq);
++meson_vclk_vic_supported_freq(struct meson_drm *priv, unsigned int phy_freq,
++			      unsigned int vclk_freq);
+ 
+ void meson_vclk_setup(struct meson_drm *priv, unsigned int target,
+ 		      unsigned int phy_freq, unsigned int vclk_freq,
+
+From 64434b21e374ad135af59120286a1ea4359079e1 Mon Sep 17 00:00:00 2001
+From: Mika Kahola <mika.kahola@intel.com>
+Date: Wed, 6 May 2020 15:08:27 +0300
+Subject: [PATCH] uapi/drm/drm_fourcc.h: Note on platform specificity for
+ format modifiers
+
+Make an additional note on DRM format modifiers for x and y tiling. These
+format modifiers are defined for BDW+ platforms and therefore definition
+is not valid for older gens. This is due to address swizzling for tiled
+surfaces is no longer used. For newer platforms main memory controller has
+a more effective address swizzling algorithm.
+
+v2: Rephrase comment (Daniel)
+
+Signed-off-by: Mika Kahola <mika.kahola@intel.com>
+Signed-off-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200506120827.12250-1-mika.kahola@intel.com
+(cherry picked from commit 50b6f619a099af6dfe06e958bfa08d46440ea788)
+---
+ include/uapi/drm/drm_fourcc.h | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/include/uapi/drm/drm_fourcc.h b/include/uapi/drm/drm_fourcc.h
+index 8bc0b31597d8..9e488d10f8b4 100644
+--- a/include/uapi/drm/drm_fourcc.h
++++ b/include/uapi/drm/drm_fourcc.h
+@@ -354,9 +354,12 @@ extern "C" {
+  * a platform-dependent stride. On top of that the memory can apply
+  * platform-depending swizzling of some higher address bits into bit6.
+  *
+- * This format is highly platforms specific and not useful for cross-driver
+- * sharing. It exists since on a given platform it does uniquely identify the
+- * layout in a simple way for i915-specific userspace.
++ * Note that this layout is only accurate on intel gen 8+ or valleyview chipsets.
++ * On earlier platforms the is highly platforms specific and not useful for
++ * cross-driver sharing. It exists since on a given platform it does uniquely
++ * identify the layout in a simple way for i915-specific userspace, which
++ * facilitated conversion of userspace to modifiers. Additionally the exact
++ * format on some really old platforms is not known.
+  */
+ #define I915_FORMAT_MOD_X_TILED	fourcc_mod_code(INTEL, 1)
+ 
+@@ -369,9 +372,12 @@ extern "C" {
+  * memory can apply platform-depending swizzling of some higher address bits
+  * into bit6.
+  *
+- * This format is highly platforms specific and not useful for cross-driver
+- * sharing. It exists since on a given platform it does uniquely identify the
+- * layout in a simple way for i915-specific userspace.
++ * Note that this layout is only accurate on intel gen 8+ or valleyview chipsets.
++ * On earlier platforms the is highly platforms specific and not useful for
++ * cross-driver sharing. It exists since on a given platform it does uniquely
++ * identify the layout in a simple way for i915-specific userspace, which
++ * facilitated conversion of userspace to modifiers. Additionally the exact
++ * format on some really old platforms is not known.
+  */
+ #define I915_FORMAT_MOD_Y_TILED	fourcc_mod_code(INTEL, 2)
+ 
+
+From f6ef82328ef72bfa1a9081095e3f7c29a451bebd Mon Sep 17 00:00:00 2001
+From: Gwan-gyeong Mun <gwan-gyeong.mun@intel.com>
+Date: Thu, 14 May 2020 09:07:19 +0300
+Subject: [PATCH] video/hdmi: Add Unpack only function for DRM infoframe
+
+It adds an unpack only function for DRM infoframe for dynamic range and
+mastering infoframe readout.
+It unpacks the information data block contained in the binary buffer into
+a structured frame of the HDMI Dynamic Range and Mastering (DRM)
+information frame.
+
+In contrast to hdmi_drm_infoframe_unpack() function, it does not verify
+a checksum.
+
+It can be used for unpacking a DP HDR Metadata Infoframe SDP case.
+DP HDR Metadata Infoframe SDP uses the same Dynamic Range and Mastering
+(DRM) information (CTA-861-G spec.) such as HDMI DRM infoframe.
+But DP SDP header and payload structure are different from HDMI DRM
+Infoframe. Therefore unpacking DRM infoframe for DP requires skipping of
+a verifying checksum.
+
+v9: Add clear comments to hdmi_drm_infoframe_unpack_only() and
+    hdmi_drm_infoframe_unpack() (Laurent Pinchart)
+
+Signed-off-by: Gwan-gyeong Mun <gwan-gyeong.mun@intel.com>
+Reviewed-by: Uma Shankar <uma.shankar@intel.com>
+Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Cc: Ville Syrjala <ville.syrjala@linux.intel.com>
+Acked-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Signed-off-by: Jani Nikula <jani.nikula@intel.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200514060732.3378396-2-gwan-gyeong.mun@intel.com
+(cherry picked from commit f45ce9336ff0640e491c642a84ea02f21daac3a4)
+---
+ drivers/video/hdmi.c | 65 +++++++++++++++++++++++++++++++++++++---------------
+ include/linux/hdmi.h |  2 ++
+ 2 files changed, 48 insertions(+), 19 deletions(-)
+
+diff --git a/drivers/video/hdmi.c b/drivers/video/hdmi.c
+index 856a8c4e84a2..e70792b3e367 100644
+--- a/drivers/video/hdmi.c
++++ b/drivers/video/hdmi.c
+@@ -1768,20 +1768,21 @@ hdmi_vendor_any_infoframe_unpack(union hdmi_vendor_any_infoframe *frame,
+ }
+ 
+ /**
+- * hdmi_drm_infoframe_unpack() - unpack binary buffer to a HDMI DRM infoframe
++ * hdmi_drm_infoframe_unpack_only() - unpack binary buffer of CTA-861-G DRM
++ *                                    infoframe DataBytes to a HDMI DRM
++ *                                    infoframe
+  * @frame: HDMI DRM infoframe
+  * @buffer: source buffer
+  * @size: size of buffer
+  *
+- * Unpacks the information contained in binary @buffer into a structured
+- * @frame of the HDMI Dynamic Range and Mastering (DRM) information frame.
+- * Also verifies the checksum as required by section 5.3.5 of the HDMI 1.4
+- * specification.
++ * Unpacks CTA-861-G DRM infoframe DataBytes contained in the binary @buffer
++ * into a structured @frame of the HDMI Dynamic Range and Mastering (DRM)
++ * infoframe.
+  *
+  * Returns 0 on success or a negative error code on failure.
+  */
+-static int hdmi_drm_infoframe_unpack(struct hdmi_drm_infoframe *frame,
+-				     const void *buffer, size_t size)
++int hdmi_drm_infoframe_unpack_only(struct hdmi_drm_infoframe *frame,
++				   const void *buffer, size_t size)
+ {
+ 	const u8 *ptr = buffer;
+ 	const u8 *temp;
+@@ -1790,23 +1791,13 @@ static int hdmi_drm_infoframe_unpack(struct hdmi_drm_infoframe *frame,
+ 	int ret;
+ 	int i;
+ 
+-	if (size < HDMI_INFOFRAME_SIZE(DRM))
+-		return -EINVAL;
+-
+-	if (ptr[0] != HDMI_INFOFRAME_TYPE_DRM ||
+-	    ptr[1] != 1 ||
+-	    ptr[2] != HDMI_DRM_INFOFRAME_SIZE)
+-		return -EINVAL;
+-
+-	if (hdmi_infoframe_checksum(buffer, HDMI_INFOFRAME_SIZE(DRM)) != 0)
++	if (size < HDMI_DRM_INFOFRAME_SIZE)
+ 		return -EINVAL;
+ 
+ 	ret = hdmi_drm_infoframe_init(frame);
+ 	if (ret)
+ 		return ret;
+ 
+-	ptr += HDMI_INFOFRAME_HEADER_SIZE;
+-
+ 	frame->eotf = ptr[0] & 0x7;
+ 	frame->metadata_type = ptr[1] & 0x7;
+ 
+@@ -1814,7 +1805,7 @@ static int hdmi_drm_infoframe_unpack(struct hdmi_drm_infoframe *frame,
+ 	for (i = 0; i < 3; i++) {
+ 		x_lsb = *temp++;
+ 		x_msb = *temp++;
+-		frame->display_primaries[i].x =  (x_msb << 8) | x_lsb;
++		frame->display_primaries[i].x = (x_msb << 8) | x_lsb;
+ 		y_lsb = *temp++;
+ 		y_msb = *temp++;
+ 		frame->display_primaries[i].y = (y_msb << 8) | y_lsb;
+@@ -1830,6 +1821,42 @@ static int hdmi_drm_infoframe_unpack(struct hdmi_drm_infoframe *frame,
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL(hdmi_drm_infoframe_unpack_only);
++
++/**
++ * hdmi_drm_infoframe_unpack() - unpack binary buffer to a HDMI DRM infoframe
++ * @frame: HDMI DRM infoframe
++ * @buffer: source buffer
++ * @size: size of buffer
++ *
++ * Unpacks the CTA-861-G DRM infoframe contained in the binary @buffer into
++ * a structured @frame of the HDMI Dynamic Range and Mastering (DRM)
++ * infoframe. It also verifies the checksum as required by section 5.3.5 of
++ * the HDMI 1.4 specification.
++ *
++ * Returns 0 on success or a negative error code on failure.
++ */
++static int hdmi_drm_infoframe_unpack(struct hdmi_drm_infoframe *frame,
++				     const void *buffer, size_t size)
++{
++	const u8 *ptr = buffer;
++	int ret;
++
++	if (size < HDMI_INFOFRAME_SIZE(DRM))
++		return -EINVAL;
++
++	if (ptr[0] != HDMI_INFOFRAME_TYPE_DRM ||
++	    ptr[1] != 1 ||
++	    ptr[2] != HDMI_DRM_INFOFRAME_SIZE)
++		return -EINVAL;
++
++	if (hdmi_infoframe_checksum(buffer, HDMI_INFOFRAME_SIZE(DRM)) != 0)
++		return -EINVAL;
++
++	ret = hdmi_drm_infoframe_unpack_only(frame, ptr + HDMI_INFOFRAME_HEADER_SIZE,
++					     size - HDMI_INFOFRAME_HEADER_SIZE);
++	return ret;
++}
+ 
+ /**
+  * hdmi_infoframe_unpack() - unpack binary buffer to a HDMI infoframe
+diff --git a/include/linux/hdmi.h b/include/linux/hdmi.h
+index 9613d796cfb1..50c31f1a0a2d 100644
+--- a/include/linux/hdmi.h
++++ b/include/linux/hdmi.h
+@@ -219,6 +219,8 @@ ssize_t hdmi_drm_infoframe_pack(struct hdmi_drm_infoframe *frame, void *buffer,
+ ssize_t hdmi_drm_infoframe_pack_only(const struct hdmi_drm_infoframe *frame,
+ 				     void *buffer, size_t size);
+ int hdmi_drm_infoframe_check(struct hdmi_drm_infoframe *frame);
++int hdmi_drm_infoframe_unpack_only(struct hdmi_drm_infoframe *frame,
++				   const void *buffer, size_t size);
+ 
+ enum hdmi_spd_sdi {
+ 	HDMI_SPD_SDI_UNKNOWN,
+
+From d0a3357a52a098050f19e9fed2990e7d30551885 Mon Sep 17 00:00:00 2001
+From: James Jones <jajones@nvidia.com>
+Date: Wed, 11 Dec 2019 12:55:47 -0800
+Subject: [PATCH] drm: Generalized NV Block Linear DRM format mod
+
+Builds upon the existing NVIDIA 16Bx2 block linear
+format modifiers by adding more "fields" to the
+existing parameterized
+DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK format modifier
+macro that allow fully defining a unique-across-
+all-NVIDIA-hardware bit layout using a minimal
+set of fields and values.  The new modifier macro
+DRM_FORMAT_MOD_NVIDIA_BLOCK_LINEAR_2D is
+effectively backwards compatible with the existing
+macro, introducing a superset of the previously
+definable format modifiers.
+
+Backwards compatibility has two quirks.  First,
+the zero value for the "kind" field, which is
+implied by the DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK
+macro, must be special cased in drivers and
+assumed to map to the pre-Turing generic kind of
+0xfe, since a kind of "zero" is reserved for
+linear buffer layouts on all GPUs.
+
+Second, it is assumed backwards compatibility
+is only needed when running on Tegra GPUs, and
+specifically Tegra GPUs prior to Xavier.  This
+is based on two assertions:
+
+-Tegra GPUs prior to Xavier used a slightly
+ different raw bit layout than desktop GPUs,
+ making it impossible to directly share block
+ linear buffers between the two.
+
+-Support for the existing block linear modifiers
+ was incomplete, making them useful only for
+ exporting buffers created by nouveau and
+ importing them to Tegra DRM as framebuffers for
+ scan out.  There was no support for adding
+ framebuffers using format modifiers in nouveau,
+ nor importing dma-buf/PRIME GEM objects into
+ nouveau userspace drivers with modifiers in Mesa.
+
+Hence it is assumed the prior modifiers were not
+intended for use on desktop GPUs, and as a
+corollary, were not intended to support sharing
+block linear buffers across two different NVIDIA
+GPUs.
+
+v2:
+  - Added canonicalize helper function
+
+v3:
+  - Added additional bit to compression field to
+    support Tesla (NV5x,G8x,G9x,GT1xx,GT2xx) class
+    chips.
+
+Signed-off-by: James Jones <jajones@nvidia.com>
+Signed-off-by: Ben Skeggs <bskeggs@redhat.com>
+(cherry picked from commit 82c8c4ddcae74460f4ea484ab9ad97ddb466e469)
+---
+ include/uapi/drm/drm_fourcc.h | 122 +++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 114 insertions(+), 8 deletions(-)
+
+diff --git a/include/uapi/drm/drm_fourcc.h b/include/uapi/drm/drm_fourcc.h
+index 9e488d10f8b4..490143500a50 100644
+--- a/include/uapi/drm/drm_fourcc.h
++++ b/include/uapi/drm/drm_fourcc.h
+@@ -527,7 +527,113 @@ extern "C" {
+ #define DRM_FORMAT_MOD_NVIDIA_TEGRA_TILED fourcc_mod_code(NVIDIA, 1)
+ 
+ /*
+- * 16Bx2 Block Linear layout, used by desktop GPUs, and Tegra K1 and later
++ * Generalized Block Linear layout, used by desktop GPUs starting with NV50/G80,
++ * and Tegra GPUs starting with Tegra K1.
++ *
++ * Pixels are arranged in Groups of Bytes (GOBs).  GOB size and layout varies
++ * based on the architecture generation.  GOBs themselves are then arranged in
++ * 3D blocks, with the block dimensions (in terms of GOBs) always being a power
++ * of two, and hence expressible as their log2 equivalent (E.g., "2" represents
++ * a block depth or height of "4").
++ *
++ * Chapter 20 "Pixel Memory Formats" of the Tegra X1 TRM describes this format
++ * in full detail.
++ *
++ *       Macro
++ * Bits  Param Description
++ * ----  ----- -----------------------------------------------------------------
++ *
++ *  3:0  h     log2(height) of each block, in GOBs.  Placed here for
++ *             compatibility with the existing
++ *             DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK()-based modifiers.
++ *
++ *  4:4  -     Must be 1, to indicate block-linear layout.  Necessary for
++ *             compatibility with the existing
++ *             DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK()-based modifiers.
++ *
++ *  8:5  -     Reserved (To support 3D-surfaces with variable log2(depth) block
++ *             size).  Must be zero.
++ *
++ *             Note there is no log2(width) parameter.  Some portions of the
++ *             hardware support a block width of two gobs, but it is impractical
++ *             to use due to lack of support elsewhere, and has no known
++ *             benefits.
++ *
++ * 11:9  -     Reserved (To support 2D-array textures with variable array stride
++ *             in blocks, specified via log2(tile width in blocks)).  Must be
++ *             zero.
++ *
++ * 19:12 k     Page Kind.  This value directly maps to a field in the page
++ *             tables of all GPUs >= NV50.  It affects the exact layout of bits
++ *             in memory and can be derived from the tuple
++ *
++ *               (format, GPU model, compression type, samples per pixel)
++ *
++ *             Where compression type is defined below.  If GPU model were
++ *             implied by the format modifier, format, or memory buffer, page
++ *             kind would not need to be included in the modifier itself, but
++ *             since the modifier should define the layout of the associated
++ *             memory buffer independent from any device or other context, it
++ *             must be included here.
++ *
++ * 21:20 g     GOB Height and Page Kind Generation.  The height of a GOB changed
++ *             starting with Fermi GPUs.  Additionally, the mapping between page
++ *             kind and bit layout has changed at various points.
++ *
++ *               0 = Gob Height 8, Fermi - Volta, Tegra K1+ Page Kind mapping
++ *               1 = Gob Height 4, G80 - GT2XX Page Kind mapping
++ *               2 = Gob Height 8, Turing+ Page Kind mapping
++ *               3 = Reserved for future use.
++ *
++ * 22:22 s     Sector layout.  On Tegra GPUs prior to Xavier, there is a further
++ *             bit remapping step that occurs at an even lower level than the
++ *             page kind and block linear swizzles.  This causes the layout of
++ *             surfaces mapped in those SOC's GPUs to be incompatible with the
++ *             equivalent mapping on other GPUs in the same system.
++ *
++ *               0 = Tegra K1 - Tegra Parker/TX2 Layout.
++ *               1 = Desktop GPU and Tegra Xavier+ Layout
++ *
++ * 25:23 c     Lossless Framebuffer Compression type.
++ *
++ *               0 = none
++ *               1 = ROP/3D, layout 1, exact compression format implied by Page
++ *                   Kind field
++ *               2 = ROP/3D, layout 2, exact compression format implied by Page
++ *                   Kind field
++ *               3 = CDE horizontal
++ *               4 = CDE vertical
++ *               5 = Reserved for future use
++ *               6 = Reserved for future use
++ *               7 = Reserved for future use
++ *
++ * 55:25 -     Reserved for future use.  Must be zero.
++ */
++#define DRM_FORMAT_MOD_NVIDIA_BLOCK_LINEAR_2D(c, s, g, k, h) \
++	fourcc_mod_code(NVIDIA, (0x10 | \
++				 ((h) & 0xf) | \
++				 (((k) & 0xff) << 12) | \
++				 (((g) & 0x3) << 20) | \
++				 (((s) & 0x1) << 22) | \
++				 (((c) & 0x7) << 23)))
++
++/* To grandfather in prior block linear format modifiers to the above layout,
++ * the page kind "0", which corresponds to "pitch/linear" and hence is unusable
++ * with block-linear layouts, is remapped within drivers to the value 0xfe,
++ * which corresponds to the "generic" kind used for simple single-sample
++ * uncompressed color formats on Fermi - Volta GPUs.
++ */
++static inline __u64
++drm_fourcc_canonicalize_nvidia_format_mod(__u64 modifier)
++{
++	if (!(modifier & 0x10) || (modifier & (0xff << 12)))
++		return modifier;
++	else
++		return modifier | (0xfe << 12);
++}
++
++/*
++ * 16Bx2 Block Linear layout, used by Tegra K1 and later
+  *
+  * Pixels are arranged in 64x8 Groups Of Bytes (GOBs). GOBs are then stacked
+  * vertically by a power of 2 (1 to 32 GOBs) to form a block.
+@@ -548,20 +654,20 @@ extern "C" {
+  * in full detail.
+  */
+ #define DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK(v) \
+-	fourcc_mod_code(NVIDIA, 0x10 | ((v) & 0xf))
++	DRM_FORMAT_MOD_NVIDIA_BLOCK_LINEAR_2D(0, 0, 0, 0, (v))
+ 
+ #define DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_ONE_GOB \
+-	fourcc_mod_code(NVIDIA, 0x10)
++	DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK(0)
+ #define DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_TWO_GOB \
+-	fourcc_mod_code(NVIDIA, 0x11)
++	DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK(1)
+ #define DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_FOUR_GOB \
+-	fourcc_mod_code(NVIDIA, 0x12)
++	DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK(2)
+ #define DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_EIGHT_GOB \
+-	fourcc_mod_code(NVIDIA, 0x13)
++	DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK(3)
+ #define DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_SIXTEEN_GOB \
+-	fourcc_mod_code(NVIDIA, 0x14)
++	DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK(4)
+ #define DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_THIRTYTWO_GOB \
+-	fourcc_mod_code(NVIDIA, 0x15)
++	DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK(5)
+ 
+ /*
+  * Some Broadcom modifiers take parameters, for example the number of
+
+From 66bfa9eacebbb9c685ab96809a7838d357ec6db9 Mon Sep 17 00:00:00 2001
+From: Qiang Yu <yuq825@gmail.com>
+Date: Sun, 19 Jul 2020 15:30:50 +0800
+Subject: [PATCH] drm/lima: fix wait pp reset timeout
+
+PP bcast is marked as doing async reset after job is done.
+When resume after suspend, each PP is reset individually,
+so no need to reset in PP bcast resume. But I forgot to
+clear the PP bcast async reset mark so call into async wait
+before job run and gets timeout.
+
+Closes: https://gitlab.freedesktop.org/lima/linux/-/issues/34
+Fixes: 3446d7e9883d ("drm/lima: add resume/suspend callback for each ip")
+Reviewed-by: Erico Nunes <nunes.erico@gmail.com>
+Signed-off-by: Qiang Yu <yuq825@gmail.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20200719073050.776962-1-yuq825@gmail.com
+(cherry picked from commit f3f90c6db188d437add55aaffadd5ad5bcb8cda6)
+---
+ drivers/gpu/drm/lima/lima_pp.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/gpu/drm/lima/lima_pp.c b/drivers/gpu/drm/lima/lima_pp.c
+index 33f01383409c..a5c95bed08c0 100644
+--- a/drivers/gpu/drm/lima/lima_pp.c
++++ b/drivers/gpu/drm/lima/lima_pp.c
+@@ -271,6 +271,8 @@ void lima_pp_fini(struct lima_ip *ip)
+ 
+ int lima_pp_bcast_resume(struct lima_ip *ip)
+ {
++	/* PP has been reset by individual PP resume */
++	ip->data.async_reset = false;
+ 	return 0;
+ }
+ 

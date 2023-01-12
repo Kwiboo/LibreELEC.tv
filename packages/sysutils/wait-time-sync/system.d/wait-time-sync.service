@@ -10,6 +10,7 @@
 
 [Unit]
 Description=Wait for Kernel Time Synchronisation
+ConditionKernelCommandLine=!debugging
 ConditionVirtualization=!container
 
 DefaultDependencies=no

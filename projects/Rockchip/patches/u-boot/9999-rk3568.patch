@@ -1,0 +1,646 @@
+From a93610ff620e0353a4a2ea54800ae18b30dfd994 Mon Sep 17 00:00:00 2001
+From: Peter Geis <pgwipeout@gmail.com>
+Date: Mon, 21 Feb 2022 20:31:20 -0500
+Subject: [PATCH 01/11] clk: rockchip: rk3568: fix reset handler
+
+The reset handler for rk3568 is missing its private data. This leads to
+an abort when a reset is triggered.
+
+Add the missing dev_set_priv to the rk3568 clk driver.
+
+Fixes: 4a262feba3a5 ("rockchip: rk3568: add clock driver")
+
+Signed-off-by: Peter Geis <pgwipeout@gmail.com>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+Reviewed-by: Jagan Teki <jagan@amarulasolutions.com>
+Tested-by: Jagan Teki <jagan@amarulasolutions.com> # radxa-cm3
+---
+ drivers/clk/rockchip/clk_rk3568.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/clk/rockchip/clk_rk3568.c b/drivers/clk/rockchip/clk_rk3568.c
+index d5e45e7602c..c83ae22dc30 100644
+--- a/drivers/clk/rockchip/clk_rk3568.c
++++ b/drivers/clk/rockchip/clk_rk3568.c
+@@ -14,6 +14,7 @@
+ #include <asm/arch-rockchip/clock.h>
+ #include <asm/arch-rockchip/hardware.h>
+ #include <asm/io.h>
++#include <dm/device-internal.h>
+ #include <dm/lists.h>
+ #include <dt-bindings/clock/rk3568-cru.h>
+ 
+@@ -2934,6 +2935,7 @@ static int rk3568_clk_bind(struct udevice *dev)
+ 						    glb_srst_fst);
+ 		priv->glb_srst_snd_value = offsetof(struct rk3568_cru,
+ 						    glb_srsr_snd);
++		dev_set_priv(sys_child, priv);
+ 	}
+ 
+ #if CONFIG_IS_ENABLED(RESET_ROCKCHIP)
+
+From e25e67766422417cb8686e3e6f897bacc06d8a0c Mon Sep 17 00:00:00 2001
+From: Peter Geis <pgwipeout@gmail.com>
+Date: Mon, 21 Feb 2022 20:31:21 -0500
+Subject: [PATCH 02/11] mmc: sdhci: allow disabling sdma in spl
+
+Rockchip emmc devices have a similar issue to Rockchip dwmmc devices,
+where performing dma to sram causes errors with suspend/resume.
+Allow us to toggle sdma in spl for sdhci similar to adma support, so we
+can ensure dma is not used when loading the sram code.
+
+Signed-off-by: Peter Geis <pgwipeout@gmail.com>
+Reviewed-by: Jaehoon Chung <jh80.chung@samsung.com>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+---
+ drivers/mmc/Kconfig | 7 +++++++
+ drivers/mmc/sdhci.c | 6 +++---
+ 2 files changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/mmc/Kconfig b/drivers/mmc/Kconfig
+index bf4d994ff69..6a959db956f 100644
+--- a/drivers/mmc/Kconfig
++++ b/drivers/mmc/Kconfig
+@@ -471,6 +471,13 @@ config MMC_SDHCI_SDMA
+ 	  This enables support for the SDMA (Single Operation DMA) defined
+ 	  in the SD Host Controller Standard Specification Version 1.00 .
+ 
++config SPL_MMC_SDHCI_SDMA
++	bool "Support SDHCI SDMA in SPL"
++	depends on MMC_SDHCI
++	help
++	  This enables support for the SDMA (Single Operation DMA) defined
++	  in the SD Host Controller Standard Specification Version 1.00 in SPL.
++
+ config MMC_SDHCI_ADMA
+ 	bool "Support SDHCI ADMA2"
+ 	depends on MMC_SDHCI
+diff --git a/drivers/mmc/sdhci.c b/drivers/mmc/sdhci.c
+index a80ad8329a3..3c44e5d8d4d 100644
+--- a/drivers/mmc/sdhci.c
++++ b/drivers/mmc/sdhci.c
+@@ -70,7 +70,7 @@ static void sdhci_transfer_pio(struct sdhci_host *host, struct mmc_data *data)
+ 	}
+ }
+ 
+-#if (defined(CONFIG_MMC_SDHCI_SDMA) || CONFIG_IS_ENABLED(MMC_SDHCI_ADMA))
++#if (CONFIG_IS_ENABLED(MMC_SDHCI_SDMA) || CONFIG_IS_ENABLED(MMC_SDHCI_ADMA))
+ static void sdhci_prepare_dma(struct sdhci_host *host, struct mmc_data *data,
+ 			      int *is_aligned, int trans_bytes)
+ {
+@@ -177,7 +177,7 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data)
+ 		}
+ 	} while (!(stat & SDHCI_INT_DATA_END));
+ 
+-#if (defined(CONFIG_MMC_SDHCI_SDMA) || CONFIG_IS_ENABLED(MMC_SDHCI_ADMA))
++#if (CONFIG_IS_ENABLED(MMC_SDHCI_SDMA) || CONFIG_IS_ENABLED(MMC_SDHCI_ADMA))
+ 	dma_unmap_single(host->start_addr, data->blocks * data->blocksize,
+ 			 mmc_get_dma_dir(data));
+ #endif
+@@ -856,7 +856,7 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
+ #endif
+ 	debug("%s, caps: 0x%x\n", __func__, caps);
+ 
+-#ifdef CONFIG_MMC_SDHCI_SDMA
++#if CONFIG_IS_ENABLED(MMC_SDHCI_SDMA)
+ 	if ((caps & SDHCI_CAN_DO_SDMA)) {
+ 		host->flags |= USE_SDMA;
+ 	} else {
+
+From b8b8eff1e66435cdbfbf00a11c7dae10bda5810d Mon Sep 17 00:00:00 2001
+From: Peter Geis <pgwipeout@gmail.com>
+Date: Mon, 21 Feb 2022 20:31:26 -0500
+Subject: [PATCH 03/11] rockchip: rk3568: add boot device detection
+
+Enable rk3568 spl to detect which device it was booted from.
+
+Signed-off-by: Peter Geis <pgwipeout@gmail.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+---
+ arch/arm/mach-rockchip/rk3568/rk3568.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/arch/arm/mach-rockchip/rk3568/rk3568.c b/arch/arm/mach-rockchip/rk3568/rk3568.c
+index 22eeb77d41f..9c707da266c 100644
+--- a/arch/arm/mach-rockchip/rk3568/rk3568.c
++++ b/arch/arm/mach-rockchip/rk3568/rk3568.c
+@@ -7,6 +7,7 @@
+ #include <dm.h>
+ #include <asm/armv8/mmu.h>
+ #include <asm/io.h>
++#include <asm/arch-rockchip/bootrom.h>
+ #include <asm/arch-rockchip/grf_rk3568.h>
+ #include <asm/arch-rockchip/hardware.h>
+ #include <dt-bindings/clock/rk3568-cru.h>
+@@ -23,6 +24,7 @@
+ #define SGRF_SOC_CON4			0x10
+ #define EMMC_HPROT_SECURE_CTRL		0x03
+ #define SDMMC0_HPROT_SECURE_CTRL	0x01
++
+ /* PMU_GRF_GPIO0D_IOMUX_L */
+ enum {
+ 	GPIO0D1_SHIFT		= 4,
+@@ -43,6 +45,12 @@ enum {
+ 	UART2_IO_SEL_M0		= 0,
+ };
+ 
++const char * const boot_devices[BROM_LAST_BOOTSOURCE + 1] = {
++	[BROM_BOOTSOURCE_EMMC] = "/sdhci@fe310000",
++	[BROM_BOOTSOURCE_SPINOR] = "/spi@fe300000/flash@0",
++	[BROM_BOOTSOURCE_SD] = "/mmc@fe2b0000",
++};
++
+ static struct mm_region rk3568_mem_map[] = {
+ 	{
+ 		.virt = 0x0UL,
+
+From 6e079653a546e81d69241a78ea82ed9fb33873f7 Mon Sep 17 00:00:00 2001
+From: Peter Geis <pgwipeout@gmail.com>
+Date: Mon, 21 Feb 2022 20:31:27 -0500
+Subject: [PATCH 04/11] rockchip: rk3568: enable automatic clock gating
+
+Enable automatic clock gating on rk3568, which solves a 7c temperature
+difference on SoQuartz compared to downstream.
+
+Signed-off-by: Peter Geis <pgwipeout@gmail.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+---
+ arch/arm/mach-rockchip/rk3568/rk3568.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/arch/arm/mach-rockchip/rk3568/rk3568.c b/arch/arm/mach-rockchip/rk3568/rk3568.c
+index 9c707da266c..6d397753887 100644
+--- a/arch/arm/mach-rockchip/rk3568/rk3568.c
++++ b/arch/arm/mach-rockchip/rk3568/rk3568.c
+@@ -25,6 +25,15 @@
+ #define EMMC_HPROT_SECURE_CTRL		0x03
+ #define SDMMC0_HPROT_SECURE_CTRL	0x01
+ 
++#define PMU_BASE_ADDR		0xfdd90000
++#define PMU_NOC_AUTO_CON0	(0x70)
++#define PMU_NOC_AUTO_CON1	(0x74)
++#define EDP_PHY_GRF_BASE	0xfdcb0000
++#define EDP_PHY_GRF_CON0	(EDP_PHY_GRF_BASE + 0x00)
++#define EDP_PHY_GRF_CON10	(EDP_PHY_GRF_BASE + 0x28)
++#define CPU_GRF_BASE		0xfdc30000
++#define GRF_CORE_PVTPLL_CON0	(0x10)
++
+ /* PMU_GRF_GPIO0D_IOMUX_L */
+ enum {
+ 	GPIO0D1_SHIFT		= 4,
+@@ -99,6 +108,20 @@ void board_debug_uart_init(void)
+ int arch_cpu_init(void)
+ {
+ #ifdef CONFIG_SPL_BUILD
++	/*
++	 * When perform idle operation, corresponding clock can
++	 * be opened or gated automatically.
++	 */
++	writel(0xffffffff, PMU_BASE_ADDR + PMU_NOC_AUTO_CON0);
++	writel(0x000f000f, PMU_BASE_ADDR + PMU_NOC_AUTO_CON1);
++
++	/* Disable eDP phy by default */
++	writel(0x00070007, EDP_PHY_GRF_CON10);
++	writel(0x0ff10ff1, EDP_PHY_GRF_CON0);
++
++	/* Set core pvtpll ring length */
++	writel(0x00ff002b, CPU_GRF_BASE + GRF_CORE_PVTPLL_CON0);
++
+ 	/* Set the emmc sdmmc0 to secure */
+ 	rk_clrreg(SGRF_BASE + SGRF_SOC_CON4, (EMMC_HPROT_SECURE_CTRL << 11
+ 		| SDMMC0_HPROT_SECURE_CTRL << 4));
+
+From 3c168ddea88744683f80b7dc6d168ac521b27c39 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Fri, 13 Jan 2023 21:19:56 +0000
+Subject: [PATCH 05/11] fixup! rockchip: rk3568: add boot device detection
+
+---
+ arch/arm/mach-rockchip/rk3568/rk3568.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/mach-rockchip/rk3568/rk3568.c b/arch/arm/mach-rockchip/rk3568/rk3568.c
+index 6d397753887..4a1a21c4132 100644
+--- a/arch/arm/mach-rockchip/rk3568/rk3568.c
++++ b/arch/arm/mach-rockchip/rk3568/rk3568.c
+@@ -55,7 +55,7 @@ enum {
+ };
+ 
+ const char * const boot_devices[BROM_LAST_BOOTSOURCE + 1] = {
+-	[BROM_BOOTSOURCE_EMMC] = "/sdhci@fe310000",
++	[BROM_BOOTSOURCE_EMMC] = "/mmc@fe310000",
+ 	[BROM_BOOTSOURCE_SPINOR] = "/spi@fe300000/flash@0",
+ 	[BROM_BOOTSOURCE_SD] = "/mmc@fe2b0000",
+ };
+
+From 5ae59eefe3cccfc228040d54fba9616bd4c692ba Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Fri, 13 Jan 2023 21:15:02 +0000
+Subject: [PATCH 06/11] DEBUG: spl: fit: add debug messages to help catch
+ issues loading to sram
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ common/spl/spl_fit.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/common/spl/spl_fit.c b/common/spl/spl_fit.c
+index c1ed31e367c..f667f06b45a 100644
+--- a/common/spl/spl_fit.c
++++ b/common/spl/spl_fit.c
+@@ -283,8 +283,10 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
+ 		void *src_ptr;
+ 
+ 		/* External data */
+-		if (fit_image_get_data_size(fit, node, &len))
++		if (fit_image_get_data_size(fit, node, &len)) {
++			debug("Cannot get external data size\n");
+ 			return -ENOENT;
++		}
+ 
+ 		/* Dont bother to copy 0 byte data, but warn, though */
+ 		if (!len) {
+@@ -301,11 +303,13 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
+ 
+ 		if (info->read(info,
+ 			       sector + get_aligned_image_offset(info, offset),
+-			       nr_sectors, src_ptr) != nr_sectors)
++			       nr_sectors, src_ptr) != nr_sectors) {
++			debug("Cannot read external data\n");
+ 			return -EIO;
++		}
+ 
+-		debug("External data: dst=%p, offset=%x, size=%lx\n",
+-		      src_ptr, offset, (unsigned long)length);
++		debug("External data: dst=%p, offset=%x, size=%lx, overhead=%lx\n",
++		      src_ptr, offset, (unsigned long)length, overhead);
+ 		src = src_ptr + overhead;
+ 	} else {
+ 		/* Embedded data */
+
+From bf58a842b469b2b5f71ee84242b9a667198ad814 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Fri, 13 Jan 2023 21:15:02 +0000
+Subject: [PATCH 07/11] HACK: rockchip: make_fit_atf: add sha256 hash
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ arch/arm/mach-rockchip/make_fit_atf.py | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/arch/arm/mach-rockchip/make_fit_atf.py b/arch/arm/mach-rockchip/make_fit_atf.py
+index 08cfe9f51e9..05c43c40e01 100755
+--- a/arch/arm/mach-rockchip/make_fit_atf.py
++++ b/arch/arm/mach-rockchip/make_fit_atf.py
+@@ -37,6 +37,9 @@
+ 			arch = "arm64";
+ 			compression = "none";
+ 			load = <0x%08x>;
++			hash {
++				algo = "sha256";
++			};
+ 		};
+ 
+ """
+@@ -60,6 +63,9 @@ def append_bl31_node(file, atf_index, phy_addr, elf_entry):
+     file.write('\t\t\tload = <0x%08x>;\n' % phy_addr)
+     if atf_index == 1:
+         file.write('\t\t\tentry = <0x%08x>;\n' % elf_entry)
++    file.write('\t\t\thash {\n')
++    file.write('\t\t\t\talgo = "sha256";\n')
++    file.write('\t\t\t};\n')
+     file.write('\t\t};\n')
+     file.write('\n')
+ 
+@@ -75,6 +81,9 @@ def append_tee_node(file, atf_index, phy_addr, elf_entry):
+     file.write('\t\t\tcompression = "none";\n')
+     file.write('\t\t\tload = <0x%08x>;\n' % phy_addr)
+     file.write('\t\t\tentry = <0x%08x>;\n' % elf_entry)
++    file.write('\t\t\thash {\n')
++    file.write('\t\t\t\talgo = "sha256";\n')
++    file.write('\t\t\t};\n')
+     file.write('\t\t};\n')
+     file.write('\n')
+ 
+@@ -88,6 +97,9 @@ def append_fdt_node(file, dtbs):
+         file.write('\t\t\tdata = /incbin/("%s");\n' % dtb)
+         file.write('\t\t\ttype = "flat_dt";\n')
+         file.write('\t\t\tcompression = "none";\n')
++        file.write('\t\t\thash {\n')
++        file.write('\t\t\t\talgo = "sha256";\n')
++        file.write('\t\t\t};\n')
+         file.write('\t\t};\n')
+         file.write('\n')
+         cnt = cnt + 1
+
+From 6cbf813b19ec3aca4bb87694fe796b7ade30e669 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sat, 14 Jan 2023 15:10:24 +0000
+Subject: [PATCH 08/11] HACK: bouncebuf: use bounce buffer when target is
+ outside dram area
+
+Also align fit-images to 0x200 in order to avoid issue with trying to
+over-read data and then memcpy, that cause issue when load addr is in sram
+
+Based on:
+- https://patchwork.ozlabs.org/patch/1096413/
+- https://patchwork.ozlabs.org/patch/1096366/
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ Makefile           |  2 +-
+ common/bouncebuf.c | 12 ++++++++++++
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 9a8a7c4681d..fcf82ff4fb8 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1450,7 +1450,7 @@ MKIMAGEFLAGS_u-boot.itb =
+ else
+ MKIMAGEFLAGS_u-boot.itb = -E
+ endif
+-MKIMAGEFLAGS_u-boot.itb += -B 0x8
++MKIMAGEFLAGS_u-boot.itb += -B 0x200
+ 
+ ifdef U_BOOT_ITS
+ u-boot.itb: u-boot-nodtb.bin \
+diff --git a/common/bouncebuf.c b/common/bouncebuf.c
+index 6d98920de66..2910a58412d 100644
+--- a/common/bouncebuf.c
++++ b/common/bouncebuf.c
+@@ -12,6 +12,9 @@
+ #include <errno.h>
+ #include <bouncebuf.h>
+ #include <asm/cache.h>
++#include <asm/global_data.h>
++
++DECLARE_GLOBAL_DATA_PTR;
+ 
+ static int addr_aligned(struct bounce_buffer *state)
+ {
+@@ -29,6 +32,15 @@ static int addr_aligned(struct bounce_buffer *state)
+ 		return 0;
+ 	}
+ 
++#if defined(CONFIG_ARCH_ROCKCHIP)
++	/* Check if buffer is in dram area */
++	if (((ulong)state->user_buffer < CONFIG_SYS_SDRAM_BASE) ||
++	    ((ulong)state->user_buffer >= gd->ram_top)) {
++		debug("Buffer not in dram area %p\n", state->user_buffer);
++		return 0;
++	}
++#endif
++
+ 	/* Aligned */
+ 	return 1;
+ }
+
+From 1a1a71a3ede956d70e571f1f55f97d8d70ef61f9 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Fri, 13 Jan 2023 21:15:02 +0000
+Subject: [PATCH 09/11] rockchip: use ddr.bin when TPL is not available
+
+Rockchip platform normaly use TPL to initialize DRAM.
+Replace u-boot-tpl with ddr.bin blob when TPL is not available.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ arch/arm/dts/rockchip-u-boot.dtsi | 18 +++++++++++++-----
+ configs/evb-rk3568_defconfig      |  1 -
+ 2 files changed, 13 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm/dts/rockchip-u-boot.dtsi b/arch/arm/dts/rockchip-u-boot.dtsi
+index fa094b00392..e006b405bfe 100644
+--- a/arch/arm/dts/rockchip-u-boot.dtsi
++++ b/arch/arm/dts/rockchip-u-boot.dtsi
+@@ -11,7 +11,7 @@
+ 	};
+ };
+ 
+-#ifdef CONFIG_TPL
++#ifdef CONFIG_SPL
+ &binman {
+ 	simple-bin {
+ 		filename = "u-boot-rockchip.bin";
+@@ -20,12 +20,16 @@
+ 		mkimage {
+ 			filename = "idbloader.img";
+ 			args = "-n", CONFIG_SYS_SOC, "-T", "rksd";
+-#ifdef CONFIG_TPL
+ 			multiple-data-files;
+ 
++#ifdef CONFIG_TPL
+ 			u-boot-tpl {
+-			};
++#else
++			blob {
++				filename = "ddr.bin";
+ #endif
++			};
++
+ 			u-boot-spl {
+ 			};
+ 		};
+@@ -48,12 +52,16 @@
+ 		mkimage {
+ 			filename = "idbloader-spi.img";
+ 			args = "-n", CONFIG_SYS_SOC, "-T", "rkspi";
+-#ifdef CONFIG_TPL
+ 			multiple-data-files;
+ 
++#ifdef CONFIG_TPL
+ 			u-boot-tpl {
+-			};
++#else
++			blob {
++				filename = "ddr.bin";
+ #endif
++			};
++
+ 			u-boot-spl {
+ 			};
+ 		};
+diff --git a/configs/evb-rk3568_defconfig b/configs/evb-rk3568_defconfig
+index e7996905784..db3acf5be53 100644
+--- a/configs/evb-rk3568_defconfig
++++ b/configs/evb-rk3568_defconfig
+@@ -64,5 +64,4 @@ CONFIG_DM_RESET=y
+ CONFIG_BAUDRATE=1500000
+ CONFIG_DEBUG_UART_SHIFT=2
+ CONFIG_SYSRESET=y
+-# CONFIG_BINMAN_FDT is not set
+ CONFIG_ERRNO_STR=y
+
+From 9df7bd38d4c930e663cb9717649ad7121e3345d9 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Fri, 13 Jan 2023 21:15:02 +0000
+Subject: [PATCH 10/11] rockchip: sdram: add basic support for sdram reg info
+ version 3
+
+Newer DRAM initialization blobs from vendor can write sdram info in a
+new version 3 format. The new format makes use of more bits in sys_reg3
+compared to the version 2 format.
+
+Add basic support for detecting the version 3 format and decoding the
+high bits used for ddrtype.
+
+This fixes decode of sdram size on my RK3568 boards that have LPDDR4X.
+
+Details on the new format was deciphered from vendor u-boot commit [1].
+
+[1] https://github.com/rockchip-linux/u-boot/commit/c69667e0e2bf4290ab1f408fcde58b8806ac266b
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ arch/arm/include/asm/arch-rockchip/sdram.h | 28 +++++++++++++++-------
+ arch/arm/mach-rockchip/sdram.c             |  9 +++++--
+ 2 files changed, 26 insertions(+), 11 deletions(-)
+
+diff --git a/arch/arm/include/asm/arch-rockchip/sdram.h b/arch/arm/include/asm/arch-rockchip/sdram.h
+index cf2a7b7d105..4fb45ac5c76 100644
+--- a/arch/arm/include/asm/arch-rockchip/sdram.h
++++ b/arch/arm/include/asm/arch-rockchip/sdram.h
+@@ -8,10 +8,13 @@
+ 
+ enum {
+ 	DDR4 = 0,
+-	DDR3 = 0x3,
+-	LPDDR2 = 0x5,
+-	LPDDR3 = 0x6,
+-	LPDDR4 = 0x7,
++	DDR3 = 3,
++	LPDDR2 = 5,
++	LPDDR3 = 6,
++	LPDDR4 = 7,
++	LPDDR4X = 8,
++	LPDDR5 = 9,
++	DDR5 = 10,
+ 	UNUSED = 0xFF
+ };
+ 
+@@ -21,16 +24,16 @@ enum {
+  * [30]		row_3_4_ch0
+  * [29:28]	chinfo
+  * [27]		rank_ch1
+- * [26:25]	col_ch1
++ * [26:25]	cs0_col_ch1
+  * [24]		bk_ch1
+  * [23:22]	low bits of cs0_row_ch1
+  * [21:20]	low bits of cs1_row_ch1
+  * [19:18]	bw_ch1
+- * [17:16]	dbw_ch1;
+- * [15:13]	ddrtype
++ * [17:16]	dbw_ch1
++ * [15:13]	low bits of ddrtype
+  * [12]		channelnum
+- * [11]		rank_ch0
+- * [10:9]	col_ch0,
++ * [11]		low bit of rank_ch0
++ * [10:9]	cs0_col_ch0
+  * [8]		bk_ch0
+  * [7:6]	low bits of cs0_row_ch0
+  * [5:4]	low bits of cs1_row_ch0
+@@ -61,6 +64,11 @@ enum {
+ 
+ /*
+  * sys_reg3 bitfield struct
++ * [31:28]	version
++ * [16]		cs3_delta_row
++ * [15]		cs2_delta_row
++ * [14]		high bit of rank_ch0
++ * [13:12]	high bits of ddrtype
+  * [7]		high bit of cs0_row_ch1
+  * [6]		high bit of cs1_row_ch1
+  * [5]		high bit of cs0_row_ch0
+@@ -70,6 +78,8 @@ enum {
+  */
+ #define SYS_REG_VERSION_SHIFT			28
+ #define SYS_REG_VERSION_MASK			0xf
++#define SYS_REG_EXTEND_DDRTYPE_SHIFT		12
++#define SYS_REG_EXTEND_DDRTYPE_MASK		3
+ #define SYS_REG_EXTEND_CS0_ROW_SHIFT(ch)	(5 + (ch) * 2)
+ #define SYS_REG_EXTEND_CS0_ROW_MASK		1
+ #define SYS_REG_EXTEND_CS1_ROW_SHIFT(ch)	(4 + (ch) * 2)
+diff --git a/arch/arm/mach-rockchip/sdram.c b/arch/arm/mach-rockchip/sdram.c
+index 12f1d7ee563..7c12112799f 100644
+--- a/arch/arm/mach-rockchip/sdram.c
++++ b/arch/arm/mach-rockchip/sdram.c
+@@ -88,9 +88,15 @@ size_t rockchip_sdram_size(phys_addr_t reg)
+ 	u32 sys_reg3 = readl(reg + 4);
+ 	u32 ch_num = 1 + ((sys_reg2 >> SYS_REG_NUM_CH_SHIFT)
+ 		       & SYS_REG_NUM_CH_MASK);
++	u32 version = (sys_reg3 >> SYS_REG_VERSION_SHIFT) &
++		      SYS_REG_VERSION_MASK;
+ 
+ 	dram_type = (sys_reg2 >> SYS_REG_DDRTYPE_SHIFT) & SYS_REG_DDRTYPE_MASK;
++	if (version >= 3)
++		dram_type |= ((sys_reg3 >> SYS_REG_EXTEND_DDRTYPE_SHIFT) &
++			      SYS_REG_EXTEND_DDRTYPE_MASK) << 3;
+ 	debug("%s %x %x\n", __func__, (u32)reg, sys_reg2);
++	debug("%s %x %x\n", __func__, (u32)reg + 4, sys_reg3);
+ 	for (ch = 0; ch < ch_num; ch++) {
+ 		rank = 1 + (sys_reg2 >> SYS_REG_RANK_SHIFT(ch) &
+ 			SYS_REG_RANK_MASK);
+@@ -98,8 +104,7 @@ size_t rockchip_sdram_size(phys_addr_t reg)
+ 			  SYS_REG_COL_MASK);
+ 		cs1_col = cs0_col;
+ 		bk = 3 - ((sys_reg2 >> SYS_REG_BK_SHIFT(ch)) & SYS_REG_BK_MASK);
+-		if ((sys_reg3 >> SYS_REG_VERSION_SHIFT &
+-		     SYS_REG_VERSION_MASK) == 0x2) {
++		if (version >= 2) {
+ 			cs1_col = 9 + (sys_reg3 >> SYS_REG_CS1_COL_SHIFT(ch) &
+ 				  SYS_REG_CS1_COL_MASK);
+ 			if (((sys_reg3 >> SYS_REG_EXTEND_CS0_ROW_SHIFT(ch) &
+
+From 9fda5c56ec884e88cbe701ab5d1b2f9fbb62293e Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Fri, 13 Jan 2023 21:15:02 +0000
+Subject: [PATCH 11/11] rockchip: sdram: add dram bank with usable memory
+ beyond 4GB
+
+Add a second dram bank of usable memory beyond the blob of space for
+peripheral near 4GB. Any ram that exists beyond the 4GB mark is added
+to the second bank.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ arch/arm/mach-rockchip/sdram.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm/mach-rockchip/sdram.c b/arch/arm/mach-rockchip/sdram.c
+index 7c12112799f..8f46d9c94f8 100644
+--- a/arch/arm/mach-rockchip/sdram.c
++++ b/arch/arm/mach-rockchip/sdram.c
+@@ -37,13 +37,19 @@ struct tos_parameter_t {
+ 
+ int dram_init_banksize(void)
+ {
+-	size_t top = min((unsigned long)(gd->ram_size + CONFIG_SYS_SDRAM_BASE),
+-			 (unsigned long)(gd->ram_top));
++	size_t ram_top = (unsigned long)(gd->ram_size + CONFIG_SYS_SDRAM_BASE);
++	size_t top = min(ram_top, (unsigned long)(gd->ram_top));
+ 
+ #ifdef CONFIG_ARM64
+ 	/* Reserve 0x200000 for ATF bl31 */
+ 	gd->bd->bi_dram[0].start = 0x200000;
+ 	gd->bd->bi_dram[0].size = top - gd->bd->bi_dram[0].start;
++
++	/* Add usable memory beyond the blob of space for peripheral near 4GB */
++	if (ram_top > SZ_4G && top < SZ_4G) {
++		gd->bd->bi_dram[1].start = SZ_4G;
++		gd->bd->bi_dram[1].size = ram_top - gd->bd->bi_dram[1].start;
++	}
+ #else
+ #ifdef CONFIG_SPL_OPTEE_IMAGE
+ 	struct tos_parameter_t *tos_parameter;
+@@ -181,7 +187,7 @@ size_t rockchip_sdram_size(phys_addr_t reg)
+ 	 *   2. update board_get_usable_ram_top() and dram_init_banksize()
+ 	 *   to reserve memory for peripheral space after previous update.
+ 	 */
+-	if (size_mb > (SDRAM_MAX_SIZE >> 20))
++	if (!IS_ENABLED(CONFIG_ARM64) && size_mb > (SDRAM_MAX_SIZE >> 20))
+ 		size_mb = (SDRAM_MAX_SIZE >> 20);
+ 
+ 	return (size_t)size_mb << 20;

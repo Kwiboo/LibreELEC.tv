@@ -350,6 +350,16 @@ devices = \
         'rockchip_legacy_boot': '1'
       },
     },
+    'RK3568': {
+      'odroid-m1': {
+        'dtb': 'rk3568-odroid-m1.dtb',
+        'config': 'evb-rk3568_defconfig'
+      },
+      'rock-3a': {
+        'dtb': 'rk3568-rock-3a.dtb',
+        'config': 'evb-rk3568_defconfig'
+      },
+    },
   },
   'Samsung': {
     'Exynos': {
